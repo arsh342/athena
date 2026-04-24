@@ -1,0 +1,30 @@
+{
+  "name": "@athena/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "node --import tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@athena/core": "*",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "simple-git": "^3.36.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/cookie-parser": "^1.4.7",
+    "@types/express": "^5.0.2",
+    "@types/bcryptjs": "^2.4.6",
+    "tsx": "^4.20.6",
+    "typescript": "^5.8.0"
+  }
+}

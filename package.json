@@ -1,0 +1,32 @@
+{
+  "name": "athena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "backend",
+    "core",
+    "cli",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "build": "npm run build -w @athena/core && npm run build -w @arsh342/athena && npm run build -w @athena/backend && npm run build -w @athena/frontend",
+    "build:core": "npm run build -w @athena/core",
+    "build:cli": "npm run build -w @arsh342/athena",
+    "build:backend": "npm run build -w @athena/backend",
+    "pack:cli": "npm pack -w @arsh342/athena",
+    "pack:cli:dry": "npm run pack:dry -w @arsh342/athena",
+    "scan": "npm run dev -w @arsh342/athena -- scan",
+    "dev:frontend": "npm run dev -w @athena/frontend",
+    "dev:backend": "npm run dev -w @athena/backend"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "@arsh342/athena": "^0.1.3"
+  }
+}

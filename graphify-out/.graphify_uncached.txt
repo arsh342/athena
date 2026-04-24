@@ -1,0 +1,218 @@
+IMPLEMENTATION_SUMMARY.md
+docs/SYSTEM_DESIGN.md
+docs/UML_DIAGRAMS.md
+docs/TECH_STACK.md
+docs/IMPLEMENTATION_PLAN.md
+cli/README.md
+cli/null-pointer-font/info.txt
+cli/null-pointer-font/misc/README.txt
+graphify-out/GRAPH_REPORT.md
+graphify-out/athena/ReportPage.tsx.md
+graphify-out/athena/scoreEmojiComments().md
+graphify-out/athena/mockData.ts.md
+graphify-out/athena/Phase 3 Heuristic Scorer (TDD).md
+graphify-out/athena/countBand().md
+graphify-out/athena/Hallucinated API Detector.md
+graphify-out/athena/2026-04-19.md
+graphify-out/athena/detectHallucinations().md
+graphify-out/athena/ScanPage().md
+graphify-out/athena/CodeBlock().md
+graphify-out/athena/_COMMUNITY_Community 28.md
+graphify-out/athena/scoreNamingEntropy().md
+graphify-out/athena/Core Engine (@athenacore).md
+graphify-out/athena/_COMMUNITY_Frontend & Design.md
+graphify-out/athena/check.ts.md
+graphify-out/athena/Phase 2 Types + Parser (TDD).md
+graphify-out/athena/SeverityBadge.tsx.md
+graphify-out/athena/_COMMUNITY_Terminal Component.md
+graphify-out/athena/Rationale Graceful Degradation Without Semgrep.md
+graphify-out/athena/_COMMUNITY_Community 29.md
+graphify-out/athena/GridBackground.tsx.md
+graphify-out/athena/generateReport().md
+graphify-out/athena/main.tsx.md
+graphify-out/athena/Dashboard().md
+graphify-out/athena/Benchmark Runner (PrecisionRecallF1).md
+graphify-out/athena/Signal Low Naming Entropy.md
+graphify-out/athena/ParticleAnimation.tsx.md
+graphify-out/athena/scanFiles().md
+graphify-out/athena/_COMMUNITY_Community 6.md
+graphify-out/athena/Athena CLI Tool (Commander.js).md
+graphify-out/athena/roundPerK().md
+graphify-out/athena/scoreGenericNames().md
+graphify-out/athena/Login().md
+graphify-out/athena/scoreObviousComments().md
+graphify-out/athena/App.tsx.md
+graphify-out/athena/TypeScript (Strict Mode).md
+graphify-out/athena/formatTerminalReport().md
+graphify-out/athena/Signal Generic Variable Names.md
+graphify-out/athena/Pre-commit Hook Integration.md
+graphify-out/athena/collectParameters().md
+graphify-out/athena/Vite Build Tool.md
+graphify-out/athena/Register().md
+graphify-out/athena/_COMMUNITY_Scan Page.md
+graphify-out/athena/scoreEmptyCatch().md
+graphify-out/athena/ProtectedRoute.tsx.md
+graphify-out/athena/Semgrep (Optional CLI Subprocess).md
+graphify-out/athena/metricLine().md
+graphify-out/athena/Commander.js CLI Framework.md
+graphify-out/athena/git.ts.md
+graphify-out/athena/uninstall.ts.md
+graphify-out/athena/banner.ts.md
+graphify-out/athena/CodeBlock.tsx.md
+graphify-out/athena/_COMMUNITY_Community 26.md
+graphify-out/athena/Navbar().md
+graphify-out/athena/getKind().md
+graphify-out/athena/menu.ts.md
+graphify-out/athena/analyzeSecurity().md
+graphify-out/athena/ProtectedRoute().md
+graphify-out/athena/_COMMUNITY_CLI Commands & Scanning.md
+graphify-out/athena/_COMMUNITY_Auth & Route Protection.md
+graphify-out/athena/uninstallCommand().md
+graphify-out/athena/colors.ts.md
+graphify-out/athena/heuristic-scorer.ts.md
+graphify-out/athena/Web Backend (Express + WebSocket).md
+graphify-out/athena/Security Analyzer Pipeline.md
+graphify-out/athena/React Framework.md
+graphify-out/athena/parseFile().md
+graphify-out/athena/Signal Boilerplate Patterns.md
+graphify-out/athena/Security Threat Model & Mitigations.md
+graphify-out/athena/Vitest Testing Framework.md
+graphify-out/athena/_COMMUNITY_Community 22.md
+graphify-out/athena/Athena Integrated Project Synopsis.md
+graphify-out/athena/security-analyzer.ts.md
+graphify-out/athena/useCountUp().md
+graphify-out/athena/Athena AI Code Provenance Tracker.md
+graphify-out/athena/_COMMUNITY_Community 32.md
+graphify-out/athena/select().md
+graphify-out/athena/Dashboard.tsx.md
+graphify-out/athena/_COMMUNITY_Heuristic Scoring Signals.md
+graphify-out/athena/AST Parser (TypeScript Compiler API).md
+graphify-out/athena/createUnit().md
+graphify-out/athena/CLI Scan Command.md
+graphify-out/athena/Terminal().md
+graphify-out/athena/sectionRule().md
+graphify-out/athena/_COMMUNITY_Navigation Bar.md
+graphify-out/athena/GridBackground().md
+graphify-out/athena/Register.tsx.md
+graphify-out/athena/scoreUnit().md
+graphify-out/athena/_COMMUNITY_Dashboard Page.md
+graphify-out/athena/tsup.config.ts.md
+graphify-out/athena/ParticleAnimation().md
+graphify-out/athena/Phase 1 Project Scaffolding.md
+graphify-out/athena/scoreCommentRatio().md
+graphify-out/athena/Rationale AI Score × Finding Severity = Higher Risk.md
+graphify-out/athena/ast-parser.ts.md
+graphify-out/athena/Navbar.tsx.md
+graphify-out/athena/types.ts.md
+graphify-out/athena/getMetadata().md
+graphify-out/athena/index.ts_1.md
+graphify-out/athena/_COMMUNITY_Community 27.md
+graphify-out/athena/scan.ts.md
+graphify-out/athena/scoreHelperOrdering().md
+graphify-out/athena/Diff-Aware Analysis Mode.md
+graphify-out/athena/estimateComplexity().md
+graphify-out/athena/Phase 10 Publishing (@arsh342athena).md
+graphify-out/athena/ws WebSocket Library.md
+graphify-out/athena/init.ts.md
+graphify-out/athena/printBanner().md
+graphify-out/athena/xterm.js Terminal Component.md
+graphify-out/athena/_COMMUNITY_Core Analysis Engine.md
+graphify-out/athena/findSourceFiles().md
+graphify-out/athena/Web Frontend (React + Vite + xterm.js).md
+graphify-out/athena/Node.js Runtime (v18+).md
+graphify-out/athena/HubDiagram.tsx.md
+graphify-out/athena/Severity Classifier (Cross-Reference Matrix).md
+graphify-out/athena/_COMMUNITY_Grid Background.md
+graphify-out/athena/pad().md
+graphify-out/athena/maxNestingDepth().md
+graphify-out/athena/walk().md
+graphify-out/athena/_COMMUNITY_Community 30.md
+graphify-out/athena/Phase 5 Report + Engine + Advanced Features.md
+graphify-out/athena/truncate().md
+graphify-out/athena/Phase 9 Testing + Benchmarks + Polish.md
+graphify-out/athena/printRunResult().md
+graphify-out/athena/parseSource().md
+graphify-out/athena/Repository Fingerprinting (Baseline).md
+graphify-out/athena/ReportPage().md
+graphify-out/athena/index.ts_2.md
+graphify-out/athena/Rationale Streaming-First Architecture.md
+graphify-out/athena/render().md
+graphify-out/athena/_COMMUNITY_Community 24.md
+graphify-out/athena/Heuristic Scorer (11 Weighted Signals).md
+graphify-out/athena/ESLint + eslint-plugin-security.md
+graphify-out/athena/menuCommand().md
+graphify-out/athena/_COMMUNITY_Code Block Component.md
+graphify-out/athena/Phase 6 CLI Commands.md
+graphify-out/athena/shannonEntropy().md
+graphify-out/athena/Report Generator (TerminalJSONHTMLJSONL).md
+graphify-out/athena/_COMMUNITY_Scroll Stroke Effects.md
+graphify-out/athena/engine.ts.md
+graphify-out/athena/severityBar().md
+graphify-out/athena/printRunHeader().md
+graphify-out/athena/signal().md
+graphify-out/athena/Phase 7 Web Backend.md
+graphify-out/athena/_COMMUNITY_Community 25.md
+graphify-out/athena/Deployment Architecture (Vercel + Railway).md
+graphify-out/athena/CLI Check Command.md
+graphify-out/athena/Landing.tsx.md
+graphify-out/athena/index.ts.md
+graphify-out/athena/useAuth().md
+graphify-out/athena/isSourceFile().md
+graphify-out/athena/useScrambleText().md
+graphify-out/athena/Terminal.tsx.md
+graphify-out/athena/Phase 4 Security Analyzers (TDD).md
+graphify-out/athena/getName().md
+graphify-out/athena/terminal-formatter.ts.md
+graphify-out/athena/Login.tsx.md
+graphify-out/athena/Rationale Fully Offline — No External APIs.md
+graphify-out/athena/ScoreGauge().md
+graphify-out/athena/formatJsonl().md
+graphify-out/athena/ScanPage.tsx.md
+graphify-out/athena/ReportView.tsx.md
+graphify-out/athena/_COMMUNITY_Community 31.md
+graphify-out/athena/ScrollStroke().md
+graphify-out/athena/Suppression System.md
+graphify-out/athena/ScrollStroke.tsx.md
+graphify-out/athena/_COMMUNITY_CLI UI & Banner.md
+graphify-out/athena/collectIdentifiers().md
+graphify-out/athena/useAuth.ts.md
+graphify-out/athena/Temporal Trend Analysis.md
+graphify-out/athena/_COMMUNITY_Report Page.md
+graphify-out/athena/Signal Emoji in Comments.md
+graphify-out/athena/random().md
+graphify-out/athena/outExtension().md
+graphify-out/athena/_COMMUNITY_Register Page.md
+graphify-out/athena/UML Diagrams Index (26 Diagrams).md
+graphify-out/athena/_COMMUNITY_Engine Orchestration.md
+graphify-out/athena/terminal.ts.md
+graphify-out/athena/Express.js Server.md
+graphify-out/athena/scoreBoilerplatePatterns().md
+graphify-out/athena/scanCommand().md
+graphify-out/athena/scoreNullChecks().md
+graphify-out/athena/ScoreGauge.tsx.md
+graphify-out/athena/scoreFormattingUniformity().md
+graphify-out/athena/dashedLine().md
+graphify-out/athena/Signal Excessive Comment Ratio.md
+graphify-out/athena/_COMMUNITY_Particle Animation.md
+graphify-out/athena/xterm.js v5 Terminal Emulator.md
+graphify-out/athena/initCommand().md
+graphify-out/athena/explain().md
+graphify-out/athena/report-generator.ts.md
+graphify-out/athena/clear().md
+graphify-out/athena/_COMMUNITY_Login Page.md
+graphify-out/athena/scoreUniversalJsdoc().md
+graphify-out/athena/getStagedFiles().md
+graphify-out/athena/Sandbox Manager (Isolated Scan Environment).md
+graphify-out/athena/hallucination-detector.ts.md
+graphify-out/athena/vite.config.ts.md
+graphify-out/athena/Phase 8 Web Frontend.md
+graphify-out/athena/Prisma ORM.md
+graphify-out/athena/getGitRoot().md
+graphify-out/athena/_COMMUNITY_Landing Page Effects.md
+graphify-out/athena/main().md
+graphify-out/athena/_COMMUNITY_Implementation Phase.md
+graphify-out/athena/PostgreSQL + Prisma Database Layer.md
+graphify-out/athena/file-filter.ts.md
+graphify-out/athena/mergeConfig().md
+graphify-out/athena/checkCommand().md
+graphify-out/athena/config.ts.md
