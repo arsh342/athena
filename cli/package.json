@@ -45,6 +45,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "optionalDependencies": {
+    "eslint": "^9.0.0",
+    "eslint-plugin-security": "^3.0.0"
+  },
   "devDependencies": {
     "@athena/core": "file:../core",
     "commander": "^14.0.0",

@@ -19,7 +19,7 @@ export const defaultWeights = {
 export const defaultConfig: AthenaConfig = {
   threshold: 9,
   blockOn: ['CRITICAL', 'HIGH'],
-  exclude: ['node_modules/', 'dist/', 'build/', '.git/', 'coverage/'],
+  exclude: ['node_modules/', 'dist/', 'build/', '.git/', 'coverage/', 'test/', 'tests/', '__tests__/'],
   secretDetection: true,
   hallucinationDetection: true,
   semgrep: {
@@ -51,6 +51,13 @@ export const defaultConfig: AthenaConfig = {
 };
 
 export function mergeConfig(config: Partial<AthenaConfig> = {}): AthenaConfig {
+  const mergedEslint = {
+    enabled: config.eslint?.enabled ?? defaultConfig.eslint!.enabled,
+    timeoutMs: config.eslint?.timeoutMs ?? defaultConfig.eslint!.timeoutMs,
+    ...(config.eslint?.rules ? { rules: config.eslint.rules } : {}),
+    ...(config.eslint?.plugins ? { plugins: config.eslint.plugins } : {}),
+  };
+
   return {
     ...defaultConfig,
     ...config,
@@ -58,12 +65,7 @@ export function mergeConfig(config: Partial<AthenaConfig> = {}): AthenaConfig {
       ...defaultConfig.semgrep,
       ...config.semgrep,
     },
-    eslint: {
-      enabled: config.eslint?.enabled ?? defaultConfig.eslint!.enabled,
-      timeoutMs: config.eslint?.timeoutMs ?? defaultConfig.eslint!.timeoutMs,
-      rules: config.eslint?.rules,
-      plugins: config.eslint?.plugins,
-    },
+    eslint: mergedEslint,
     npmAudit: {
       enabled: config.npmAudit?.enabled ?? defaultConfig.npmAudit!.enabled,
       timeoutMs: config.npmAudit?.timeoutMs ?? defaultConfig.npmAudit!.timeoutMs,

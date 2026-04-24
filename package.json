@@ -17,7 +17,7 @@
     "build:backend": "npm run build -w @athena/backend",
     "pack:cli": "npm pack -w @arsh342/athena",
     "pack:cli:dry": "npm run pack:dry -w @arsh342/athena",
-    "scan": "npm run dev -w @arsh342/athena -- scan",
+    "scan": "npm run dev -w @arsh342/athena -- scan ..",
     "dev:frontend": "npm run dev -w @athena/frontend",
     "dev:backend": "npm run dev -w @athena/backend"
   },

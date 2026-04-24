@@ -5,7 +5,7 @@ import { doctorCommand } from './commands/doctor.js';
 import { initCommand } from './commands/init.js';
 import { menuCommand } from './commands/menu.js';
 import { scanCommand } from './commands/scan.js';
-import { setupSemgrepCommand } from './commands/setup.js';
+import { setupAllCommand, setupSemgrepCommand } from './commands/setup.js';
 import { uninstallCommand } from './commands/uninstall.js';
 import { clearScreen } from './utils/terminal.js';
 import { CLI_VERSION } from './version.js';
@@ -49,13 +49,21 @@ program.command('init').description('install Athena pre-commit hook').action(ini
 program.command('uninstall').description('remove Athena pre-commit hook').action(uninstallCommand);
 program.command('doctor').description('check local toolchain health (node, npm, semgrep, trivy)').action(doctorCommand);
 
-program
+const setupCommand = program
   .command('setup')
-  .description('setup optional external scanners')
+  .description('setup optional external scanners');
+
+setupCommand
   .command('semgrep')
   .option('--auto', 'run install command automatically')
   .description('install or print install command for semgrep')
   .action(setupSemgrepCommand);
+
+setupCommand
+  .command('all')
+  .option('--auto', 'run supported install commands automatically')
+  .description('print/setup all scanner dependencies (included + external)')
+  .action(setupAllCommand);
 
 program.command('menu').description('open interactive terminal selector').action(() => menuCommand(program));
 

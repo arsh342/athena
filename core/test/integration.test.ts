@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import assert from 'node:assert/strict';
+import { beforeEach, describe, it } from 'node:test';
 import { scanFiles } from '../src/engine.js';
 import { mergeConfig } from '../src/config.js';
 import type { AthenaConfig } from '../src/types.js';
@@ -24,16 +25,16 @@ describe('Scanner Integration', () => {
 
       const report = await scanFiles(testFiles, testConfig, {});
 
-      expect(report).toBeDefined();
-      expect(report.summary).toBeDefined();
-      expect(report.summary.filesScanned).toBe(0);
+      assert.ok(report);
+      assert.ok(report.summary);
+      assert.equal(report.summary.filesScanned, 0);
     });
 
     it('should handle empty file list', async () => {
       const report = await scanFiles([], testConfig, {});
 
-      expect(report.summary.filesScanned).toBe(0);
-      expect(report.files).toHaveLength(0);
+      assert.equal(report.summary.filesScanned, 0);
+      assert.equal(report.files.length, 0);
     });
 
     it('should respect scanner configuration', async () => {
@@ -46,8 +47,8 @@ describe('Scanner Integration', () => {
         eslint: { enabled: false, timeoutMs: 1000 },
       });
 
-      expect(configWithESLint.eslint?.enabled).toBe(true);
-      expect(configWithoutESLint.eslint?.enabled).toBe(false);
+      assert.equal(configWithESLint.eslint?.enabled, true);
+      assert.equal(configWithoutESLint.eslint?.enabled, false);
     });
   });
 
@@ -60,12 +61,12 @@ describe('Scanner Integration', () => {
 
       const merged = mergeConfig(userConfig);
 
-      expect(merged.threshold).toBe(75);
-      expect(merged.eslint?.enabled).toBe(false);
-      expect(merged.eslint?.timeoutMs).toBe(5000);
+      assert.equal(merged.threshold, 75);
+      assert.equal(merged.eslint?.enabled, false);
+      assert.equal(merged.eslint?.timeoutMs, 5000);
       // Other defaults should be preserved
-      expect(merged.secretDetection).toBe(true);
-      expect(merged.hallucinationDetection).toBe(true);
+      assert.equal(merged.secretDetection, true);
+      assert.equal(merged.hallucinationDetection, true);
     });
 
     it('should handle partial scanner configuration', () => {
@@ -75,18 +76,18 @@ describe('Scanner Integration', () => {
 
       const merged = mergeConfig(userConfig);
 
-      expect(merged.eslint?.enabled).toBe(false);
-      expect(merged.eslint?.timeoutMs).toBe(30000); // Default value
+      assert.equal(merged.eslint?.enabled, false);
+      assert.equal(merged.eslint?.timeoutMs, 30000); // Default value
     });
 
     it('should preserve all default scanner configs', () => {
       const merged = mergeConfig({});
 
-      expect(merged.semgrep).toBeDefined();
-      expect(merged.eslint).toBeDefined();
-      expect(merged.npmAudit).toBeDefined();
-      expect(merged.nodejsscan).toBeDefined();
-      expect(merged.bearer).toBeDefined();
+      assert.ok(merged.semgrep);
+      assert.ok(merged.eslint);
+      assert.ok(merged.npmAudit);
+      assert.ok(merged.nodejsscan);
+      assert.ok(merged.bearer);
     });
   });
 
@@ -96,8 +97,8 @@ describe('Scanner Integration', () => {
 
       const report = await scanFiles(nonExistentFiles, testConfig, {});
 
-      expect(report.summary.filesScanned).toBe(0);
-      expect(report.summary.skippedFiles).toBe(0);
+      assert.equal(report.summary.filesScanned, 0);
+      assert.equal(report.summary.skippedFiles, 0);
     });
 
     it('should handle scanner unavailability gracefully', async () => {
@@ -110,7 +111,7 @@ describe('Scanner Integration', () => {
       const report = await scanFiles([], configWithScanners, {});
 
       // Should complete without errors even if scanners are not available
-      expect(report).toBeDefined();
+      assert.ok(report);
     });
   });
 });

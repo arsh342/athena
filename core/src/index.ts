@@ -16,6 +16,7 @@ export type {
   FileReport,
   ScanOptions,
   ScanReport,
+  ScanDelta,
   ScoredUnit,
   SemgrepConfig,
   ESLintConfig,
