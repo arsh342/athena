@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import { scannerRegistry } from '../src/scanner-registry.js';
 import type { AthenaConfig } from '../src/types.js';
 
@@ -50,11 +51,11 @@ describe('ScannerRegistry', () => {
       const scanners = scannerRegistry.getAllScanners();
       const scannerNames = scanners.map(s => s.name);
 
-      expect(scannerNames).toContain('semgrep');
-      expect(scannerNames).toContain('eslint');
-      expect(scannerNames).toContain('npmAudit');
-      expect(scannerNames).toContain('nodejsscan');
-      expect(scannerNames).toContain('bearer');
+      assert.equal(scannerNames.includes('semgrep'), true);
+      assert.equal(scannerNames.includes('eslint'), true);
+      assert.equal(scannerNames.includes('npmAudit'), true);
+      assert.equal(scannerNames.includes('nodejsscan'), true);
+      assert.equal(scannerNames.includes('bearer'), true);
     });
 
     it('should allow registering custom scanners', () => {
@@ -70,7 +71,7 @@ describe('ScannerRegistry', () => {
       scannerRegistry.register(customScanner);
 
       const scanners = scannerRegistry.getAllScanners();
-      expect(scanners.some(s => s.name === 'custom-scanner')).toBe(true);
+      assert.equal(scanners.some(s => s.name === 'custom-scanner'), true);
 
       // Clean up
       scannerRegistry.unregister('custom-scanner');
@@ -87,10 +88,10 @@ describe('ScannerRegistry', () => {
       };
 
       scannerRegistry.register(customScanner);
-      expect(scannerRegistry.getScanner('temp-scanner')).toBeDefined();
+      assert.ok(scannerRegistry.getScanner('temp-scanner'));
 
       scannerRegistry.unregister('temp-scanner');
-      expect(scannerRegistry.getScanner('temp-scanner')).toBeUndefined();
+      assert.equal(scannerRegistry.getScanner('temp-scanner'), undefined);
     });
   });
 
@@ -98,15 +99,15 @@ describe('ScannerRegistry', () => {
     it('should check availability of all scanners', async () => {
       const availability = await scannerRegistry.checkAllScanners();
 
-      expect(availability).toHaveProperty('semgrep');
-      expect(availability).toHaveProperty('eslint');
-      expect(availability).toHaveProperty('npmAudit');
-      expect(availability).toHaveProperty('nodejsscan');
-      expect(availability).toHaveProperty('bearer');
+      assert.ok('semgrep' in availability);
+      assert.ok('eslint' in availability);
+      assert.ok('npmAudit' in availability);
+      assert.ok('nodejsscan' in availability);
+      assert.ok('bearer' in availability);
 
       // All should be boolean values
       Object.values(availability).forEach(available => {
-        expect(typeof available).toBe('boolean');
+        assert.equal(typeof available, 'boolean');
       });
     });
   });
@@ -123,7 +124,7 @@ describe('ScannerRegistry', () => {
       const findings = await scannerRegistry.runEnabledScanners([], '/tmp', testConfig);
 
       // Should return empty array when all scanners are disabled
-      expect(Array.isArray(findings)).toBe(true);
+      assert.equal(Array.isArray(findings), true);
     });
 
     it('should handle scanner errors gracefully', async () => {
@@ -133,14 +134,14 @@ describe('ScannerRegistry', () => {
       const findings = await scannerRegistry.runEnabledScanners([], '/tmp', testConfig);
 
       // Should not throw even if scanner fails
-      expect(Array.isArray(findings)).toBe(true);
+      assert.equal(Array.isArray(findings), true);
     });
   });
 
   describe('Finding Normalization', () => {
     it('should normalize findings to ClassifiedFinding format', () => {
       const semgrepScanner = scannerRegistry.getScanner('semgrep');
-      expect(semgrepScanner).toBeDefined();
+      assert.ok(semgrepScanner);
 
       if (semgrepScanner) {
         const mockFinding = {
@@ -158,19 +159,19 @@ describe('ScannerRegistry', () => {
 
         const normalized = semgrepScanner.normalize(mockFinding, testConfig);
 
-        expect(normalized).toHaveProperty('id');
-        expect(normalized).toHaveProperty('severity');
-        expect(normalized).toHaveProperty('type');
-        expect(normalized).toHaveProperty('category');
-        expect(normalized).toHaveProperty('message');
-        expect(normalized).toHaveProperty('file');
-        expect(normalized).toHaveProperty('line');
-        expect(normalized).toHaveProperty('column');
-        expect(normalized).toHaveProperty('code');
-        expect(normalized).toHaveProperty('aiScore');
-        expect(normalized).toHaveProperty('explainedScore');
-        expect(normalized).toHaveProperty('source');
-        expect(normalized).toHaveProperty('ruleId');
+        assert.ok('id' in normalized);
+        assert.ok('severity' in normalized);
+        assert.ok('type' in normalized);
+        assert.ok('category' in normalized);
+        assert.ok('message' in normalized);
+        assert.ok('file' in normalized);
+        assert.ok('line' in normalized);
+        assert.ok('column' in normalized);
+        assert.ok('code' in normalized);
+        assert.ok('aiScore' in normalized);
+        assert.ok('explainedScore' in normalized);
+        assert.ok('source' in normalized);
+        assert.ok('ruleId' in normalized);
       }
     });
   });

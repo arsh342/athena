@@ -50,6 +50,9 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     : securityFindingsTotal === 0
       ? `pass (no security findings, ai score ${aiScoreRelation})`
       : `pass (security findings present but below block policy, ai score ${aiScoreRelation})`;
+  const deltaGateContext = summary.delta && !summary.delta.baseline
+    ? `, ${formatSigned(summary.delta.findings.newBySeverity.HIGH + summary.delta.findings.newBySeverity.CRITICAL)} high-risk vs last run`
+    : '';
 
   // ── Title ──
   lines.push('');
@@ -69,8 +72,31 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     ['risk', `${summary.riskDensity.findingsPer1kLoc}/1k LOC`],
     ['gate', summary.blocked ? `${c.red}blocked${c.reset}` : `${c.green}pass${c.reset}`],
   ]));
-  lines.push(`  ${c.dim}gate reason${c.reset} ${c.white}${gateReason}${c.reset}`);
+  lines.push(`  ${c.dim}gate reason${c.reset} ${c.white}${gateReason}${deltaGateContext}${c.reset}`);
   lines.push('');
+
+  if (summary.delta) {
+    lines.push(`  ${c.bold}Delta Since Last Scan${c.reset}`);
+    if (summary.delta.baseline) {
+      lines.push(`  ${c.dim}baseline captured; future scans will show new and resolved findings${c.reset}`);
+    } else {
+      const delta = summary.delta;
+      const riskColor = delta.riskScore.change > 0 ? c.red : delta.riskScore.change < 0 ? c.green : c.gray;
+      lines.push(metricLine([
+        ['new', String(delta.findings.new)],
+        ['resolved', String(delta.findings.resolved)],
+        ['risk delta', `${riskColor}${formatSigned(delta.riskScore.change)}${c.reset}`],
+        ['alert', delta.regressionAlert ? `${c.red}regression${c.reset}` : `${c.green}stable${c.reset}`],
+      ]));
+
+      if (delta.folders.length > 0) {
+        lines.push(`  ${c.dim}folder movement${c.reset} ${delta.folders
+          .map((folder) => `${folder.folder}:${formatSigned(folder.change)}`)
+          .join('   ')}`);
+      }
+    }
+    lines.push('');
+  }
 
   // ── AI-Origin Confidence (separate block) ──
   if (summary.aiOrigin) {
@@ -200,4 +226,9 @@ function formatCodeSnippet(code: string, maxLines: number): string[] {
     .map((line) => line.trimEnd())
     .filter((line) => line.trim().length > 0)
     .slice(0, maxLines);
+}
+
+function formatSigned(value: number): string {
+  if (value > 0) return `+${value}`;
+  return String(value);
 }

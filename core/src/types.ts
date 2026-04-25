@@ -153,8 +153,35 @@ export interface ScanReport {
       targetRecall?: number;
       corpusVersion?: string;
     };
+    delta?: ScanDelta;
   };
   files: FileReport[];
+}
+
+export interface ScanDelta {
+  baseline: boolean;
+  previousTimestamp?: string;
+  riskScore: {
+    current: number;
+    previous: number;
+    change: number;
+  };
+  findings: {
+    current: number;
+    previous: number;
+    change: number;
+    new: number;
+    resolved: number;
+    newBySeverity: Record<Severity, number>;
+    resolvedBySeverity: Record<Severity, number>;
+  };
+  folders: Array<{
+    folder: string;
+    currentRisk: number;
+    previousRisk: number;
+    change: number;
+  }>;
+  regressionAlert: boolean;
 }
 
 export interface AthenaConfig {

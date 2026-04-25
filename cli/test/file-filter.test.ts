@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import test from 'node:test';
 
 import { findSourceFiles, isSourceFile } from '../src/utils/file-filter.ts';
@@ -41,9 +41,53 @@ test('findSourceFiles returns source files and skips ignored directories', async
     await writeFile(join(root, 'temp', 'generated.ts'), 'export const t = 1;');
 
     const files = await findSourceFiles(root);
-    const relative = files.map((file) => file.replace(`${root}/`, '')).sort();
+    const relativePaths = files
+      .map((file) => relative(root, file).split('\\').join('/'))
+      .sort();
 
-    assert.deepEqual(relative, ['src/index.ts', 'src/view.tsx']);
+    assert.deepEqual(relativePaths, ['src/index.ts', 'src/view.tsx']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('findSourceFiles honors configured exclude paths', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athena-cli-test-exclude-'));
+
+  try {
+    await mkdir(join(root, 'src'), { recursive: true });
+    await mkdir(join(root, 'test'), { recursive: true });
+
+    await writeFile(join(root, 'src', 'index.ts'), 'export const x = 1;');
+    await writeFile(join(root, 'test', 'fixture.ts'), 'export const fixture = true;');
+
+    const files = await findSourceFiles(root, ['test/']);
+    const relativePaths = files
+      .map((file) => relative(root, file).split('\\').join('/'))
+      .sort();
+
+    assert.deepEqual(relativePaths, ['src/index.ts']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('findSourceFiles excludes nested test directories by segment name', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athena-cli-test-nested-exclude-'));
+
+  try {
+    await mkdir(join(root, 'core', 'test'), { recursive: true });
+    await mkdir(join(root, 'core', 'src'), { recursive: true });
+
+    await writeFile(join(root, 'core', 'test', 'secret-detector.test.ts'), 'export const fixture = true;');
+    await writeFile(join(root, 'core', 'src', 'index.ts'), 'export const index = true;');
+
+    const files = await findSourceFiles(root, ['test/']);
+    const relativePaths = files
+      .map((file) => relative(root, file).split('\\').join('/'))
+      .sort();
+
+    assert.deepEqual(relativePaths, ['core/src/index.ts']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

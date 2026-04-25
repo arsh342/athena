@@ -44,6 +44,15 @@ Remove pre-commit hook:
 athena uninstall
 ```
 
+Setup scanner dependencies:
+
+```bash
+athena setup all
+athena setup all --auto
+athena setup semgrep
+athena setup semgrep --auto
+```
+
 ## Common Options
 
 Set threshold (default is `9`):
@@ -102,3 +111,5 @@ npm run build -w @arsh342/athena
 - Runs fully local (no external AI service required).
 - Supports JavaScript, TypeScript, JSX, and TSX.
 - Requires Node.js 18 or newer.
+- ESLint scanner support is included via optional package dependencies.
+- Semgrep, Docker (for nodejsscan), and Bearer CLI remain external optional tools.

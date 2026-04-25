@@ -1,5 +1,13 @@
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-export type FindingSource = 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep';
+export type FindingSource =
+  | 'secret-detector'
+  | 'hallucination-detector'
+  | 'security-analyzer'
+  | 'semgrep'
+  | 'eslint'
+  | 'npm-audit'
+  | 'nodejsscan'
+  | 'bearer';
 
 export interface ScanSummary {
   scanId: string;

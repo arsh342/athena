@@ -1,9 +1,11 @@
-import { formatJsonl, formatTerminalReport, scanFiles } from '@athena/core';
+import { formatJsonl, formatTerminalReport, mergeConfig, scanFiles } from '@athena/core';
 import { resolve } from 'node:path';
+import { withBufferedAthenaCoreConsole } from '../utils/console-buffer.js';
+import { attachScanDelta } from '../utils/delta.js';
 import { findSourceFiles } from '../utils/file-filter.js';
 import { appendScanHistory } from '../utils/history.js';
 import { createScanProgressRenderer } from '../utils/scan-progress.js';
-import { clearScreen, printRunHeader, printRunResult } from '../utils/terminal.js';
+import { clearScreen, printRunHeader, printRunResult, printScannerNotes } from '../utils/terminal.js';
 
 interface ScanOptions {
   threshold: string;
@@ -19,43 +21,44 @@ interface ScanOptions {
 
 export async function scanCommand(dir: string, options: ScanOptions): Promise<void> {
   const root = resolve(process.cwd(), dir);
+  const config = mergeConfig({
+    threshold: Number(options.threshold),
+  });
+  config.eslint = { ...config.eslint!, enabled: options.eslint !== false };
+  config.npmAudit = { ...config.npmAudit!, enabled: options.npmAudit !== false };
+  config.nodejsscan = { ...config.nodejsscan!, enabled: options.nodejsscan !== false };
+  config.bearer = { ...config.bearer!, enabled: options.bearer !== false };
+  config.semgrep.enabled = options.semgrep !== false;
+
   if (!options.quietHeader) {
     if (process.stdout.isTTY) {
       clearScreen();
     }
     printRunHeader('scan', root);
   }
-  const files = await findSourceFiles(root);
+  const files = await findSourceFiles(root, config.exclude);
   const maxFindings = parseMaxFindings(options.maxFindings);
   const progress = createScanProgressRenderer(options.format === 'terminal');
 
-  // Build scanner configuration
-  const scannerConfig = {
-    threshold: Number(options.threshold),
-    eslint: { enabled: options.eslint !== false },
-    npmAudit: { enabled: options.npmAudit !== false },
-    nodejsscan: { enabled: options.nodejsscan !== false },
-    bearer: { enabled: options.bearer !== false },
-    semgrep: { enabled: options.semgrep !== false },
-  };
-
-  const report = await (async () => {
+  const { result: report, messages } = await withBufferedAthenaCoreConsole(async () => {
     try {
       return await scanFiles(
         files,
-        scannerConfig,
+        config,
         { onFileProgress: progress.onProgress },
       );
     } finally {
       progress.stop();
     }
-  })();
+  });
+  await attachScanDelta(report, `scan:${root}`, root);
 
   if (options.format === 'json') {
     console.log(JSON.stringify(report, null, 2));
   } else if (options.format === 'jsonl') {
     console.log(formatJsonl(report));
   } else {
+    printScannerNotes(messages);
     console.log(formatTerminalReport(report, { maxFindings }));
   }
 

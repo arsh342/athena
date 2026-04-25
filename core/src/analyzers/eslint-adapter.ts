@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { ESLintConfig, Severity } from '../types.js';
 
 interface ESLintResultMessage {

@@ -7,6 +7,18 @@ interface SetupSemgrepOptions {
   auto?: boolean;
 }
 
+interface SetupAllOptions {
+  auto?: boolean;
+}
+
+interface SetupToolPlan {
+  name: string;
+  includedWithAthena: boolean;
+  autoInstallCommand?: string;
+  manualInstallCommand?: string;
+  note: string;
+}
+
 /**
  * Return install command for Semgrep based on host platform.
  */
@@ -40,4 +52,83 @@ export async function setupSemgrepCommand(options: SetupSemgrepOptions = {}): Pr
     console.error(`Semgrep install failed: ${message}`);
     process.exitCode = 1;
   }
+}
+
+export function getSetupAllPlan(platform: NodeJS.Platform): SetupToolPlan[] {
+  return [
+    {
+      name: 'ESLint + eslint-plugin-security',
+      includedWithAthena: true,
+      note: 'Bundled as Athena optional dependencies and used by the ESLint scanner when present.',
+    },
+    {
+      name: 'npm audit',
+      includedWithAthena: true,
+      note: 'Uses npm CLI that ships with Node.js. No separate scanner package install required.',
+    },
+    {
+      name: 'Semgrep',
+      includedWithAthena: false,
+      autoInstallCommand: getSemgrepInstallCommand(platform),
+      manualInstallCommand: getSemgrepInstallCommand(platform),
+      note: 'External binary scanner. Optional, but improves SAST coverage.',
+    },
+    {
+      name: 'Docker (for nodejsscan)',
+      includedWithAthena: false,
+      note: 'Required runtime for nodejsscan container execution; install from Docker Desktop/package manager.',
+    },
+    {
+      name: 'Bearer CLI',
+      includedWithAthena: false,
+      autoInstallCommand: 'npm install -g @bearer/cli',
+      manualInstallCommand: 'npm install -g @bearer/cli',
+      note: 'External CLI scanner for privacy and data-flow analysis.',
+    },
+  ];
+}
+
+export async function setupAllCommand(options: SetupAllOptions = {}): Promise<void> {
+  const plan = getSetupAllPlan(process.platform);
+
+  console.log('Athena scanner setup plan\n');
+  for (const tool of plan) {
+    const inclusion = tool.includedWithAthena ? 'included' : 'external';
+    console.log(`- ${tool.name} (${inclusion})`);
+    console.log(`  ${tool.note}`);
+    if (tool.manualInstallCommand && !tool.includedWithAthena) {
+      console.log(`  install: ${tool.manualInstallCommand}`);
+    }
+  }
+
+  if (!options.auto) {
+    console.log('\nUse --auto to run supported install commands automatically.');
+    return;
+  }
+
+  let failed = false;
+
+  for (const tool of plan) {
+    if (!tool.autoInstallCommand) continue;
+
+    try {
+      console.log(`\nInstalling ${tool.name}...`);
+      const { stdout, stderr } = await execAsync(tool.autoInstallCommand, { timeout: 180_000, maxBuffer: 1024 * 1024 });
+      if (stdout.trim()) console.log(stdout.trim());
+      if (stderr.trim()) console.log(stderr.trim());
+      console.log(`Completed: ${tool.name}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Failed: ${tool.name} (${message})`);
+      failed = true;
+    }
+  }
+
+  if (failed) {
+    console.log('\nSome installs failed. You can run their manual commands from the setup plan above.');
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log('\nSetup complete. Run `athena doctor` to verify tool availability.');
 }
