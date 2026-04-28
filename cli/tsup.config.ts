@@ -14,7 +14,9 @@ export default defineConfig({
   minify: false,
   noExternal: ['@athena/core', 'commander'],
   external: [
-    // ESLint dependencies that should not be bundled
+    // Optional scanner dependencies should resolve at runtime, not from bundle shims.
+    'eslint',
+    'eslint-plugin-security',
     'jiti',
     'jiti/package.json',
   ],

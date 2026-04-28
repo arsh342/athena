@@ -58,3 +58,6 @@ tmp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+test/
+docs/
+CLAUDE.md

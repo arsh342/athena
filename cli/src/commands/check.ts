@@ -53,7 +53,7 @@ export async function checkCommand(files: string[], options: CheckOptions): Prom
       return await scanFiles(
         expanded,
         config,
-        { onFileProgress: progress.onProgress },
+        { onFileProgress: progress.onProgress, onScannerStage: progress.onStage },
       );
     } finally {
       progress.stop();

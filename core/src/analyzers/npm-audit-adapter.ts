@@ -6,21 +6,38 @@ import type { NpmAuditConfig, Severity } from '../types.js';
 
 const execFileAsync = promisify(execFile);
 
-interface NpmAuditAdvisory {
-  id: string;
-  title: string;
-  severity: 'low' | 'moderate' | 'high' | 'critical';
-  findings: Array<{
-    paths: string[];
+interface NpmAuditLegacyAdvisory {
+  id?: string | number;
+  title?: string;
+  severity?: string;
+  findings?: Array<{
+    paths?: string[];
   }>;
 }
 
-interface NpmAuditVulnerability {
-  [key: string]: NpmAuditAdvisory;
+interface NpmAuditModernViaObject {
+  source?: string | number;
+  name?: string;
+  dependency?: string;
+  title?: string;
+  severity?: string;
+  url?: string;
+  range?: string;
 }
 
+interface NpmAuditModernVulnerability {
+  name?: string;
+  severity?: string;
+  via?: Array<string | NpmAuditModernViaObject>;
+  effects?: string[];
+  range?: string;
+  nodes?: string[];
+}
+
+type NpmAuditVulnerability = NpmAuditLegacyAdvisory | NpmAuditModernVulnerability;
+
 interface NpmAuditOutput {
-  vulnerabilities: NpmAuditVulnerability;
+  vulnerabilities: Record<string, NpmAuditVulnerability>;
   metadata: {
     vulnerabilities: {
       info: number;
@@ -59,24 +76,14 @@ export async function runNpmAudit(projectRoot: string, config: NpmAuditConfig): 
     });
 
     const parsed = safeParseNpmAudit(stdout);
-    if (!parsed.vulnerabilities) return [];
-
-    const threshold = config.severityThreshold || 'HIGH';
-    return Object.entries(parsed.vulnerabilities)
-      .filter(([_, advisory]) => meetsSeverityThreshold(advisory.severity, threshold))
-      .flatMap(([_, advisory]) => normalizeNpmAuditFindings(advisory, projectRoot));
+    return normalizeNpmAuditOutput(parsed, projectRoot, config.severityThreshold || 'HIGH');
   } catch (error) {
     const withStreams = error as { code?: string | number; stdout?: string; stderr?: string; message?: string };
 
     // npm audit exits with non-zero when vulnerabilities are found
     if (withStreams?.stdout && withStreams.stdout.trim().startsWith('{')) {
       const parsed = safeParseNpmAudit(withStreams.stdout);
-      if (parsed.vulnerabilities) {
-        const threshold = config.severityThreshold || 'HIGH';
-        return Object.entries(parsed.vulnerabilities)
-          .filter(([_, advisory]) => meetsSeverityThreshold(advisory.severity, threshold))
-          .flatMap(([_, advisory]) => normalizeNpmAuditFindings(advisory, projectRoot));
-      }
+      return normalizeNpmAuditOutput(parsed, projectRoot, config.severityThreshold || 'HIGH');
     }
 
     if (withStreams?.code === 'ENOENT') {
@@ -88,6 +95,19 @@ export async function runNpmAudit(projectRoot: string, config: NpmAuditConfig): 
     console.warn(`[athena-core] npm audit execution failed: ${detail}`);
     return [];
   }
+}
+
+export function normalizeNpmAuditOutput(
+  parsed: NpmAuditOutput,
+  projectRoot: string,
+  threshold: string,
+): NpmAuditFinding[] {
+  if (!parsed.vulnerabilities) return [];
+
+  return Object.entries(parsed.vulnerabilities).flatMap(([packageName, vulnerability]) =>
+    normalizeNpmAuditFindings(packageName, vulnerability, projectRoot)
+      .filter((finding) => meetsSeverityThreshold(unmapSeverity(finding.severity), threshold)),
+  );
 }
 
 function safeParseNpmAudit(json: string): NpmAuditOutput {
@@ -106,36 +126,111 @@ function meetsSeverityThreshold(severity: string, threshold: string): boolean {
   return severityIndex >= thresholdIndex;
 }
 
-function normalizeNpmAuditFindings(advisory: NpmAuditAdvisory, projectRoot: string): NpmAuditFinding[] {
-  const findings: NpmAuditFinding[] = [];
-
-  for (const finding of advisory.findings) {
-    for (const path of finding.paths) {
-      // Use package.json as the file reference for dependency vulnerabilities
-      const packageJsonPath = resolve(projectRoot, 'package.json');
-
-      findings.push({
-        id: createHash('sha1').update(`npm-audit:${advisory.id}:${path}`).digest('hex').slice(0, 10),
-        ruleId: `npm-audit:${advisory.id}`,
-        file: packageJsonPath,
-        line: 1, // Dependency findings don't have specific line numbers
-        column: 1,
-        code: `"${path}"`,
-        type: 'Dependency Vulnerability',
-        message: `${advisory.title} (affected: ${path})`,
-        category: 'supply-chain-security',
-        severity: mapNpmAuditSeverity(advisory.severity),
-      });
-    }
+function normalizeNpmAuditFindings(
+  packageName: string,
+  vulnerability: NpmAuditVulnerability,
+  projectRoot: string,
+): NpmAuditFinding[] {
+  if (isLegacyAdvisory(vulnerability)) {
+    return normalizeLegacyFindings(packageName, vulnerability, projectRoot);
   }
 
-  return findings;
+  return normalizeModernFindings(packageName, vulnerability, projectRoot);
 }
 
-function mapNpmAuditSeverity(severity: string): Severity {
-  const value = severity.toLowerCase();
+function isLegacyAdvisory(vulnerability: NpmAuditVulnerability): vulnerability is NpmAuditLegacyAdvisory {
+  return 'findings' in vulnerability && Array.isArray(vulnerability.findings);
+}
+
+function normalizeLegacyFindings(
+  packageName: string,
+  advisory: NpmAuditLegacyAdvisory,
+  projectRoot: string,
+): NpmAuditFinding[] {
+  const packageJsonPath = resolve(projectRoot, 'package.json');
+  const title = advisory.title?.trim() || `Vulnerability in ${packageName}`;
+  const advisoryId = String(advisory.id ?? packageName);
+  const paths = advisory.findings?.flatMap((finding) => finding.paths ?? []) ?? [];
+  const uniquePaths = Array.from(new Set(paths.length > 0 ? paths : [packageName]));
+
+  return uniquePaths.map((path) => ({
+    id: createHash('sha1').update(`npm-audit:${advisoryId}:${path}`).digest('hex').slice(0, 10),
+    ruleId: `npm-audit:${advisoryId}`,
+    file: packageJsonPath,
+    line: 1,
+    column: 1,
+    code: `"${path}"`,
+    type: 'Dependency Vulnerability',
+    message: `${title} (affected: ${path})`,
+    category: 'supply-chain-security',
+    severity: mapNpmAuditSeverity(advisory.severity),
+  }));
+}
+
+function normalizeModernFindings(
+  packageName: string,
+  vulnerability: NpmAuditModernVulnerability,
+  projectRoot: string,
+): NpmAuditFinding[] {
+  const packageJsonPath = resolve(projectRoot, 'package.json');
+  const affectedNodes = Array.from(new Set(
+    vulnerability.nodes && vulnerability.nodes.length > 0 ? vulnerability.nodes : [packageName],
+  ));
+  const objectViaEntries = (vulnerability.via ?? []).filter(isModernViaObject);
+
+  if (objectViaEntries.length > 0) {
+    return objectViaEntries.map((via, index) => {
+      const advisoryKey = String(via.source ?? via.name ?? `${packageName}-${index}`);
+      const affected = affectedNodes[0] ?? packageName;
+      const title = via.title?.trim() || `Vulnerability in ${via.name ?? packageName}`;
+      const range = via.range?.trim() ? ` ${via.range.trim()}` : '';
+
+      return {
+        id: createHash('sha1').update(`npm-audit:${advisoryKey}:${affected}`).digest('hex').slice(0, 10),
+        ruleId: `npm-audit:${advisoryKey}`,
+        file: packageJsonPath,
+        line: 1,
+        column: 1,
+        code: `"${affected}"`,
+        type: 'Dependency Vulnerability',
+        message: `${title} (affected: ${packageName}${range})`,
+        category: 'supply-chain-security',
+        severity: mapNpmAuditSeverity(via.severity ?? vulnerability.severity),
+      };
+    });
+  }
+
+  const fallbackKey = vulnerability.name?.trim() || packageName;
+  const fallbackNode = affectedNodes[0] ?? packageName;
+  return [{
+    id: createHash('sha1').update(`npm-audit:${fallbackKey}:${fallbackNode}`).digest('hex').slice(0, 10),
+    ruleId: `npm-audit:${fallbackKey}`,
+    file: packageJsonPath,
+    line: 1,
+    column: 1,
+    code: `"${fallbackNode}"`,
+    type: 'Dependency Vulnerability',
+    message: `Vulnerability in ${packageName}`,
+    category: 'supply-chain-security',
+    severity: mapNpmAuditSeverity(vulnerability.severity),
+  }];
+}
+
+function isModernViaObject(entry: string | NpmAuditModernViaObject): entry is NpmAuditModernViaObject {
+  return typeof entry === 'object' && entry !== null;
+}
+
+function mapNpmAuditSeverity(severity?: string): Severity {
+  const value = (severity ?? 'low').toLowerCase();
   if (value === 'critical') return 'CRITICAL';
   if (value === 'high') return 'HIGH';
   if (value === 'moderate') return 'MEDIUM';
   return 'LOW';
+}
+
+function unmapSeverity(severity: Severity): string {
+  if (severity === 'CRITICAL') return 'critical';
+  if (severity === 'HIGH') return 'high';
+  if (severity === 'MEDIUM') return 'moderate';
+  return 'low';
 }

@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { basename, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
+import ts from 'typescript';
 import type { ESLintConfig, Severity } from '../types.js';
+
+const execFileAsync = promisify(execFile);
 
 interface ESLintResultMessage {
   ruleId: string | null;
@@ -51,10 +58,17 @@ export async function runESLint(filePaths: string[], config: ESLintConfig): Prom
     // Load security plugin
     // @ts-ignore - eslint-plugin-security doesn't have type definitions
     const securityPlugin = await import('eslint-plugin-security');
+    const originalPaths = filePaths.map((filePath) => resolve(process.cwd(), filePath));
+    const parserResult = await loadTypeScriptParser(config.timeoutMs);
+    const scanInputs = await prepareEslintInputs(originalPaths, parserResult.module);
 
-    // Create flat config directly for ESLint v9
-    const eslintConfig = [
+    if (scanInputs.targets.length === 0) {
+      return [];
+    }
+
+    const eslintConfig: any[] = [
       {
+        files: ['**/*.{js,jsx,mjs,cjs}'],
         plugins: {
           security: securityPlugin.default,
         },
@@ -71,20 +85,66 @@ export async function runESLint(filePaths: string[], config: ESLintConfig): Prom
             document: 'readonly',
             console: 'readonly',
           },
+          parserOptions: {
+            ecmaFeatures: {
+              jsx: true,
+            },
+          },
         },
       },
     ];
 
+    if (parserResult.module) {
+      eslintConfig.push({
+        files: ['**/*.{ts,tsx,mts,cts}'],
+        plugins: {
+          security: securityPlugin.default,
+        },
+        rules: getSecurityRules(config.rules),
+        languageOptions: {
+          parser: parserResult.module,
+          ecmaVersion: 'latest',
+          sourceType: 'module',
+          globals: {
+            process: 'readonly',
+            Buffer: 'readonly',
+            __dirname: 'readonly',
+            __filename: 'readonly',
+            window: 'readonly',
+            document: 'readonly',
+            console: 'readonly',
+          },
+          parserOptions: {
+            ecmaFeatures: {
+              jsx: true,
+            },
+          },
+        },
+      });
+    }
+
     const eslint = new ESLintClass({
       cwd: process.cwd(),
+      overrideConfigFile: true,
       overrideConfig: eslintConfig,
       ignore: false,
     });
 
-    const results = await eslint.lintFiles(filePaths);
-    return results.flatMap((result: ESLintResultFile) =>
-      result.messages.map((msg: ESLintResultMessage) => normalizeESLintFinding(result.filePath, msg))
-    );
+    try {
+      const results = await eslint.lintFiles(scanInputs.targets);
+      return results.flatMap((result: ESLintResultFile) =>
+        result.messages
+          .filter((msg: ESLintResultMessage) => msg.ruleId !== null)
+          .map((msg: ESLintResultMessage) =>
+            normalizeESLintFinding(
+              scanInputs.pathMap.get(resolve(result.filePath)) ?? result.filePath,
+              msg,
+            ))
+      );
+    } finally {
+      await scanInputs.cleanup();
+      await parserResult.cleanup();
+    }
   } catch (error) {
     const withMessage = error as { message?: string; code?: string };
 
@@ -99,43 +159,131 @@ export async function runESLint(filePaths: string[], config: ESLintConfig): Prom
   }
 }
 
-async function createTempFlatConfig(customRules?: string[], baseDir?: string): Promise<{ tempConfigPath: string }> {
-  const rules = getSecurityRules(customRules);
+type EslintScanInputs = {
+  cleanup: () => Promise<void>;
+  pathMap: Map<string, string>;
+  targets: string[];
+};
 
-  // ESLint v9 flat config format (JavaScript file)
-  const configContent = `
-import security from 'eslint-plugin-security';
+type ParserLoadResult = {
+  cleanup: () => Promise<void>;
+  module: unknown | null;
+};
 
-export default [
-  {
-    plugins: {
-      security,
-    },
-    rules: ${JSON.stringify(rules, null, 2)},
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      globals: {
-        process: 'readonly',
-        Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        window: 'readonly',
-        document: 'readonly',
-        console: 'readonly',
+async function loadTypeScriptParser(timeoutMs: number): Promise<ParserLoadResult> {
+  try {
+    const parserSpecifier = '@typescript-eslint/parser';
+    const parserModule = await import(parserSpecifier);
+    return {
+      cleanup: async () => undefined,
+      module: (parserModule as { default?: unknown }).default ?? parserModule,
+    };
+  } catch {
+    return installTypeScriptParserInTempDir(timeoutMs);
+  }
+}
+
+async function installTypeScriptParserInTempDir(timeoutMs: number): Promise<ParserLoadResult> {
+  const tempDir = await mkdtemp(join(process.cwd(), '.athena-eslint-parser-'));
+
+  try {
+    await writeFile(join(tempDir, 'package.json'), JSON.stringify({
+      name: 'athena-eslint-parser-temp',
+      private: true,
+      type: 'module',
+    }), 'utf8');
+
+    const installTimeoutMs = Math.min(20_000, Math.max(3_000, Math.floor(timeoutMs / 2)));
+    await execFileAsync('npm', ['install', '--no-save', '--no-package-lock', '@typescript-eslint/parser'], {
+      cwd: tempDir,
+      env: {
+        ...process.env,
+        npm_config_audit: 'false',
+        npm_config_fund: 'false',
       },
-    },
-  },
-];
-`;
+      timeout: installTimeoutMs,
+    });
 
-  // Create temp config in the project root directory
-  const tempDir = baseDir || process.cwd();
-  await mkdir(tempDir, { recursive: true });
-  // Use unique filename to avoid conflicts
-  const tempConfigPath = join(tempDir, `.athena-eslint-config-${Date.now()}.mjs`);
-  await writeFile(tempConfigPath, configContent, 'utf-8');
-  return { tempConfigPath };
+    const tempRequire = createRequire(join(tempDir, 'package.json'));
+    const resolved = tempRequire.resolve('@typescript-eslint/parser');
+    const parserModule = await import(pathToFileURL(resolved).href);
+
+    return {
+      cleanup: async () => {
+        await rm(tempDir, { recursive: true, force: true });
+      },
+      module: (parserModule as { default?: unknown }).default ?? parserModule,
+    };
+  } catch (error) {
+    const withMessage = error as { message?: string; stderr?: string };
+    const detail = withMessage.stderr?.trim() || withMessage.message || String(error);
+    console.warn(`[athena-core] Temp TypeScript parser install failed; using transpile fallback. ${detail}`);
+    await rm(tempDir, { recursive: true, force: true });
+    return {
+      cleanup: async () => undefined,
+      module: null,
+    };
+  }
+}
+
+async function prepareEslintInputs(filePaths: string[], parserModule: unknown | null): Promise<EslintScanInputs> {
+  const jsTargets = filePaths.filter((filePath) => /\.(?:[cm]?js|jsx)$/i.test(filePath));
+  const tsTargets = filePaths.filter((filePath) => /\.(?:[cm]?ts|tsx)$/i.test(filePath));
+  const pathMap = new Map<string, string>();
+
+  for (const filePath of jsTargets) {
+    pathMap.set(resolve(filePath), resolve(filePath));
+  }
+
+  if (tsTargets.length === 0) {
+    return {
+      cleanup: async () => undefined,
+      pathMap,
+      targets: jsTargets,
+    };
+  }
+
+  if (parserModule) {
+    for (const filePath of tsTargets) {
+      pathMap.set(resolve(filePath), resolve(filePath));
+    }
+
+    return {
+      cleanup: async () => undefined,
+      pathMap,
+      targets: [...jsTargets, ...tsTargets],
+    };
+  }
+
+  const tempDir = await mkdtemp(join(process.cwd(), '.athena-eslint-'));
+  const shadowTargets: string[] = [];
+
+  for (const filePath of tsTargets) {
+    const source = await readFile(filePath, 'utf8');
+    const transpiled = ts.transpileModule(source, {
+      compilerOptions: {
+        target: ts.ScriptTarget.ESNext,
+        module: ts.ModuleKind.ESNext,
+        jsx: filePath.endsWith('.tsx') ? ts.JsxEmit.Preserve : ts.JsxEmit.None,
+      },
+      fileName: basename(filePath),
+      reportDiagnostics: false,
+    });
+
+    const ext = filePath.endsWith('.tsx') ? '.jsx' : '.js';
+    const shadowPath = join(tempDir, `${createHash('sha1').update(filePath).digest('hex').slice(0, 12)}${ext}`);
+    await writeFile(shadowPath, transpiled.outputText, 'utf8');
+    shadowTargets.push(shadowPath);
+    pathMap.set(resolve(shadowPath), resolve(filePath));
+  }
+
+  return {
+    cleanup: async () => {
+      await rm(tempDir, { recursive: true, force: true });
+    },
+    pathMap,
+    targets: [...jsTargets, ...shadowTargets],
+  };
 }
 
 function getSecurityRules(customRules?: string[]): Record<string, any> {

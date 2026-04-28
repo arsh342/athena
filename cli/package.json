@@ -1,6 +1,6 @@
 {
   "name": "@arsh342/athena",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "AI code provenance tracker and terminal scanner for JavaScript and TypeScript repositories.",
   "type": "module",
   "bin": {

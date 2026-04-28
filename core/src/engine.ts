@@ -9,15 +9,23 @@ import { scannerRegistry } from './scanner-registry.js';
 import type { AthenaConfig, ExplainedScore, FileReport, ScoredUnit, ScanReport, Severity } from './types.js';
 
 export interface ScanProgressEvent {
+  phase:
+    | 'prepare'
+    | 'files'
+    | 'security-analysis'
+    | 'external-scanners'
+    | 'report';
   filePath: string;
   index: number;
   total: number;
   status: 'scanning' | 'scanned' | 'skipped' | 'missing';
   findings: number;
+  detail?: string;
 }
 
 interface ScanHooks {
   onFileProgress?: (event: ScanProgressEvent) => void;
+  onScannerStage?: (event: ScanProgressEvent) => void;
 }
 
 export async function scanFiles(
@@ -33,20 +41,33 @@ export async function scanFiles(
   const totalFiles = filePaths.length;
   let processedFiles = 0;
 
+  hooks.onFileProgress?.({
+    phase: 'prepare',
+    filePath: '',
+    index: 0,
+    total: totalFiles,
+    status: 'scanning',
+    findings: 0,
+    detail: 'discovering source files',
+  });
+
   for (let index = 0; index < filePaths.length; index++) {
     const filePath = filePaths[index];
     hooks.onFileProgress?.({
+      phase: 'files',
       filePath,
       index: index + 1,
       total: totalFiles,
       status: 'scanning',
       findings: 0,
+      detail: 'parse + score + local checks',
     });
 
     const fileStat = await stat(filePath).catch(() => null);
     if (!fileStat) {
       processedFiles += 1;
       hooks.onFileProgress?.({
+        phase: 'files',
         filePath,
         index: processedFiles,
         total: totalFiles,
@@ -60,14 +81,26 @@ export async function scanFiles(
       skippedFiles += 1;
       processedFiles += 1;
       hooks.onFileProgress?.({
+        phase: 'files',
         filePath,
         index: processedFiles,
         total: totalFiles,
         status: 'skipped',
         findings: 0,
+        detail: 'skipped oversized file',
       });
       continue;
     }
+
+    hooks.onFileProgress?.({
+      phase: 'security-analysis',
+      filePath,
+      index: index + 1,
+      total: totalFiles,
+      status: 'scanning',
+      findings: 0,
+      detail: 'running secret + hallucination analyzers',
+    });
 
     const units = await parseFile(filePath).catch(() => []);
     const scoredUnits = units.map((unit) => scoreUnit(unit, config));
@@ -82,17 +115,28 @@ export async function scanFiles(
 
     processedFiles += 1;
     hooks.onFileProgress?.({
+      phase: 'files',
       filePath,
       index: processedFiles,
       total: totalFiles,
       status: 'scanned',
       findings: findings.length,
+      detail: 'file complete',
     });
   }
 
   // Run external scanners using the scanner registry
   const projectRoot = process.cwd();
-  const externalFindings = await scannerRegistry.runEnabledScanners(filePaths, projectRoot, config);
+  hooks.onScannerStage?.({
+    phase: 'external-scanners',
+    filePath: '',
+    index: processedFiles,
+    total: totalFiles,
+    status: 'scanning',
+    findings: 0,
+    detail: 'starting external scanners',
+  });
+  const externalFindings = await scannerRegistry.runEnabledScanners(filePaths, projectRoot, config, hooks.onScannerStage);
 
   // Merge external findings into file reports
   if (externalFindings.length > 0) {
@@ -131,6 +175,16 @@ export async function scanFiles(
       }
     }
   }
+
+  hooks.onScannerStage?.({
+    phase: 'report',
+    filePath: '',
+    index: processedFiles,
+    total: totalFiles,
+    status: 'scanning',
+    findings: externalFindings.length,
+    detail: 'assembling final report',
+  });
 
   return generateReport(startedAt, files, totalLoc, skippedFiles, config);
 }

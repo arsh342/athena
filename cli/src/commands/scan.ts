@@ -45,7 +45,7 @@ export async function scanCommand(dir: string, options: ScanOptions): Promise<vo
       return await scanFiles(
         files,
         config,
-        { onFileProgress: progress.onProgress },
+        { onFileProgress: progress.onProgress, onScannerStage: progress.onStage },
       );
     } finally {
       progress.stop();

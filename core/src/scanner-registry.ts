@@ -59,9 +59,24 @@ export class ScannerRegistry {
   async runEnabledScanners(
     filePaths: string[],
     projectRoot: string,
-    config: AthenaConfig
+    config: AthenaConfig,
+    onProgress?: (event: {
+      phase: 'external-scanners';
+      filePath: string;
+      index: number;
+      total: number;
+      status: 'scanning' | 'scanned' | 'skipped' | 'missing';
+      findings: number;
+      detail?: string;
+    }) => void,
   ): Promise<ClassifiedFinding[]> {
     const findings: ClassifiedFinding[] = [];
+    const enabledScanners = Array.from(this.scanners.entries()).filter(([name]) => {
+      const scannerConfig = config[name as keyof AthenaConfig];
+      return Boolean(scannerConfig && typeof scannerConfig === 'object' && 'enabled' in scannerConfig && scannerConfig.enabled);
+    });
+    const totalEnabled = enabledScanners.length;
+    let scannerIndex = 0;
 
     for (const [name, scanner] of this.scanners) {
       try {
@@ -70,11 +85,30 @@ export class ScannerRegistry {
         if (!scannerConfig || typeof scannerConfig !== 'object' || !('enabled' in scannerConfig) || !scannerConfig.enabled) {
           continue;
         }
+        scannerIndex += 1;
+        onProgress?.({
+          phase: 'external-scanners',
+          filePath: '',
+          index: scannerIndex,
+          total: totalEnabled,
+          status: 'scanning',
+          findings: 0,
+          detail: `running ${name}`,
+        });
 
         // Check if scanner is available
         const isAvailable = await scanner.checkAvailable();
         if (!isAvailable) {
           console.warn(`[athena-core] Scanner '${name}' is not available, skipping`);
+          onProgress?.({
+            phase: 'external-scanners',
+            filePath: '',
+            index: scannerIndex,
+            total: totalEnabled,
+            status: 'skipped',
+            findings: 0,
+            detail: `${name} unavailable`,
+          });
           continue;
         }
 
@@ -92,8 +126,26 @@ export class ScannerRegistry {
         }
 
         console.log(`[athena-core] Scanner '${name}' found ${scannerFindings.length} findings`);
+        onProgress?.({
+          phase: 'external-scanners',
+          filePath: '',
+          index: scannerIndex,
+          total: totalEnabled,
+          status: 'scanned',
+          findings: scannerFindings.length,
+          detail: `${name} complete`,
+        });
       } catch (error) {
         console.warn(`[athena-core] Scanner '${name}' failed: ${error}`);
+        onProgress?.({
+          phase: 'external-scanners',
+          filePath: '',
+          index: scannerIndex,
+          total: totalEnabled,
+          status: 'missing',
+          findings: 0,
+          detail: `${name} failed`,
+        });
       }
     }
 
