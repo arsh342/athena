@@ -1,3 +1,6 @@
+import { db } from './db.js';
+import type { PersistedTerminalLine, TerminalLineKind } from './scan-stream.ts';
+
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type FindingSource =
   | 'secret-detector'
@@ -7,7 +10,9 @@ export type FindingSource =
   | 'eslint'
   | 'npm-audit'
   | 'nodejsscan'
-  | 'bearer';
+  | 'bearer'
+  | 'trivy'
+  | 'horusec';
 
 export interface ScanSummary {
   scanId: string;
@@ -26,6 +31,10 @@ export interface ScanSummary {
     flaggedRatio: number;
   };
   duration: number;
+}
+
+export interface RunningScanSummary extends ScanSummary {
+  status: 'RUNNING';
 }
 
 export interface Finding {
@@ -76,36 +85,316 @@ export interface PipelineStage {
   metric: string;
 }
 
+interface ScanSummaryRow {
+  scan_id: string;
+  repo_name: string;
+  repo_url: string;
+  status: ScanSummary['status'];
+  created_at: Date | string;
+  ai_percentage: number;
+  flagged_units: number;
+  files_scanned: number;
+  total_units: number;
+  findings: ScanSummary['findings'];
+  risk_density: ScanSummary['riskDensity'];
+  duration: number;
+}
+
+interface FindingRow {
+  id: string;
+  severity: Severity;
+  type: string;
+  category: string;
+  message: string;
+  file: string;
+  line: number;
+  column: number;
+  source: FindingSource;
+  ai_score: number;
+  code: string;
+  rule_id: string;
+  top_signals: Finding['topSignals'];
+}
+
+interface TerminalLineRow {
+  seq: number;
+  kind: TerminalLineKind;
+  text: string;
+  created_at: Date | string;
+}
+
 let recentScansStore: ScanSummary[] = [];
 let findingsByScanIdStore: Record<string, Finding[]> = {};
 
-export function getScans(): ScanSummary[] {
-  return recentScansStore;
-}
-
-export function getScan(scanId: string): ScanSummary | undefined {
-  return recentScansStore.find((scan) => scan.scanId === scanId);
-}
-
-export function getFindings(): Finding[] {
-  return recentScansStore[0] ? findingsByScanIdStore[recentScansStore[0].scanId] ?? [] : [];
-}
-
-export function getFindingsByScanId(scanId: string): Finding[] {
-  return findingsByScanIdStore[scanId] ?? [];
-}
-
-export function addScan(scan: ScanSummary, findings: Finding[]): void {
-  recentScansStore = [scan, ...recentScansStore].slice(0, 20);
-  findingsByScanIdStore = {
-    ...findingsByScanIdStore,
-    [scan.scanId]: findings,
+function mapScanSummaryRow(row: ScanSummaryRow): ScanSummary {
+  return {
+    scanId: row.scan_id,
+    repoName: row.repo_name,
+    repoUrl: row.repo_url,
+    status: row.status,
+    createdAt: new Date(row.created_at).toISOString(),
+    aiPercentage: row.ai_percentage,
+    flaggedUnits: row.flagged_units,
+    filesScanned: row.files_scanned,
+    totalUnits: row.total_units,
+    findings: row.findings,
+    riskDensity: row.risk_density,
+    duration: row.duration,
   };
+}
 
-  const validIds = new Set(recentScansStore.map((item) => item.scanId));
-  findingsByScanIdStore = Object.fromEntries(
-    Object.entries(findingsByScanIdStore).filter(([scanId]) => validIds.has(scanId)),
+function mapFindingRow(row: FindingRow): Finding {
+  return {
+    id: row.id,
+    severity: row.severity,
+    type: row.type,
+    category: row.category,
+    message: row.message,
+    file: row.file,
+    line: row.line,
+    column: row.column,
+    source: row.source,
+    aiScore: row.ai_score,
+    code: row.code,
+    ruleId: row.rule_id,
+    topSignals: row.top_signals,
+  };
+}
+
+function mapTerminalLineRow(row: TerminalLineRow): PersistedTerminalLine {
+  return {
+    seq: row.seq,
+    kind: row.kind,
+    text: row.text,
+    createdAt: new Date(row.created_at).toISOString(),
+  };
+}
+
+export function getScans(): ScanSummary[];
+export function getScans(userId: number): Promise<ScanSummary[]>;
+export function getScans(userId?: number): ScanSummary[] | Promise<ScanSummary[]> {
+  if (typeof userId !== 'number') return recentScansStore;
+  return db.query<ScanSummaryRow>(
+    `
+      SELECT scan_id, repo_name, repo_url, status, created_at, ai_percentage,
+             flagged_units, files_scanned, total_units, findings, risk_density, duration
+      FROM scans
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `,
+    [userId],
+  ).then((result) => result.rows.map(mapScanSummaryRow));
+}
+
+export function getScan(scanId: string): ScanSummary | undefined;
+export function getScan(scanId: string, userId: number): Promise<ScanSummary | undefined>;
+export function getScan(scanId: string, userId?: number): ScanSummary | undefined | Promise<ScanSummary | undefined> {
+  if (typeof userId !== 'number') {
+    return recentScansStore.find((scan) => scan.scanId === scanId);
+  }
+  return db.query<ScanSummaryRow>(
+    `
+      SELECT scan_id, repo_name, repo_url, status, created_at, ai_percentage,
+             flagged_units, files_scanned, total_units, findings, risk_density, duration
+      FROM scans
+      WHERE scan_id = $1 AND user_id = $2
+      LIMIT 1
+    `,
+    [scanId, userId],
+  ).then((result) => (result.rows[0] ? mapScanSummaryRow(result.rows[0]) : undefined));
+}
+
+export function getFindings(): Finding[];
+export function getFindings(userId: number): Promise<Finding[]>;
+export function getFindings(userId?: number): Finding[] | Promise<Finding[]> {
+  if (typeof userId !== 'number') {
+    return recentScansStore[0] ? findingsByScanIdStore[recentScansStore[0].scanId] ?? [] : [];
+  }
+  return db.query<{ scan_id: string }>(
+    `
+      SELECT scan_id
+      FROM scans
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,
+    [userId],
+  ).then(async (latestScan) => {
+    const scanId = latestScan.rows[0]?.scan_id;
+    if (!scanId) return [];
+    return getFindingsByScanId(scanId, userId);
+  });
+}
+
+export function getFindingsByScanId(scanId: string): Finding[];
+export function getFindingsByScanId(scanId: string, userId: number): Promise<Finding[]>;
+export function getFindingsByScanId(scanId: string, userId?: number): Finding[] | Promise<Finding[]> {
+  if (typeof userId !== 'number') {
+    return findingsByScanIdStore[scanId] ?? [];
+  }
+  return db.query<FindingRow>(
+    `
+      SELECT sf.id, sf.severity, sf.type, sf.category, sf.message, sf.file, sf.line,
+             sf."column" AS column, sf.source, sf.ai_score, sf.code, sf.rule_id, sf.top_signals
+      FROM scan_findings sf
+      JOIN scans s ON s.scan_id = sf.scan_id
+      WHERE sf.scan_id = $1 AND s.user_id = $2
+      ORDER BY sf.id ASC
+    `,
+    [scanId, userId],
+  ).then((result) => result.rows.map(mapFindingRow));
+}
+
+export function addScan(scan: ScanSummary, findings: Finding[]): void;
+export function addScan(userId: number, scan: ScanSummary, findings: Finding[]): Promise<void>;
+export function addScan(
+  userOrScan: number | ScanSummary,
+  scanOrFindings: ScanSummary | Finding[],
+  maybeFindings?: Finding[],
+): void | Promise<void> {
+  if (typeof userOrScan !== 'number') {
+    const scan = userOrScan;
+    const findings = scanOrFindings as Finding[];
+    recentScansStore = [scan, ...recentScansStore].slice(0, 20);
+    findingsByScanIdStore = {
+      ...findingsByScanIdStore,
+      [scan.scanId]: findings,
+    };
+
+    const validIds = new Set(recentScansStore.map((item) => item.scanId));
+    findingsByScanIdStore = Object.fromEntries(
+      Object.entries(findingsByScanIdStore).filter(([scanId]) => validIds.has(scanId)),
+    );
+    return;
+  }
+
+  const userId = userOrScan;
+  const scan = scanOrFindings as ScanSummary;
+  const findings = maybeFindings ?? [];
+  return (async () => {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `
+          INSERT INTO scans (
+            scan_id, user_id, repo_name, repo_url, status, created_at,
+            ai_percentage, flagged_units, files_scanned, total_units,
+            findings, risk_density, duration
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13)
+        `,
+        [
+          scan.scanId,
+          userId,
+          scan.repoName,
+          scan.repoUrl,
+          scan.status,
+          scan.createdAt,
+          scan.aiPercentage,
+          scan.flaggedUnits,
+          scan.filesScanned,
+          scan.totalUnits,
+          JSON.stringify(scan.findings),
+          JSON.stringify(scan.riskDensity),
+          scan.duration,
+        ],
+      );
+
+      for (const finding of findings) {
+        await client.query(
+          `
+            INSERT INTO scan_findings (
+              id, scan_id, severity, type, category, message, file, line, "column",
+              source, ai_score, code, rule_id, top_signals
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+          `,
+          [
+            finding.id,
+            scan.scanId,
+            finding.severity,
+            finding.type,
+            finding.category,
+            finding.message,
+            finding.file,
+            finding.line,
+            finding.column,
+            finding.source,
+            finding.aiScore,
+            finding.code,
+            finding.ruleId,
+            JSON.stringify(finding.topSignals),
+          ],
+        );
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  })();
+}
+
+export async function createRunningScan(userId: number, scan: RunningScanSummary): Promise<void> {
+  await db.query(
+    `
+      INSERT INTO scans (
+        scan_id, user_id, repo_name, repo_url, status, created_at,
+        ai_percentage, flagged_units, files_scanned, total_units,
+        findings, risk_density, duration
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13)
+    `,
+    [
+      scan.scanId,
+      userId,
+      scan.repoName,
+      scan.repoUrl,
+      scan.status,
+      scan.createdAt,
+      scan.aiPercentage,
+      scan.flaggedUnits,
+      scan.filesScanned,
+      scan.totalUnits,
+      JSON.stringify(scan.findings),
+      JSON.stringify(scan.riskDensity),
+      scan.duration,
+    ],
   );
+}
+
+export async function appendTerminalLine(scanId: string, line: {
+  seq: number;
+  kind: TerminalLineKind;
+  text: string;
+}): Promise<PersistedTerminalLine> {
+  const result = await db.query<TerminalLineRow>(
+    `
+      INSERT INTO scan_terminal_lines (scan_id, seq, kind, text)
+      VALUES ($1, $2, $3, $4)
+      RETURNING seq, kind, text, created_at
+    `,
+    [scanId, line.seq, line.kind, line.text],
+  );
+  return mapTerminalLineRow(result.rows[0]);
+}
+
+export async function getTerminalLines(scanId: string, userId: number): Promise<PersistedTerminalLine[]> {
+  const result = await db.query<TerminalLineRow>(
+    `
+      SELECT stl.seq, stl.kind, stl.text, stl.created_at
+      FROM scan_terminal_lines stl
+      JOIN scans s ON s.scan_id = stl.scan_id
+      WHERE stl.scan_id = $1 AND s.user_id = $2
+      ORDER BY stl.seq ASC
+    `,
+    [scanId, userId],
+  );
+  return result.rows.map(mapTerminalLineRow);
 }
 
 const landingContent: LandingContent = {
