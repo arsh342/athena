@@ -3,7 +3,13 @@ import { fetchFindings, fetchScanTerminalLines, fetchScans } from '../services/a
 
 interface SandboxTerminalProps {
   repoUrl: string;
-  scanNonce: number;
+  queuedScan: QueuedTerminalScan | null;
+}
+
+export interface QueuedTerminalScan {
+  id: number;
+  label: string;
+  run: () => Promise<{ lines: string[] }>;
 }
 
 type LineKind = 'input' | 'output' | 'error' | 'hint';
@@ -22,7 +28,7 @@ function createLine(kind: LineKind, text: string): TerminalLine {
   };
 }
 
-export function SandboxTerminal({ repoUrl, scanNonce }: SandboxTerminalProps) {
+export function SandboxTerminal({ repoUrl, queuedScan }: SandboxTerminalProps) {
   const [command, setCommand] = useState('');
   const [running, setRunning] = useState(false);
   const [phaseLabel, setPhaseLabel] = useState('idle');
@@ -112,6 +118,29 @@ export function SandboxTerminal({ repoUrl, scanNonce }: SandboxTerminalProps) {
     }, 520);
   }
 
+  async function executeQueuedScan(scan: QueuedTerminalScan): Promise<void> {
+    if (!startRunning()) return;
+    startSyntheticScanStream(scan.label);
+
+    try {
+      const result = await scan.run();
+      setPhaseLabel('finalizing report output');
+      setPhaseProgress(100);
+      setLines((current) => [
+        ...current,
+        createLine('hint', 'backend scan stream complete. rendering final output...'),
+        ...result.lines.map((text) => createLine('output', text)),
+      ]);
+    } catch {
+      setLines((current) => [
+        ...current,
+        createLine('error', 'scan failed. backend unreachable or returned error.'),
+      ]);
+    } finally {
+      stopRunning();
+    }
+  }
+
   async function executeCommand(raw: string) {
     const trimmed = raw.trim();
     if (!trimmed) return;
@@ -151,25 +180,11 @@ export function SandboxTerminal({ repoUrl, scanNonce }: SandboxTerminalProps) {
         ]);
         return;
       }
-      if (!startRunning()) return;
-      startSyntheticScanStream(target);
-      try {
-        const scanLines = await fetchScanTerminalLines(target);
-        setPhaseLabel('finalizing report output');
-        setPhaseProgress(100);
-        setLines((current) => [
-          ...current,
-          createLine('hint', 'backend scan stream complete. rendering final output...'),
-          ...scanLines.map((text) => createLine('output', text)),
-        ]);
-      } catch {
-        setLines((current) => [
-          ...current,
-          createLine('error', 'scan failed. backend unreachable or returned error.'),
-        ]);
-      } finally {
-        stopRunning();
-      }
+      await executeQueuedScan({
+        id: Date.now(),
+        label: target,
+        run: async () => ({ lines: await fetchScanTerminalLines(target) }),
+      });
       return;
     }
 
@@ -236,10 +251,9 @@ export function SandboxTerminal({ repoUrl, scanNonce }: SandboxTerminalProps) {
   }
 
   useEffect(() => {
-    if (!scanNonce || !repoUrl.trim()) return;
-    void executeCommand(`scan ${repoUrl}`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- trigger only on form submit (nonce change)
-  }, [scanNonce]);
+    if (!queuedScan) return;
+    void executeQueuedScan(queuedScan);
+  }, [queuedScan]);
 
   useEffect(() => () => stopRunning(), []);
 

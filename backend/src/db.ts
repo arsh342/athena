@@ -18,6 +18,16 @@ export async function ensureAuthSchema(): Promise<void> {
   `);
 
   await db.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS supabase_user_id TEXT UNIQUE;
+  `);
+
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_users_supabase_user_id
+    ON users(supabase_user_id);
+  `);
+
+  await db.query(`
     CREATE TABLE IF NOT EXISTS auth_sessions (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

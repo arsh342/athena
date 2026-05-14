@@ -865,6 +865,11 @@ sequenceDiagram
 
 ### 5.3 Backend Architecture
 
+Phase-1 auth migration uses provider switch:
+- `AUTH_PROVIDER=legacy` keeps existing local session implementation.
+- `AUTH_PROVIDER=supabase` routes auth flows through Supabase-backed handlers.
+- Frontend API contracts remain unchanged during migration.
+
 ```mermaid
 graph TD
     subgraph ROUTES["Routes"]
@@ -902,27 +907,35 @@ graph TD
 ```
 POST /api/auth/register
 Body: { email: string, password: string }
-Response: { token: string, user: { id, email } }
+Response: { user: { id, email } } + httpOnly auth cookies
 
 POST /api/auth/login
 Body: { email: string, password: string }
-Response: { token: string, user: { id, email } }
+Response: { user: { id, email } } + httpOnly auth cookies
+
+POST /api/auth/refresh
+Body: {}
+Response: { user: { id, email } } + rotated auth cookies
+
+POST /api/auth/logout
+Body: {}
+Response: { ok: true }
 ```
 
 #### Scans
 ```
 POST /api/scans
-Headers: Authorization: Bearer <token>
+Auth: httpOnly auth cookies
 Body: { repoUrl: string }
-Response: { scanId: string, wsUrl: string }
+Response: { scan: Scan, findings: Finding[], lines: string[] }
 
 GET /api/scans
-Headers: Authorization: Bearer <token>
+Auth: httpOnly auth cookies
 Response: { scans: Scan[] }
 
 GET /api/scans/:id
-Headers: Authorization: Bearer <token>
-Response: { scan: Scan, report: ScanReport }
+Auth: httpOnly auth cookies
+Response: { scan: Scan }
 ```
 
 #### WebSocket Protocol

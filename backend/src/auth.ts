@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
+import { createSupabaseAuthHandlers, type OAuthProvider } from './auth-supabase.js';
 import { db } from './db.js';
+import { createSupabaseClients, isSupabaseProvider } from './supabase.js';
 
 const ACCESS_COOKIE = 'athena_access_token';
 const REFRESH_COOKIE = 'athena_refresh_token';
@@ -16,6 +18,10 @@ function isTruthy(value: string | undefined): boolean {
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
 }
 
+export function shouldUseSupabaseAuth(): boolean {
+  return isSupabaseProvider();
+}
+
 export interface AuthUser {
   id: number;
   email: string;
@@ -27,6 +33,200 @@ interface SessionTokens {
   accessExpiresAt: Date;
   refreshExpiresAt: Date;
 }
+
+function requiredSupabaseEnv(name: 'SUPABASE_URL' | 'SUPABASE_ANON_KEY'): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is required when AUTH_PROVIDER=supabase`);
+  return value;
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.endsWith('/') ? value.slice(0, -1) : value;
+}
+
+function getAppOrigin(): string {
+  return trimTrailingSlash(process.env.APP_ORIGIN?.trim() || process.env.CORS_ORIGIN?.trim() || 'http://localhost:5173');
+}
+
+async function getOAuthAuthorizationUrl(input: {
+  provider: OAuthProvider;
+  redirectTo: string;
+  codeChallenge: string;
+}): Promise<string> {
+  const supabaseUrl = trimTrailingSlash(requiredSupabaseEnv('SUPABASE_URL'));
+  const url = new URL(`${supabaseUrl}/auth/v1/authorize`);
+  url.searchParams.set('provider', input.provider);
+  url.searchParams.set('redirect_to', input.redirectTo);
+  url.searchParams.set('code_challenge', input.codeChallenge);
+  url.searchParams.set('code_challenge_method', 's256');
+  return url.toString();
+}
+
+async function exchangeOAuthCode(code: string, codeVerifier: string) {
+  const supabaseUrl = trimTrailingSlash(requiredSupabaseEnv('SUPABASE_URL'));
+  const anonKey = requiredSupabaseEnv('SUPABASE_ANON_KEY');
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=pkce`, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      auth_code: code,
+      code_verifier: codeVerifier,
+    }),
+  });
+
+  const data = await response.json().catch(() => null) as {
+    access_token?: string;
+    refresh_token?: string;
+    user?: { id?: string; email?: string | null };
+  } | null;
+
+  if (!response.ok || !data?.access_token || !data.refresh_token || !data.user?.id) {
+    return null;
+  }
+
+  return {
+    userId: data.user.id,
+    email: data.user.email ?? '',
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+  };
+}
+
+const supabaseHandlers = createSupabaseAuthHandlers({
+  async register(email, password) {
+    const { service, anon } = createSupabaseClients();
+    const createResult = await service.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+    if (createResult.error || !createResult.data.user) {
+      throw new Error(createResult.error?.message ?? 'Could not create account.');
+    }
+
+    const sessionResult = await anon.auth.signInWithPassword({ email, password });
+    const session = sessionResult.data.session;
+    if (sessionResult.error || !session || !sessionResult.data.user || !session.refresh_token) {
+      throw new Error(sessionResult.error?.message ?? 'Could not create session.');
+    }
+
+    return {
+      userId: createResult.data.user.id,
+      email: createResult.data.user.email ?? email,
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+    };
+  },
+
+  async login(email, password) {
+    const { anon } = createSupabaseClients();
+    const result = await anon.auth.signInWithPassword({ email, password });
+    const session = result.data.session;
+
+    if (result.error || !session || !result.data.user || !session.refresh_token) {
+      throw new Error(result.error?.message ?? 'Invalid credentials.');
+    }
+
+    return {
+      userId: result.data.user.id,
+      email: result.data.user.email ?? email,
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+    };
+  },
+
+  async refresh(refreshToken) {
+    const { anon } = createSupabaseClients();
+    const result = await anon.auth.refreshSession({ refresh_token: refreshToken });
+    const session = result.data.session;
+    if (result.error || !session || !result.data.user || !session.refresh_token) {
+      return null;
+    }
+
+    return {
+      userId: result.data.user.id,
+      email: result.data.user.email ?? '',
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+    };
+  },
+
+  async me(accessToken) {
+    const { service } = createSupabaseClients();
+    const result = await service.auth.getUser(accessToken);
+    if (result.error || !result.data.user) return null;
+
+    return {
+      userId: result.data.user.id,
+      email: result.data.user.email ?? '',
+    };
+  },
+
+  async logout(accessToken, refreshToken) {
+    if (!accessToken || !refreshToken) return;
+
+    const { anon } = createSupabaseClients();
+    const sessionResult = await anon.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (sessionResult.error) return;
+    await anon.auth.signOut();
+  },
+
+  async upsertLocalUser(supabaseUserId, email) {
+    const existing = await db.query<{ id: number; email: string }>(
+      `
+        SELECT id, email
+        FROM users
+        WHERE supabase_user_id = $1
+        LIMIT 1
+      `,
+      [supabaseUserId],
+    );
+
+    const user = existing.rows[0];
+    if (user) {
+      if (user.email === email) return user;
+
+      const updated = await db.query<{ id: number; email: string }>(
+        `
+          UPDATE users
+          SET email = $2
+          WHERE id = $1
+          RETURNING id, email
+        `,
+        [user.id, email],
+      );
+
+      return updated.rows[0];
+    }
+
+    const inserted = await db.query<{ id: number; email: string }>(
+      `
+        INSERT INTO users (email, password_hash, supabase_user_id)
+        VALUES ($1, 'supabase-managed', $2)
+        ON CONFLICT (email)
+        DO UPDATE
+          SET supabase_user_id = EXCLUDED.supabase_user_id
+        RETURNING id, email
+      `,
+      [email, supabaseUserId],
+    );
+
+    return inserted.rows[0];
+  },
+
+  getOAuthAuthorizationUrl,
+  exchangeOAuthCode,
+});
 
 function hashToken(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
@@ -123,12 +323,21 @@ async function findUserByAccessToken(accessToken: string): Promise<AuthUser | nu
 }
 
 export async function getAuthenticatedUser(req: Request): Promise<AuthUser | null> {
+  if (shouldUseSupabaseAuth()) {
+    return supabaseHandlers.getAuthenticatedUser(req);
+  }
+
   const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
   if (!accessToken) return null;
   return findUserByAccessToken(accessToken);
 }
 
 export async function registerUser(req: Request, res: Response): Promise<void> {
+  if (shouldUseSupabaseAuth()) {
+    await supabaseHandlers.registerUser(req, res);
+    return;
+  }
+
   const email = String(req.body?.email ?? '').trim().toLowerCase();
   const password = String(req.body?.password ?? '');
 
@@ -171,6 +380,11 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
 }
 
 export async function loginUser(req: Request, res: Response): Promise<void> {
+  if (shouldUseSupabaseAuth()) {
+    await supabaseHandlers.loginUser(req, res);
+    return;
+  }
+
   const email = String(req.body?.email ?? '').trim().toLowerCase();
   const password = String(req.body?.password ?? '');
 
@@ -254,6 +468,11 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
 }
 
 export async function refreshSession(req: Request, res: Response): Promise<void> {
+  if (shouldUseSupabaseAuth()) {
+    await supabaseHandlers.refreshSession(req, res);
+    return;
+  }
+
   const rawRefresh = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
   if (!rawRefresh) {
     res.status(401).json({ error: 'Missing refresh token.' });
@@ -316,6 +535,11 @@ export async function refreshSession(req: Request, res: Response): Promise<void>
 }
 
 export async function logoutUser(req: Request, res: Response): Promise<void> {
+  if (shouldUseSupabaseAuth()) {
+    await supabaseHandlers.logoutUser(req, res);
+    return;
+  }
+
   const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
   const refreshToken = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
 
@@ -334,4 +558,22 @@ export async function logoutUser(req: Request, res: Response): Promise<void> {
 
   clearAuthCookies(res);
   res.json({ ok: true });
+}
+
+export async function startOAuth(req: Request, res: Response): Promise<void> {
+  if (!shouldUseSupabaseAuth()) {
+    res.status(409).json({ error: 'OAuth is available only in Supabase auth mode.' });
+    return;
+  }
+
+  await supabaseHandlers.startOAuth(req, res);
+}
+
+export async function completeOAuthCallback(req: Request, res: Response): Promise<void> {
+  if (!shouldUseSupabaseAuth()) {
+    res.redirect(302, `${getAppOrigin()}/login?oauth_error=oauth_disabled`);
+    return;
+  }
+
+  await supabaseHandlers.completeOAuthCallback(req, res);
 }

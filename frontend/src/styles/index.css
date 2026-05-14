@@ -2073,6 +2073,74 @@ p {
 }
 
 .scan-form { display: grid; gap: 14px; }
+.scan-form-inner { display: grid; gap: 14px; }
+.scan-output-stack { display: grid; gap: 14px; }
+
+.scan-source-tabs,
+.scan-upload-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scan-source-tab,
+.scan-upload-pill {
+  min-height: 42px;
+  border: 1px solid var(--border-10);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.scan-source-tab.is-active,
+.scan-upload-pill.is-active {
+  border-color: var(--signal-blue);
+  background: rgba(0, 137, 255, 0.12);
+  color: var(--text);
+}
+
+.scan-file-input {
+  padding: 10px 12px;
+}
+
+.scan-upload-meta,
+.scan-upload-status-head,
+.scan-upload-status-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.scan-upload-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 10px 12px;
+  border: 1px solid var(--border-06);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.scan-upload-meta strong,
+.scan-upload-status-head strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.scan-upload-meta span,
+.scan-upload-status-head span,
+.scan-upload-status-grid span {
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.scan-upload-status-grid {
+  grid-template-columns: auto 1fr;
+}
 
 label {
   color: var(--text-ghost);
@@ -2191,6 +2259,57 @@ input:focus {
 .auth-card form { display: grid; gap: 12px; }
 .auth-card p { margin-top: 18px; margin-bottom: 0; }
 .auth-card a { color: var(--cyan); }
+.auth-oauth-stack { display: grid; gap: 16px; margin: 24px 0 18px; }
+.auth-oauth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.auth-oauth-button {
+  padding: 13px 16px;
+  border: 1px solid var(--border-10);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.auth-oauth-button:hover {
+  border-color: var(--ocean-blue);
+  background: var(--cyan-06);
+  transform: translateY(-1px);
+}
+.auth-divider {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px solid var(--border-10);
+}
+.auth-divider span {
+  position: relative;
+  padding: 0 10px;
+  background: var(--bg-deep);
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.auth-error {
+  margin: 0;
+  color: var(--red);
+}
 
 /* ═══════════════════════════════════════
    BRUTALIST APP PAGES (non-landing)
@@ -2305,6 +2424,83 @@ input:focus {
   transform: none;
 }
 
+.app-shell--brutalist .scan-source-tab,
+.app-shell--brutalist .scan-upload-pill {
+  border-color: var(--br-border-strong);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.26);
+  color: var(--br-text-muted);
+  font-family: var(--br-font);
+  font-weight: 700;
+}
+
+.app-shell--brutalist .scan-source-tab.is-active,
+.app-shell--brutalist .scan-upload-pill.is-active {
+  border-color: #1A1A1A;
+  background: rgba(232, 122, 65, 0.12);
+  color: var(--br-text);
+}
+
+.app-shell--brutalist .scan-file-input,
+.app-shell--brutalist .scan-upload-meta,
+.app-shell--brutalist .scan-upload-status {
+  border-radius: 0;
+}
+
+.app-shell--brutalist .scan-upload-meta,
+.app-shell--brutalist .scan-upload-status {
+  border: 1px solid var(--br-border-strong);
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.app-shell--brutalist .scan-upload-meta strong,
+.app-shell--brutalist .scan-upload-status-head strong {
+  color: var(--br-text);
+  font-family: var(--br-font);
+}
+
+.app-shell--brutalist .scan-upload-meta span,
+.app-shell--brutalist .scan-upload-status-head span,
+.app-shell--brutalist .scan-upload-status-grid span {
+  color: var(--br-text-muted);
+  font-family: var(--br-font);
+}
+
+.app-shell--brutalist .auth-oauth-button {
+  border-color: var(--br-border-strong);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.3);
+  color: var(--br-text);
+  font-family: var(--br-font);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.app-shell--brutalist .auth-oauth-button:hover {
+  border-color: #1A1A1A;
+  background: rgba(232, 122, 65, 0.12);
+  transform: none;
+}
+
+.app-shell--brutalist .auth-divider::before {
+  border-top-color: var(--br-border);
+}
+
+.app-shell--brutalist .auth-divider span {
+  background: #efe5dc;
+  color: var(--br-text-ghost);
+  font-family: var(--br-font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.app-shell--brutalist .auth-error {
+  color: #b03c11;
+}
+
 .app-shell--brutalist input {
   border: 1px solid var(--br-border-strong);
   border-radius: 0;
@@ -2405,6 +2601,16 @@ input:focus {
 
 .app-shell--brutalist .auth-card a {
   color: var(--br-accent);
+}
+
+@media (max-width: 640px) {
+  .auth-oauth-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scan-upload-meta {
+    grid-template-columns: 1fr;
+  }
 }
 
 .app-shell--brutalist .terminal {

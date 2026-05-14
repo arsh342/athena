@@ -61,3 +61,18 @@ Thumbs.db
 test/
 docs/
 CLAUDE.md
+
+# Allow new task files under ignored test/docs paths
+!backend/test/
+backend/test/*
+!backend/test/auth-supabase.test.ts
+!backend/test/server-user-scope.test.ts
+!backend/test/supabase.test.ts
+!frontend/test/
+frontend/test/*
+!frontend/test/auth-store.test.ts
+!docs/
+docs/*
+!docs/supabase/
+docs/supabase/*
+!docs/supabase/schema.sql

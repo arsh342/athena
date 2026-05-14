@@ -68,17 +68,17 @@
 | Component | Technology |
 |-----------|-----------|
 | Server | **express** |
-| WebSocket | **ws** |
-| Security | **helmet**, **cors**, **express-rate-limit** |
-| Auth | **jsonwebtoken**, **bcryptjs** |
-| ORM | **prisma**, **@prisma/client** |
+| HTTP Middleware | **cors**, **cookie-parser** |
+| Auth | **bcryptjs** + cookie session model (legacy), **@supabase/supabase-js** (phase-1 provider) |
+| Database Access | **pg** |
 | Dev Runtime | **tsx** |
 
 ---
 
 ## 5. Database
 
-* **PostgreSQL**
+* **PostgreSQL** (local or hosted)
+* **Supabase Postgres** (phase-1 backend provider path)
 
 ---
 
@@ -96,7 +96,7 @@
 
 ## 7. Testing
 
-* **vitest** (core, CLI, backend)
+* **Node.js native test runner** (`node --import tsx --test`) for backend/frontend
 
 ---
 
@@ -174,7 +174,7 @@ JSON files:
 
 ## Viva One-Liner
 
-> TypeScript + Node.js, TypeScript Compiler API for AST parsing, ESLint + Semgrep for security analysis, Commander-based CLI, Express + WebSocket backend, React + Vite frontend, PostgreSQL with Prisma, deployed via Vercel and Railway.
+> TypeScript + Node.js, TypeScript Compiler API for AST parsing, ESLint + Semgrep for security analysis, Commander-based CLI, Express backend, React + Vite frontend, PostgreSQL (`pg`) with optional Supabase provider mode, deployed via Vercel and Railway.
 
 ---
 

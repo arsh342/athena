@@ -82,6 +82,13 @@ export async function startScan(repoUrl: string): Promise<StartScanResponse> {
   });
 }
 
+export async function startUploadScan(formData: FormData): Promise<StartScanResponse> {
+  return fetchJson<StartScanResponse>('/api/scans/upload', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 /**
  * Legacy: trigger scan via GET terminal endpoint.
  * Kept for backwards compat with SandboxTerminal commands.
