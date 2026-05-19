@@ -1,9 +1,12 @@
 import 'dotenv/config';
+import { createServer as createHttpServer } from 'node:http';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
+import { attachPtyWebSocket } from './pty-handler.js';
 import type { Request, Response } from 'express';
 import multer from 'multer';
+import { getTerminalSession } from './terminal-session-store.ts';
 import {
   completeOAuthCallback,
   getAuthenticatedUser,
@@ -18,6 +21,7 @@ import {
   getFindingsByScanId,
   getLandingContent,
   getPipelineStages,
+  getScanReport,
   getScan,
   getScans,
   landingPipelineLines,
@@ -25,16 +29,24 @@ import {
 import { validateRepoUrl } from './repo-url.js';
 import { MAX_UPLOAD_BYTES, isZipUploadFileName, runScan, runUploadScan } from './scanner.ts';
 import { ensureAuthSchema } from './db.js';
+import { renderPdfFromMarkdown } from './report-pdf.ts';
 
 const port = Number(process.env.PORT ?? 8787);
 const corsOrigin = process.env.CORS_ORIGIN?.trim();
 const upload = multer({
   storage: multer.memoryStorage(),
+  preservePath: true,
   limits: {
     fileSize: MAX_UPLOAD_BYTES,
-    files: 5000,
+    files: 20_000,
   },
 });
+
+interface UploadedRequestFile {
+  originalname: string;
+  buffer: Buffer;
+  size: number;
+}
 
 export interface ServerDeps {
   auth: {
@@ -51,9 +63,13 @@ export interface ServerDeps {
     getScan: typeof getScan;
     getFindings: typeof getFindings;
     getFindingsByScanId: typeof getFindingsByScanId;
+    getScanReport: typeof getScanReport;
     getLandingContent: typeof getLandingContent;
     getPipelineStages: typeof getPipelineStages;
     landingPipelineLines: typeof landingPipelineLines;
+  };
+  report: {
+    renderPdfFromMarkdown: typeof renderPdfFromMarkdown;
   };
   repo: {
     validateRepoUrl: typeof validateRepoUrl;
@@ -81,10 +97,15 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
       getScan,
       getFindings,
       getFindingsByScanId,
+      getScanReport,
       getLandingContent,
       getPipelineStages,
       landingPipelineLines,
       ...(overrides.data ?? {}),
+    },
+    report: {
+      renderPdfFromMarkdown,
+      ...(overrides.report ?? {}),
     },
     repo: {
       validateRepoUrl,
@@ -112,6 +133,25 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
       return null;
     }
     return user;
+  }
+
+  function sendUploadMiddlewareError(res: Response, error: unknown) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code: unknown }).code ?? '')
+      : '';
+
+    if (code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({ error: 'Upload exceeds 200MB limit.' });
+      return;
+    }
+
+    if (code === 'LIMIT_FILE_COUNT') {
+      res.status(400).json({ error: 'Too many files in upload.' });
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : 'Upload parsing failed.';
+    res.status(400).json({ error: message });
   }
 
   app.post('/api/auth/register', async (req: Request, res: Response) => {
@@ -183,6 +223,33 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     res.json({ findings: await deps.data.getFindingsByScanId(scanId, user.id) });
   });
 
+  app.get('/api/scans/:scanId/report', async (req: Request, res: Response) => {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+    const scanId = Array.isArray(req.params.scanId) ? req.params.scanId[0] : req.params.scanId;
+    const markdown = await deps.data.getScanReport(scanId, user.id);
+    if (!markdown) {
+      res.status(404).json({ error: 'Report not found' });
+      return;
+    }
+    res.json({ markdown });
+  });
+
+  app.get('/api/scans/:scanId/report.pdf', async (req: Request, res: Response) => {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+    const scanId = Array.isArray(req.params.scanId) ? req.params.scanId[0] : req.params.scanId;
+    const markdown = await deps.data.getScanReport(scanId, user.id);
+    if (!markdown) {
+      res.status(404).json({ error: 'Report not found' });
+      return;
+    }
+    const pdf = await deps.report.renderPdfFromMarkdown(markdown);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${scanId}.pdf"`);
+    res.send(pdf);
+  });
+
   app.get('/api/findings', async (req: Request, res: Response) => {
     const user = await requireAuth(req, res);
     if (!user) return;
@@ -226,57 +293,97 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     }
   });
 
-  app.post('/api/scans/upload', upload.array('files[]'), async (req: Request, res: Response) => {
-    const user = await requireAuth(req, res);
-    if (!user) return;
+  app.post('/api/scans/upload', (req: Request, res: Response) => {
+    const handleUpload = () => {
+      void (async () => {
+        const user = await requireAuth(req, res);
+        if (!user) return;
 
-    const mode = String(req.body?.mode ?? '').trim().toLowerCase();
-    const rootName = String(req.body?.rootName ?? '').trim();
-    const files = (Array.isArray(req.files) ? req.files : []).map((file) => ({
-      originalname: String(file.originalname ?? ''),
-      buffer: file.buffer,
-      size: Number(file.size ?? 0),
-    }));
+        const mode = String(req.body?.mode ?? '').trim().toLowerCase();
+        const rootName = String(req.body?.rootName ?? '').trim();
+        const requestFiles = Array.isArray((req as Request & { files?: UploadedRequestFile[] }).files)
+          ? (req as Request & { files?: UploadedRequestFile[] }).files ?? []
+          : [];
+        const files = requestFiles.map((file: UploadedRequestFile) => ({
+          originalname: String(file.originalname ?? ''),
+          buffer: file.buffer,
+          size: Number(file.size ?? 0),
+        }));
 
-    if (mode !== 'folder' && mode !== 'zip') {
-      res.status(400).json({ error: 'Invalid upload mode.' });
-      return;
-    }
+        if (mode !== 'folder' && mode !== 'zip') {
+          res.status(400).json({ error: 'Invalid upload mode.' });
+          return;
+        }
 
-    if (files.length === 0) {
-      res.status(400).json({ error: 'At least one file is required.' });
-      return;
-    }
+        if (files.length === 0) {
+          res.status(400).json({ error: 'At least one file is required.' });
+          return;
+        }
 
-    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-    if (totalSize > MAX_UPLOAD_BYTES) {
-      res.status(413).json({ error: 'Upload exceeds 200MB limit.' });
-      return;
-    }
+        const totalSize = files.reduce((sum: number, file: UploadedRequestFile) => sum + file.size, 0);
+        if (totalSize > MAX_UPLOAD_BYTES) {
+          res.status(413).json({ error: 'Upload exceeds 200MB limit.' });
+          return;
+        }
 
-    if (mode === 'zip' && (files.length !== 1 || !isZipUploadFileName(files[0]?.originalname ?? ''))) {
-      res.status(400).json({ error: 'ZIP mode requires exactly one .zip file.' });
-      return;
-    }
+        if (mode === 'zip' && (files.length !== 1 || !isZipUploadFileName(files[0]?.originalname ?? ''))) {
+          res.status(400).json({ error: 'ZIP mode requires exactly one .zip file.' });
+          return;
+        }
 
-    try {
-      const result = await deps.scan.runUploadScan({
-        mode,
-        files,
-        rootName,
-        userId: user.id,
+        try {
+          const sessionId = String(req.headers['x-terminal-session'] ?? '').trim();
+          const session = sessionId ? getTerminalSession(sessionId) : null;
+          const emit = session && session.userId === user.id
+            ? {
+                line: (text: string) => session.send({ type: 'line', kind: 'output', text }),
+                status: (label: string, progress: number) => session.send({ type: 'status', label, progress }),
+              }
+            : undefined;
+
+          const result = await deps.scan.runUploadScan({
+            mode,
+            files,
+            rootName,
+            userId: user.id,
+            emit,
+          });
+
+          res.json({
+            scan: result.scan,
+            findings: result.findings,
+            lines: result.terminalLines,
+          });
+        } catch (scanError) {
+          const message = scanError instanceof Error ? scanError.message : String(scanError);
+          const statusCode = message.includes('Unsafe zip entry path') ? 400 : 500;
+          res.status(statusCode).json({ error: `Upload scan failed: ${message}` });
+        }
+      })().catch((unhandledError: unknown) => {
+        const message = unhandledError instanceof Error ? unhandledError.message : String(unhandledError);
+        console.error('[athena-backend] upload route unhandled error:', message);
+        if (!res.headersSent) {
+          res.status(500).json({ error: `Upload scan failed: ${message}` });
+        }
       });
+    };
 
-      res.json({
-        scan: result.scan,
-        findings: result.findings,
-        lines: result.terminalLines,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const statusCode = message.includes('Unsafe zip entry path') ? 400 : 500;
-      res.status(statusCode).json({ error: `Upload scan failed: ${message}` });
+    const hasParsedUpload = Array.isArray((req as Request & { files?: UploadedRequestFile[] }).files)
+      || Boolean(req.body?.mode);
+
+    if (hasParsedUpload) {
+      handleUpload();
+      return;
     }
+
+    upload.array('files[]')(req, res, (error: unknown) => {
+      if (error) {
+        sendUploadMiddlewareError(res, error);
+        return;
+      }
+
+      handleUpload();
+    });
   });
 
   /**
@@ -308,15 +415,20 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
 
 if (process.env.ATHENA_DISABLE_SERVER_BOOTSTRAP !== '1') {
   const app = createApp();
+  const httpServer = createHttpServer(app);
+
+  // Attach PTY WebSocket handler at /ws/terminal
+  attachPtyWebSocket(httpServer);
+
   ensureAuthSchema()
-    .then(() => {
-      app.listen(port, () => {
-        console.log(`[athena-backend] listening on http://localhost:${port}`);
-      });
-    })
     .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[athena-backend] failed to initialize auth schema: ${message}`);
-      process.exitCode = 1;
+      console.warn(`[athena-backend] auth schema init failed (DB may be offline): ${message}`);
+    })
+    .finally(() => {
+      httpServer.listen(port, () => {
+        console.log(`[athena-backend] listening on http://localhost:${port}`);
+        console.log(`[athena-backend] terminal WebSocket at ws://localhost:${port}/ws/terminal`);
+      });
     });
 }
