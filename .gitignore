@@ -73,6 +73,7 @@ backend/test/*
 !frontend/test/
 frontend/test/*
 !frontend/test/auth-store.test.ts
+!frontend/test/*.test.ts
 !docs/
 docs/*
 !docs/supabase/

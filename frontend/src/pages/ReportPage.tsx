@@ -1,14 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import { ReportView } from '../components/ReportView';
 import { ScoreGauge } from '../components/ScoreGauge';
-import { fetchFindingsByScanId, fetchScan, fetchScans } from '../services/api';
+import { downloadReportPdf, fetchFindingsByScanId, fetchReportMarkdown, fetchScan, fetchScans } from '../services/api';
 import type { Finding, ScanSummary } from '../types';
 
 export function ReportPage() {
   const { scanId = '' } = useParams();
   const [scan, setScan] = useState<ScanSummary | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [markdown, setMarkdown] = useState('');
+  const [resolvedId, setResolvedId] = useState('');
+
+  const markdownHtml = useMemo(() => {
+    const rendered = marked.parse(markdown ?? '', { mangle: false, headerIds: false }) as string;
+    return DOMPurify.sanitize(rendered);
+  }, [markdown]);
 
   useEffect(() => {
     let active = true;
@@ -32,18 +41,24 @@ export function ReportPage() {
         if (active) {
           setScan(null);
           setFindings([]);
+          setMarkdown('');
+          setResolvedId('');
         }
         return;
       }
 
-      const [scanData, findingsData] = await Promise.all([
+      setResolvedId(resolvedScanId);
+
+      const [scanData, findingsData, markdownData] = await Promise.all([
         fetchScan(resolvedScanId),
         fetchFindingsByScanId(resolvedScanId),
+        fetchReportMarkdown(resolvedScanId).catch(() => ''),
       ]);
 
       if (active) {
         setScan(scanData);
         setFindings(findingsData);
+        setMarkdown(markdownData ?? '');
       }
     }
 
@@ -70,6 +85,25 @@ export function ReportPage() {
         <div>
           <h1>{scan?.repoName ?? 'Unknown repository'}</h1>
           <p>{scan?.repoUrl ?? 'No repository URL available'}</p>
+        </div>
+        <div className="report-actions">
+          <button
+            type="button"
+            className="button button-primary"
+            disabled={!resolvedId}
+            onClick={async () => {
+              if (!resolvedId) return;
+              const blob = await downloadReportPdf(resolvedId);
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `${resolvedId}.pdf`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Download PDF
+          </button>
         </div>
       </section>
 
@@ -99,6 +133,18 @@ export function ReportPage() {
       </section>
 
       <ReportView findings={findings} />
+
+      <section className="panel report-markdown">
+        <div className="panel-title">
+          <h2>Report (Markdown)</h2>
+          <span>redacted snapshot</span>
+        </div>
+        {markdown ? (
+          <div className="report-markdown-body" dangerouslySetInnerHTML={{ __html: markdownHtml }} />
+        ) : (
+          <p className="report-markdown-empty">No markdown snapshot available yet.</p>
+        )}
+      </section>
     </div>
   );
 }

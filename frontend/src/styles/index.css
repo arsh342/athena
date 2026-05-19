@@ -2114,6 +2114,35 @@ p {
   gap: 8px;
 }
 
+.scan-shell-toggle-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scan-shell-toggle-head p {
+  margin: 6px 0 0;
+}
+
+.scan-shell-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--border-10);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+}
+
+.scan-shell-panel {
+  overflow: hidden;
+}
+
 .scan-upload-meta {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 10px 12px;
@@ -2182,6 +2211,57 @@ input:focus {
 /* ── Report ── */
 .report-list { display: grid; gap: 16px; }
 
+.report-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.report-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.report-severity {
+  border: 1px solid var(--border-08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.report-severity-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.report-file {
+  border-top: 1px solid var(--border-06);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.report-file-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 .finding-head {
   display: flex;
   align-items: flex-start;
@@ -2229,6 +2309,41 @@ input:focus {
 .signal-grid {
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.report-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.report-markdown {
+  display: grid;
+  gap: 12px;
+}
+
+.report-markdown-body {
+  border: 1px solid var(--border-06);
+  border-radius: 4px;
+  padding: 16px;
+  background: var(--bg-deep);
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.report-markdown-body h1,
+.report-markdown-body h2,
+.report-markdown-body h3,
+.report-markdown-body h4 {
+  color: var(--text);
+}
+
+.report-markdown-empty {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .signal-grid span {
@@ -2443,25 +2558,29 @@ input:focus {
 
 .app-shell--brutalist .scan-file-input,
 .app-shell--brutalist .scan-upload-meta,
-.app-shell--brutalist .scan-upload-status {
+.app-shell--brutalist .scan-upload-status,
+.app-shell--brutalist .scan-shell-button {
   border-radius: 0;
 }
 
 .app-shell--brutalist .scan-upload-meta,
-.app-shell--brutalist .scan-upload-status {
+.app-shell--brutalist .scan-upload-status,
+.app-shell--brutalist .scan-shell-button {
   border: 1px solid var(--br-border-strong);
   background: rgba(255, 255, 255, 0.32);
 }
 
 .app-shell--brutalist .scan-upload-meta strong,
-.app-shell--brutalist .scan-upload-status-head strong {
+.app-shell--brutalist .scan-upload-status-head strong,
+.app-shell--brutalist .scan-shell-toggle-head strong {
   color: var(--br-text);
   font-family: var(--br-font);
 }
 
 .app-shell--brutalist .scan-upload-meta span,
 .app-shell--brutalist .scan-upload-status-head span,
-.app-shell--brutalist .scan-upload-status-grid span {
+.app-shell--brutalist .scan-upload-status-grid span,
+.app-shell--brutalist .scan-shell-toggle-head p {
   color: var(--br-text-muted);
   font-family: var(--br-font);
 }

@@ -30,6 +30,10 @@ interface StartScanResponse {
   lines: string[];
 }
 
+interface ReportMarkdownResponse {
+  markdown: string;
+}
+
 interface AuthResponse {
   user: AuthUser;
 }
@@ -65,6 +69,19 @@ export async function fetchFindingsByScanId(scanId: string): Promise<Finding[]> 
   return data.findings;
 }
 
+export async function fetchReportMarkdown(scanId: string): Promise<string> {
+  const data = await fetchJson<ReportMarkdownResponse>(`/api/scans/${scanId}/report`);
+  return data.markdown;
+}
+
+export async function downloadReportPdf(scanId: string): Promise<Blob> {
+  const response = await fetch(`/api/scans/${scanId}/report.pdf`, { credentials: 'include' });
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+  return response.blob();
+}
+
 export async function fetchLandingTerminalLines(): Promise<string[]> {
   const data = await fetchJson<TerminalResponse>('/api/terminal/landing');
   return data.lines;
@@ -82,10 +99,11 @@ export async function startScan(repoUrl: string): Promise<StartScanResponse> {
   });
 }
 
-export async function startUploadScan(formData: FormData): Promise<StartScanResponse> {
+export async function startUploadScan(formData: FormData, terminalSessionId?: string): Promise<StartScanResponse> {
   return fetchJson<StartScanResponse>('/api/scans/upload', {
     method: 'POST',
     body: formData,
+    headers: terminalSessionId ? { 'X-Terminal-Session': terminalSessionId } : undefined,
   });
 }
 

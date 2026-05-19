@@ -2,7 +2,17 @@ export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 export type ConfidenceBand = 'LOW' | 'UNCERTAIN' | 'HIGH';
 
-export type FindingSource = 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep';
+export type FindingSource =
+  | 'secret-detector'
+  | 'hallucination-detector'
+  | 'security-analyzer'
+  | 'semgrep'
+  | 'eslint'
+  | 'npm-audit'
+  | 'nodejsscan'
+  | 'bearer'
+  | 'trivy'
+  | 'horusec';
 
 export interface AuthUser {
   id: number;
