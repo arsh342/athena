@@ -59,6 +59,7 @@ tmp/
 ehthumbs.db
 Thumbs.db
 test/
+test.zip
 docs/
 CLAUDE.md
 
@@ -76,3 +77,8 @@ docs/*
 !docs/supabase/
 docs/supabase/*
 !docs/supabase/schema.sql
+!docs/superpowers/
+!docs/superpowers/specs/
+!docs/superpowers/specs/*.md
+!docs/superpowers/plans/
+!docs/superpowers/plans/*.md
