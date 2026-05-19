@@ -74,6 +74,7 @@ export async function ensureAuthSchema(): Promise<void> {
   await db.query(`
     CREATE TABLE IF NOT EXISTS scan_findings (
       id BIGSERIAL PRIMARY KEY,
+      finding_id TEXT,
       scan_id TEXT NOT NULL REFERENCES scans(scan_id) ON DELETE CASCADE,
       severity TEXT NOT NULL,
       type TEXT NOT NULL,
@@ -99,6 +100,17 @@ export async function ensureAuthSchema(): Promise<void> {
   `);
 
   await db.query(`
+    ALTER TABLE scan_findings
+    ADD COLUMN IF NOT EXISTS finding_id TEXT;
+  `);
+
+  await db.query(`
+    UPDATE scan_findings
+    SET finding_id = id::text
+    WHERE finding_id IS NULL;
+  `);
+
+  await db.query(`
     CREATE TABLE IF NOT EXISTS scan_terminal_lines (
       id BIGSERIAL PRIMARY KEY,
       scan_id TEXT NOT NULL REFERENCES scans(scan_id) ON DELETE CASCADE,
@@ -113,5 +125,20 @@ export async function ensureAuthSchema(): Promise<void> {
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_scan_terminal_lines_scan_created_at
     ON scan_terminal_lines(scan_id, created_at);
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS scan_reports (
+      scan_id TEXT PRIMARY KEY REFERENCES scans(scan_id) ON DELETE CASCADE,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      markdown TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      version INTEGER NOT NULL DEFAULT 1
+    );
+  `);
+
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_scan_reports_user_created_at
+    ON scan_reports(user_id, created_at DESC);
   `);
 }

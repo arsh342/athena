@@ -69,6 +69,7 @@ backend/test/*
 !backend/test/auth-supabase.test.ts
 !backend/test/server-user-scope.test.ts
 !backend/test/supabase.test.ts
+!backend/test/*.test.ts
 !frontend/test/
 frontend/test/*
 !frontend/test/auth-store.test.ts

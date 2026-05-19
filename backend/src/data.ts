@@ -235,7 +235,7 @@ export function getFindingsByScanId(scanId: string, userId?: number): Finding[] 
   }
   return db.query<FindingRow>(
     `
-      SELECT sf.id, sf.severity, sf.type, sf.category, sf.message, sf.file, sf.line,
+      SELECT COALESCE(sf.finding_id, sf.id::text) AS id, sf.severity, sf.type, sf.category, sf.message, sf.file, sf.line,
              sf."column" AS column, sf.source, sf.ai_score, sf.code, sf.rule_id, sf.top_signals
       FROM scan_findings sf
       JOIN scans s ON s.scan_id = sf.scan_id
@@ -244,6 +244,34 @@ export function getFindingsByScanId(scanId: string, userId?: number): Finding[] 
     `,
     [scanId, userId],
   ).then((result) => result.rows.map(mapFindingRow));
+}
+
+/** Store or update a redacted report snapshot for a scan. */
+export async function addScanReport(userId: number, scanId: string, markdown: string): Promise<void> {
+  await db.query(
+    `
+      INSERT INTO scan_reports (scan_id, user_id, markdown)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (scan_id)
+      DO UPDATE SET markdown = EXCLUDED.markdown, created_at = NOW(), version = scan_reports.version + 1
+    `,
+    [scanId, userId, markdown],
+  );
+}
+
+/** Fetch the stored markdown snapshot for a scan. */
+export async function getScanReport(scanId: string, userId: number): Promise<string | null> {
+  const result = await db.query<{ markdown: string }>(
+    `
+      SELECT sr.markdown
+      FROM scan_reports sr
+      JOIN scans s ON s.scan_id = sr.scan_id
+      WHERE sr.scan_id = $1 AND s.user_id = $2
+      LIMIT 1
+    `,
+    [scanId, userId],
+  );
+  return result.rows[0]?.markdown ?? null;
 }
 
 export function addScan(scan: ScanSummary, findings: Finding[]): void;
@@ -306,7 +334,7 @@ export function addScan(
         await client.query(
           `
             INSERT INTO scan_findings (
-              id, scan_id, severity, type, category, message, file, line, "column",
+              finding_id, scan_id, severity, type, category, message, file, line, "column",
               source, ai_score, code, rule_id, top_signals
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)

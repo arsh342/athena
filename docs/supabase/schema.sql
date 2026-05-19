@@ -54,6 +54,17 @@ create table if not exists public.scan_terminal_lines (
   unique (scan_id, seq)
 );
 
+create table if not exists public.scan_reports (
+  scan_id text primary key references public.scans(scan_id) on delete cascade,
+  user_id bigint not null references public.users(id) on delete cascade,
+  markdown text not null,
+  created_at timestamptz not null default now(),
+  version integer not null default 1
+);
+
+create index if not exists idx_scan_reports_user_created_at
+  on public.scan_reports(user_id, created_at desc);
+
 alter table public.scans enable row level security;
 alter table public.scan_findings enable row level security;
 alter table public.scan_terminal_lines enable row level security;
