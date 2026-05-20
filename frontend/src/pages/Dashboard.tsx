@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { fetchScans } from '../services/api';
+import { getDashboardEmptyState } from '../utils/dashboard';
 import type { ScanSummary } from '../types';
 
 export function Dashboard() {
@@ -31,6 +32,7 @@ export function Dashboard() {
     }),
     { critical: 0, high: 0, flagged: 0 },
   ), [scans]);
+  const { isEmpty } = getDashboardEmptyState(scans);
 
   return (
     <div className="page dashboard-page brutalist-page">
@@ -81,20 +83,24 @@ export function Dashboard() {
           <h2>Recent scans</h2>
           <span>trend + history</span>
         </div>
-        <div className="scan-table">
-          {scans.map((scan) => (
-            <Link to={`/reports/${scan.scanId}`} className="scan-row" key={scan.scanId}>
-              <span>
-                <strong>{scan.repoName}</strong>
-                <small>{scan.createdAt}</small>
-              </span>
-              <span>{scan.filesScanned} files</span>
-              <span>{scan.aiPercentage}% AI</span>
-              <span>{scan.flaggedUnits} flagged</span>
-              <span className={`status status-${scan.status.toLowerCase()}`}>{scan.status}</span>
-            </Link>
-          ))}
-        </div>
+        {isEmpty ? (
+          <div className="empty-state">No scans yet. Run your first scan.</div>
+        ) : (
+          <div className="scan-table">
+            {scans.map((scan) => (
+              <Link to={`/reports/${scan.scanId}`} className="scan-row" key={scan.scanId}>
+                <span>
+                  <strong>{scan.repoName}</strong>
+                  <small>{scan.createdAt}</small>
+                </span>
+                <span>{scan.filesScanned} files</span>
+                <span>{scan.aiPercentage}% AI</span>
+                <span>{scan.flaggedUnits} flagged</span>
+                <span className={`status status-${scan.status.toLowerCase()}`}>{scan.status}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="severity-row">

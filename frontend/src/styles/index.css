@@ -2010,6 +2010,15 @@ p {
 /* ── Scan Table ── */
 .scan-table { display: grid; }
 
+.empty-state {
+  padding: 18px;
+  border: 1px dashed var(--border-10);
+  border-radius: 4px;
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 .scan-row {
   display: grid;
   grid-template-columns: 1.6fr 0.7fr 0.7fr 0.8fr 0.8fr;

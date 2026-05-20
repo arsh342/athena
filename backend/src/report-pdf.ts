@@ -7,7 +7,7 @@ export async function renderPdfFromMarkdown(markdown: string): Promise<Buffer> {
     const doc = new PDFDocument({ margin: 48 });
     const chunks: Buffer[] = [];
 
-    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
@@ -19,8 +19,9 @@ export async function renderPdfFromMarkdown(markdown: string): Promise<Buffer> {
 }
 
 type TokensList = ReturnType<typeof marked.lexer>;
+type PdfDoc = InstanceType<typeof PDFDocument>;
 
-function renderTokens(doc: PDFKit.PDFDocument, tokens: TokensList): void {
+function renderTokens(doc: PdfDoc, tokens: TokensList): void {
   for (const token of tokens) {
     switch (token.type) {
       case 'heading': {
