@@ -36,7 +36,7 @@ export type ScanEmitter = {
 export interface UploadedPathScanInput {
   workspacePath: string;
   displayName: string;
-  userId?: number;
+  userId?: number | string;
   emit?: ScanEmitter;
 }
 
@@ -184,9 +184,10 @@ function createLocalDisplayName(raw: string): string {
   return basename(cleaned || 'local-upload') || 'local-upload';
 }
 
-async function persistScan(userId: number | undefined, scan: ScanSummary, findings: Finding[]): Promise<void> {
-  if (typeof userId === 'number') {
-    await addScan(userId, scan, findings);
+async function persistScan(userId: number | string | undefined, scan: ScanSummary, findings: Finding[]): Promise<void> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId === 'number' && !isNaN(parsedUserId)) {
+    await addScan(parsedUserId, scan, findings);
     return;
   }
 
@@ -198,7 +199,7 @@ async function scanFromPath(input: {
   repoName: string;
   repoUrl: string;
   rootPath: string;
-  userId?: number;
+  userId?: number | string;
   lines: string[];
   emit?: ScanEmitter;
 }): Promise<ScanResult> {
@@ -240,11 +241,18 @@ async function scanFromPath(input: {
     emit?.status?.('Scan complete', 100);
 
     await persistScan(userId, scanSummary, allFindings);
-    if (typeof userId === 'number') {
-      const { generateReportMarkdown } = await import('./report-markdown.ts');
-      const { addScanReport } = await import('./data.ts');
-      const markdown = generateReportMarkdown(scanSummary, allFindings);
-      await addScanReport(userId, scanSummary.scanId, markdown);
+
+    const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    if (typeof parsedUserId === 'number' && !isNaN(parsedUserId)) {
+      try {
+        const { generateReportMarkdown } = await import('./report-markdown.ts');
+        const { addScanReport } = await import('./data.ts');
+        const markdown = generateReportMarkdown(scanSummary, allFindings);
+        await addScanReport(parsedUserId, scanSummary.scanId, markdown);
+      } catch (reportError) {
+        const reason = reportError instanceof Error ? reportError.message : String(reportError);
+        lines.push(`Warning: report save failed (${reason})`);
+      }
     }
     return { scan: scanSummary, findings: allFindings, terminalLines: lines };
   } catch (error) {
@@ -335,7 +343,7 @@ export async function runUploadScan(input: {
   mode: UploadMode;
   files: UploadFile[];
   rootName?: string;
-  userId?: number;
+  userId?: number | string;
   emit?: ScanEmitter;
 }): Promise<ScanResult> {
   const workspaceRoot = await mkdtemp(join(tmpdir(), 'athena-upload-'));
@@ -379,7 +387,7 @@ export async function runUploadScan(input: {
 /**
  * Clone repository, run analysis, store results, and return scan summary plus terminal lines.
  */
-export async function runScan(repoUrl: string, userId?: number, emit?: ScanEmitter): Promise<ScanResult> {
+export async function runScan(repoUrl: string, userId?: number | string, emit?: ScanEmitter): Promise<ScanResult> {
   const normalizedUrl = repoUrl.trim();
   const repoName = parseRepoName(normalizedUrl);
   const scanId = createScanId(repoName);
@@ -409,7 +417,7 @@ export async function runScan(repoUrl: string, userId?: number, emit?: ScanEmitt
     });
 
     log('Clone complete.');
-    return scanFromPath({
+    return await scanFromPath({
       scanId,
       repoName,
       repoUrl: normalizedUrl,

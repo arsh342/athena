@@ -2,6 +2,19 @@ import type { Finding, ScanSummary } from './data.ts';
 
 type DedupeKey = string;
 
+/**
+ * Strip the temp workspace prefix from absolute file paths.
+ * Turns `/var/folders/.../athena-upload-xxx/test/app/secrets.ts` into `test/app/secrets.ts`.
+ */
+function shortenPath(filePath: string): string {
+  // Match common temp-dir prefixes used by upload scans and git clone scans
+  const cleaned = filePath.replace(
+    /^.*\/athena-(?:upload|[a-z0-9_-]+)-[A-Za-z0-9]+\//,
+    '',
+  );
+  return cleaned || filePath;
+}
+
 function isSecretFinding(finding: Finding): boolean {
   const haystack = `${finding.type} ${finding.message}`.toLowerCase();
   return finding.source === 'secret-detector'
@@ -12,7 +25,7 @@ function redactText(value: string, shouldRedact: boolean): string {
   if (!shouldRedact) return value;
   return value.replace(
     /(['"][^'"]{4,}['"]|AKIA[0-9A-Z]{12,}|ghp_[A-Za-z0-9]{20,}|eyJ[A-Za-z0-9._-]{10,})/g,
-    '***REDACTED***',
+    '[REDACTED]',
   );
 }
 
@@ -56,14 +69,16 @@ export function generateReportMarkdown(scan: ScanSummary, findings: Finding[]): 
       const files = grouped[severity];
       if (!files) return '';
       const fileBlocks = Object.keys(files).sort().map((file) => {
+        const shortFile = shortenPath(file);
         const items = files[file] ?? [];
         const lines = items.map((finding) => {
           const redact = isSecretFinding(finding);
           const message = redactText(finding.message, redact);
           const code = redactText(finding.code, redact);
-          return `- ${finding.type}: ${message}\n  - Source: ${finding.source}\n  - AI score: ${finding.aiScore}\n  - Location: ${finding.file}:${finding.line}\n  - Code:\n\n    \`\`\`\n${code}\n    \`\`\`\n`;
+          const shortLoc = shortenPath(finding.file);
+          return `- **${finding.type}**: ${message}\n  - Source: ${finding.source}\n  - AI score: ${finding.aiScore}\n  - Location: ${shortLoc}:${finding.line}\n  - Code:\n\n\`\`\`\n${code}\n\`\`\`\n`;
         }).join('\n');
-        return `#### ${file}\n${lines}`;
+        return `#### ${shortFile}\n${lines}`;
       }).join('\n');
       return `### ${severity}\n${fileBlocks}`;
     })

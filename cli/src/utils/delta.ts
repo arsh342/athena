@@ -1,7 +1,7 @@
 import type { ScanDelta, ScanReport, Severity } from '@athena/core';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, relative } from 'node:path';
+import { dirname, isAbsolute, join, relative, posix, win32 } from 'node:path';
 
 export interface FindingSnapshot {
   id: string;
@@ -167,7 +167,20 @@ async function writeSnapshots(snapshots: Record<string, ScanSnapshot>): Promise<
 }
 
 function folderForPath(filePath: string, projectRoot: string): string {
-  const path = (isAbsolute(filePath) ? relative(projectRoot, filePath) : filePath).split('\\').join('/');
-  const folder = dirname(path).split('\\').join('/');
+  const hasWindowsDrive = /^[A-Za-z]:[\\/]/.test(filePath) || /^[A-Za-z]:[\\/]/.test(projectRoot);
+
+  if (hasWindowsDrive) {
+    const normalizedFile = win32.normalize(filePath);
+    const normalizedRoot = win32.normalize(projectRoot);
+    const relativePath = win32.isAbsolute(normalizedFile)
+      ? win32.relative(normalizedRoot, normalizedFile)
+      : normalizedFile;
+    const cleaned = relativePath.replace(/^[A-Za-z]:[\\/]/, '').replace(/\\/g, '/').replace(/^\/+/, '');
+    const folderPath = posix.dirname(cleaned || '.');
+    return folderPath === '.' ? '<root>' : folderPath.split('/')[0] ?? '<root>';
+  }
+
+  const normalized = (isAbsolute(filePath) ? relative(projectRoot, filePath) : filePath).split('\\').join('/');
+  const folder = dirname(normalized).split('\\').join('/');
   return folder === '.' ? '<root>' : folder.split('/')[0] ?? '<root>';
 }

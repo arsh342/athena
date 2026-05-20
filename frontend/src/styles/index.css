@@ -1,13 +1,5 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: 'Null Pointer';
-  src: url('/fonts/NullPointer-8MpD.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* ═══════════════════════════════════════════════════════════════
    Athena Design System — Dual mode:
    Dark terminal (dashboard/scan/report) + Brutalist light (landing)
@@ -51,9 +43,9 @@
   --orange: #ff7a45;
 
   /* ── Typography ── */
-  --font-display: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
-  --font-body: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
-  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* ── Shadows ── */
   --shadow-brutalist: rgba(0, 0, 0, 0.15) 4px 4px 0px 0px;
@@ -79,14 +71,26 @@ body {
   font-weight: 400;
   line-height: 1.5;
   letter-spacing: 0;
+  text-transform: lowercase;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+code,
+pre,
+.code-block,
+.terminal,
+.terminal * {
+  text-transform: none;
+}
+
+input,
+textarea {
+  text-transform: none;
+}
+
 body.body--brutalist {
   background-color: #F5F0EB;
-  background-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.18) 1.2px, transparent 1.2px);
-  background-size: 28px 28px;
   color: #1A1A1A;
 }
 
@@ -207,7 +211,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .logo-font {
-  font-family: 'Null Pointer', var(--font-mono);
+  font-family: 'Space Grotesk', var(--font-mono);
   letter-spacing: -0.3px;
 }
 
@@ -259,7 +263,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   border-radius: 4px;
   background: var(--cyan-12);
   color: var(--cyan);
-  font-family: 'Null Pointer', var(--font-mono);
+  font-family: 'Space Grotesk', var(--font-mono);
   font-size: 14px;
   font-weight: 500;
 }
@@ -296,7 +300,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   border: 1px solid var(--ocean-blue);
   background: var(--cyan-12);
   color: var(--text);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.5px;
@@ -335,48 +339,13 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   --br-text-ghost: #9B9590;
   --br-border: rgba(0, 0, 0, 0.08);
   --br-border-strong: rgba(0, 0, 0, 0.15);
-  --br-font: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+  --br-font: 'Space Grotesk', sans-serif;
 
   background: var(--br-bg);
   color: var(--br-text);
   font-family: var(--br-font);
 }
 
-.landing.brutalist::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-  background-size: 24px 24px;
-  opacity: 0.2;
-}
-
-/* ── Grid background ── */
-.brutalist-grid-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-/* ── Static dotted canvas background (full page) ── */
-.br-dotted-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-color: var(--br-bg);
-  background-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.18) 1.2px, transparent 1.2px);
-  background-size: 28px 28px;
-  background-position: 0 0;
-}
 
 /* ── Scroll-triggered fade-in ── */
 .br-about,
@@ -489,7 +458,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 1.5px;
-  text-transform: uppercase;
+  text-transform: lowercase;
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
@@ -542,7 +511,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   z-index: 2;
   max-width: 1100px;
   margin: 0 0 0;
-  font-family: 'Null Pointer', 'Silkscreen', var(--br-font);
+  font-family: 'Space Grotesk', 'Space Grotesk', var(--br-font);
   font-size: clamp(48px, 8vw, 120px);
   font-weight: 700;
   line-height: 0.98;
@@ -1377,7 +1346,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .br-footer-brand strong {
-  font-family: 'Null Pointer', var(--br-font);
+  font-family: 'Space Grotesk', var(--br-font);
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -1522,7 +1491,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .terminal-title-brand {
-  font-family: 'Silkscreen', var(--font-mono);
+  font-family: 'Space Grotesk', var(--font-mono);
   font-weight: 700;
   font-size: 13px;
   line-height: 1;
@@ -1854,17 +1823,19 @@ h1, h2, h3, p { margin-top: 0; }
 
 h1 {
   margin-bottom: 22px;
-  font-size: 48px;
+  font-size: 28px;
   font-weight: 500;
   line-height: 1.0;
   letter-spacing: -0.5px;
+  text-transform: lowercase;
 }
 
 h2 {
   margin-bottom: 12px;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 500;
   line-height: 1.08;
+  text-transform: lowercase;
 }
 
 h3 {
@@ -1872,6 +1843,7 @@ h3 {
   font-size: 20px;
   font-weight: 500;
   line-height: 1.12;
+  text-transform: lowercase;
 }
 
 p {
@@ -1888,7 +1860,7 @@ p {
   border-radius: 4px;
   background: var(--border-04);
   color: var(--cyan);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.3px;
@@ -1965,7 +1937,7 @@ p {
   display: block;
   margin-bottom: 8px;
   color: var(--primary);
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: 34px;
 }
 
@@ -1973,7 +1945,7 @@ p {
 .stat-panel span,
 .panel-title span {
   color: var(--text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
   text-transform: uppercase;
 }
@@ -2004,7 +1976,7 @@ p {
   padding: 12px 14px;
   border-top: 1px solid var(--border-06);
   color: var(--text-ghost);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2016,7 +1988,7 @@ p {
 
 .feature-grid article span {
   color: var(--cyan);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2034,7 +2006,7 @@ p {
 
 .page-header h1 {
   margin-bottom: 0;
-  font-size: 48px;
+  font-size: 28px;
 }
 
 .page-header p {
@@ -2104,7 +2076,7 @@ p {
   padding: 6px 8px;
   border: 1px solid var(--border-10);
   border-radius: 4px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
 }
 
@@ -2126,7 +2098,7 @@ p {
   padding: 0 8px;
   border: 1px solid currentColor;
   border-radius: 4px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
 }
 
@@ -2201,7 +2173,7 @@ p {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.02);
   color: var(--text);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -2223,7 +2195,7 @@ p {
 .scan-upload-meta strong,
 .scan-upload-status-head strong {
   color: var(--text);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
   letter-spacing: 0.5px;
 }
@@ -2232,7 +2204,7 @@ p {
 .scan-upload-status-head span,
 .scan-upload-status-grid span {
   color: var(--text-ghost);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2273,7 +2245,7 @@ input:focus {
   border: 1px solid var(--border-06);
   border-radius: 4px;
   color: var(--text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
 }
 
@@ -2290,7 +2262,7 @@ input:focus {
   align-items: center;
   gap: 8px;
   color: var(--text-ghost);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2309,7 +2281,7 @@ input:focus {
   border: 0;
   background: rgba(255, 255, 255, 0.02);
   color: var(--text);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -2327,7 +2299,7 @@ input:focus {
   align-items: center;
   justify-content: space-between;
   color: var(--text-ghost);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2342,7 +2314,7 @@ input:focus {
 
 .finding-id {
   color: var(--text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2357,7 +2329,7 @@ input:focus {
   border: 1px solid var(--border-06);
   border-radius: 4px;
   color: var(--text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2394,24 +2366,176 @@ input:focus {
 .report-markdown-body {
   border: 1px solid var(--border-06);
   border-radius: 4px;
-  padding: 16px;
+  padding: 24px;
   background: var(--bg-deep);
   color: var(--text-ghost);
-  font-family: var(--font-mono);
-  font-size: 13px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
   line-height: 1.6;
+  text-transform: none; /* Restore original casing for files, paths, and variables */
 }
 
-.report-markdown-body h1,
-.report-markdown-body h2,
-.report-markdown-body h3,
-.report-markdown-body h4 {
+/* Typography elements */
+.report-markdown-body h1 {
+  font-size: 22px;
+  font-weight: 700;
   color: var(--text);
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-12);
+  padding-bottom: 10px;
+  letter-spacing: -0.02em;
+}
+
+.report-markdown-body h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--cyan);
+  margin-top: 24px;
+  margin-bottom: 14px;
+  border-left: 3px solid var(--cyan);
+  padding-left: 10px;
+  letter-spacing: -0.01em;
+}
+
+.report-markdown-body h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 20px;
+  margin-bottom: 10px;
+  border-left: 3px solid var(--green);
+  padding-left: 8px;
+}
+
+.report-markdown-body h4 {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-ghost);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.report-markdown-body p {
+  margin-top: 0;
+  margin-bottom: 14px;
+  color: var(--text-ghost);
+}
+
+.report-markdown-body strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.report-markdown-body em {
+  font-style: italic;
+  color: var(--text-whisper);
+}
+
+/* Lists */
+.report-markdown-body ul,
+.report-markdown-body ol {
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-left: 20px;
+}
+
+.report-markdown-body ul {
+  list-style-type: square; /* Terminal vibe */
+}
+
+.report-markdown-body ol {
+  list-style-type: decimal;
+}
+
+.report-markdown-body li {
+  margin-bottom: 6px;
+  color: var(--text-ghost);
+}
+
+.report-markdown-body li strong {
+  color: var(--cyan); /* Make key-value lists in markdown look highly readable */
+}
+
+/* Code & Fenced blocks */
+.report-markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--cyan);
+  border: 1px solid var(--border-08);
+  text-transform: none;
+}
+
+.report-markdown-body pre {
+  margin-top: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-08);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.report-markdown-body pre code {
+  background: none;
+  padding: 0;
+  border: none;
+  color: var(--text-ghost);
+  font-size: 12px;
+  line-height: 1.5;
+  display: block;
+}
+
+/* Quotes */
+.report-markdown-body blockquote {
+  border-left: 4px solid var(--orange);
+  padding-left: 16px;
+  margin: 0 0 16px 0;
+  color: var(--text-whisper);
+  font-style: italic;
+}
+
+/* Horizontal rule */
+.report-markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border-08);
+  margin: 24px 0;
+}
+
+/* Tables */
+.report-markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.report-markdown-body th {
+  background: var(--surface);
+  color: var(--cyan);
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border-12);
+}
+
+.report-markdown-body td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-06);
+  color: var(--text-ghost);
+}
+
+.report-markdown-body tr:hover td {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .report-markdown-empty {
   color: var(--text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2422,7 +2546,7 @@ input:focus {
   border: 1px solid var(--border-06);
   border-radius: 4px;
   color: var(--text-ghost);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
 }
 
@@ -2455,7 +2579,7 @@ input:focus {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
   text-align: center;
@@ -2485,7 +2609,7 @@ input:focus {
   padding: 0 10px;
   background: var(--bg-deep);
   color: var(--text-ghost);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2500,8 +2624,6 @@ input:focus {
    ═══════════════════════════════════════ */
 .app-shell--brutalist main {
   background-color: var(--br-bg);
-  background-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.18) 1.2px, transparent 1.2px);
-  background-size: 28px 28px;
 }
 
 .app-shell--brutalist .page,
@@ -2527,7 +2649,7 @@ input:focus {
   color: var(--br-text);
   font-family: var(--br-font);
   letter-spacing: 1px;
-  text-transform: uppercase;
+  text-transform: lowercase;
 }
 
 .app-shell--brutalist p,
@@ -2564,10 +2686,10 @@ input:focus {
 }
 
 .app-shell--brutalist .page-header h1 {
-  font-family: 'Silkscreen', var(--br-font);
-  font-size: clamp(42px, 7vw, 90px);
-  line-height: 0.95;
-  letter-spacing: 2px;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3vw, 30px);
+  line-height: 1.05;
+  letter-spacing: 1px;
 }
 
 .app-shell--brutalist .brutalist-page .br-section-annotation {
@@ -2715,6 +2837,106 @@ input:focus {
   background: rgba(255, 255, 255, 0.5);
   color: var(--br-text-muted);
   font-family: var(--br-font);
+}
+
+.app-shell--brutalist .report-toggle,
+.app-shell--brutalist .report-file-head,
+.app-shell--brutalist .report-markdown-empty {
+  color: var(--br-text-muted);
+  font-family: var(--br-font);
+}
+
+.app-shell--brutalist .report-severity {
+  border-color: var(--br-border-strong);
+}
+
+.app-shell--brutalist .report-severity-toggle {
+  background: rgba(255, 255, 255, 0.32);
+  color: var(--br-text);
+  font-family: var(--br-font);
+}
+
+.app-shell--brutalist .report-markdown-body {
+  border-color: var(--br-border-strong);
+  background: #efe9e3;
+  color: #3a3633;
+  font-family: var(--br-font);
+  text-transform: none;
+}
+
+.app-shell--brutalist .report-markdown-body h1 {
+  color: var(--br-text);
+  border-bottom: 2px solid var(--br-border-strong);
+}
+
+.app-shell--brutalist .report-markdown-body h2 {
+  color: var(--br-text);
+  border-left: 3px solid var(--br-border-strong);
+}
+
+.app-shell--brutalist .report-markdown-body h3 {
+  color: var(--br-text);
+  border-left: 3px solid var(--br-text-muted);
+}
+
+.app-shell--brutalist .report-markdown-body h4 {
+  color: var(--br-text-muted);
+}
+
+.app-shell--brutalist .report-markdown-body p {
+  color: #3a3633;
+}
+
+.app-shell--brutalist .report-markdown-body strong {
+  color: var(--br-text);
+}
+
+.app-shell--brutalist .report-markdown-body li {
+  color: #3a3633;
+}
+
+.app-shell--brutalist .report-markdown-body li strong {
+  color: var(--br-text);
+}
+
+.app-shell--brutalist .report-markdown-body code {
+  background: rgba(0, 0, 0, 0.05);
+  color: #a92020;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.app-shell--brutalist .report-markdown-body pre {
+  background: #e6dfd8;
+  border: 2px solid var(--br-border-strong);
+  box-shadow: 3px 3px 0px var(--br-border-strong);
+}
+
+.app-shell--brutalist .report-markdown-body pre code {
+  color: #2b2b2b;
+}
+
+.app-shell--brutalist .report-markdown-body blockquote {
+  border-left-color: var(--br-border-strong);
+  color: var(--br-text-muted);
+}
+
+.app-shell--brutalist .report-markdown-body hr {
+  border-top: 2px solid var(--br-border-strong);
+}
+
+.app-shell--brutalist .report-markdown-body th {
+  background: #e6dfd8;
+  color: var(--br-text);
+  border-bottom: 2px solid var(--br-border-strong);
+}
+
+.app-shell--brutalist .report-markdown-body td {
+  border-bottom: 1px solid var(--br-border);
+  color: #3a3633;
+}
+
+.app-shell--brutalist .report-markdown-body tr:hover td {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .app-shell--brutalist .scan-table {
@@ -2912,7 +3134,7 @@ input:focus {
 }
 
 @media (max-width: 560px) {
-  h1, .page-header h1 { font-size: 36px; line-height: 1; }
+  h1, .page-header h1 { font-size: 24px; line-height: 1; }
   .hero-copy p { font-size: 16px; }
   .hero-console { padding: 8px; }
   .terminal-body { min-height: 320px; padding: 16px; font-size: 12px; }

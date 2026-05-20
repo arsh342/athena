@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import type { SemgrepConfig, Severity } from '../types.js';
@@ -107,7 +108,7 @@ function normalizeSemgrepFinding(result: SemgrepResultItem): SemgrepFinding | nu
   const column = result.start?.col ?? 1;
   const ruleId = result.check_id || 'semgrep.unknown-rule';
   const message = result.extra?.message?.trim() || 'Semgrep finding';
-  const code = result.extra?.lines?.trim() || '';
+  const code = extractCode(result.extra?.lines?.trim(), file, line);
   const severity = mapSemgrepSeverity(result.extra?.severity);
   const category = result.extra?.metadata?.category || 'code-security';
 
@@ -123,6 +124,40 @@ function normalizeSemgrepFinding(result: SemgrepResultItem): SemgrepFinding | nu
     category,
     severity,
   };
+}
+
+/**
+ * Extract the code snippet for a finding.
+ * Prefers Semgrep's own `extra.lines`, but falls back to reading the
+ * actual source line from disk when Semgrep returns nothing useful
+ * or a sentinel value like "requires login".
+ */
+function extractCode(semgrepLines: string | undefined, filePath: string, lineNumber: number): string {
+  if (semgrepLines && semgrepLines.length > 0 && !isSentinelValue(semgrepLines)) {
+    return semgrepLines;
+  }
+
+  try {
+    const content = readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+    const targetLine = lines[lineNumber - 1];
+    return targetLine?.trim() || '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Detect Semgrep sentinel/placeholder strings that are not actual source code.
+ * These occur when Semgrep's registry requires login or when rules can't fetch content.
+ */
+function isSentinelValue(value: string): boolean {
+  const lower = value.toLowerCase();
+  return lower === 'requires login'
+    || lower === 'login required'
+    || lower === 'requires authentication'
+    || lower === 'access denied'
+    || lower === 'unauthorized';
 }
 
 export function mapSemgrepSeverity(raw?: string): Severity {

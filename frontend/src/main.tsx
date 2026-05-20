@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './hooks/useAuth';
 import './styles/index.css';
+import './styles/web-terminal.css';
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual';

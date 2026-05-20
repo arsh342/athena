@@ -1,9 +1,15 @@
 import 'dotenv/config';
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
+
+// Parse bigint (INT8) as number to prevent node-pg from returning it as a string
+types.setTypeParser(types.builtins.INT8, (val) => parseInt(val, 10));
 
 const connectionString = process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/athena';
 
-export const db = new Pool({ connectionString });
+export const db = new Pool({
+  connectionString,
+  ssl: connectionString.includes('supabase.co') ? { rejectUnauthorized: false } : false
+});
 
 export async function ensureAuthSchema(): Promise<void> {
   await db.query(`
@@ -141,4 +147,35 @@ export async function ensureAuthSchema(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_scan_reports_user_created_at
     ON scan_reports(user_id, created_at DESC);
   `);
+
+  // Enable Row Level Security (RLS) on all tables for Supabase security compliance.
+  // Then create a permissive policy for the 'postgres' role so our backend
+  // (which connects as postgres) can still read/write data.
+  // Without these policies, RLS blocks ALL access — including the table owner on Supabase.
+  const tables = [
+    'users',
+    'auth_sessions',
+    'scans',
+    'scan_findings',
+    'scan_terminal_lines',
+    'scan_reports'
+  ];
+  for (const table of tables) {
+    await db.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`);
+    await db.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_policies
+          WHERE tablename = '${table}' AND policyname = 'backend_full_access'
+        ) THEN
+          EXECUTE format(
+            'CREATE POLICY backend_full_access ON %I FOR ALL TO postgres USING (true) WITH CHECK (true)',
+            '${table}'
+          );
+        END IF;
+      END
+      $$;
+    `);
+  }
 }

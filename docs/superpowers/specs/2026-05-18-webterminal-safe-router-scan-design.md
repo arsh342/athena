@@ -3,7 +3,7 @@
 ## Goal
 
 Replace `SandboxTerminal` scan UX with `WebTerminal` and stream real scan events over one WebSocket channel using a safe command router.
-
+f
 Immediate functional target:
 - one terminal surface in Scan page
 - real backend scan progress/events (no synthetic playback)

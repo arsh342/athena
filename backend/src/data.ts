@@ -171,9 +171,10 @@ function mapTerminalLineRow(row: TerminalLineRow): PersistedTerminalLine {
 }
 
 export function getScans(): ScanSummary[];
-export function getScans(userId: number): Promise<ScanSummary[]>;
-export function getScans(userId?: number): ScanSummary[] | Promise<ScanSummary[]> {
-  if (typeof userId !== 'number') return recentScansStore;
+export function getScans(userId: number | string): Promise<ScanSummary[]>;
+export function getScans(userId?: number | string): ScanSummary[] | Promise<ScanSummary[]> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return recentScansStore;
   return db.query<ScanSummaryRow>(
     `
       SELECT scan_id, repo_name, repo_url, status, created_at, ai_percentage,
@@ -183,14 +184,15 @@ export function getScans(userId?: number): ScanSummary[] | Promise<ScanSummary[]
       ORDER BY created_at DESC
       LIMIT 20
     `,
-    [userId],
+    [parsedUserId],
   ).then((result) => result.rows.map(mapScanSummaryRow));
 }
 
 export function getScan(scanId: string): ScanSummary | undefined;
-export function getScan(scanId: string, userId: number): Promise<ScanSummary | undefined>;
-export function getScan(scanId: string, userId?: number): ScanSummary | undefined | Promise<ScanSummary | undefined> {
-  if (typeof userId !== 'number') {
+export function getScan(scanId: string, userId: number | string): Promise<ScanSummary | undefined>;
+export function getScan(scanId: string, userId?: number | string): ScanSummary | undefined | Promise<ScanSummary | undefined> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) {
     return recentScansStore.find((scan) => scan.scanId === scanId);
   }
   return db.query<ScanSummaryRow>(
@@ -201,14 +203,15 @@ export function getScan(scanId: string, userId?: number): ScanSummary | undefine
       WHERE scan_id = $1 AND user_id = $2
       LIMIT 1
     `,
-    [scanId, userId],
+    [scanId, parsedUserId],
   ).then((result) => (result.rows[0] ? mapScanSummaryRow(result.rows[0]) : undefined));
 }
 
 export function getFindings(): Finding[];
-export function getFindings(userId: number): Promise<Finding[]>;
-export function getFindings(userId?: number): Finding[] | Promise<Finding[]> {
-  if (typeof userId !== 'number') {
+export function getFindings(userId: number | string): Promise<Finding[]>;
+export function getFindings(userId?: number | string): Finding[] | Promise<Finding[]> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) {
     return recentScansStore[0] ? findingsByScanIdStore[recentScansStore[0].scanId] ?? [] : [];
   }
   return db.query<{ scan_id: string }>(
@@ -219,18 +222,19 @@ export function getFindings(userId?: number): Finding[] | Promise<Finding[]> {
       ORDER BY created_at DESC
       LIMIT 1
     `,
-    [userId],
+    [parsedUserId],
   ).then(async (latestScan) => {
     const scanId = latestScan.rows[0]?.scan_id;
     if (!scanId) return [];
-    return getFindingsByScanId(scanId, userId);
+    return getFindingsByScanId(scanId, parsedUserId);
   });
 }
 
 export function getFindingsByScanId(scanId: string): Finding[];
-export function getFindingsByScanId(scanId: string, userId: number): Promise<Finding[]>;
-export function getFindingsByScanId(scanId: string, userId?: number): Finding[] | Promise<Finding[]> {
-  if (typeof userId !== 'number') {
+export function getFindingsByScanId(scanId: string, userId: number | string): Promise<Finding[]>;
+export function getFindingsByScanId(scanId: string, userId?: number | string): Finding[] | Promise<Finding[]> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) {
     return findingsByScanIdStore[scanId] ?? [];
   }
   return db.query<FindingRow>(
@@ -242,12 +246,15 @@ export function getFindingsByScanId(scanId: string, userId?: number): Finding[] 
       WHERE sf.scan_id = $1 AND s.user_id = $2
       ORDER BY sf.id ASC
     `,
-    [scanId, userId],
+    [scanId, parsedUserId],
   ).then((result) => result.rows.map(mapFindingRow));
 }
 
+
 /** Store or update a redacted report snapshot for a scan. */
-export async function addScanReport(userId: number, scanId: string, markdown: string): Promise<void> {
+export async function addScanReport(userId: number | string, scanId: string, markdown: string): Promise<void> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return;
   await db.query(
     `
       INSERT INTO scan_reports (scan_id, user_id, markdown)
@@ -255,12 +262,14 @@ export async function addScanReport(userId: number, scanId: string, markdown: st
       ON CONFLICT (scan_id)
       DO UPDATE SET markdown = EXCLUDED.markdown, created_at = NOW(), version = scan_reports.version + 1
     `,
-    [scanId, userId, markdown],
+    [scanId, parsedUserId, markdown],
   );
 }
 
 /** Fetch the stored markdown snapshot for a scan. */
-export async function getScanReport(scanId: string, userId: number): Promise<string | null> {
+export async function getScanReport(scanId: string, userId: number | string): Promise<string | null> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return null;
   const result = await db.query<{ markdown: string }>(
     `
       SELECT sr.markdown
@@ -269,19 +278,19 @@ export async function getScanReport(scanId: string, userId: number): Promise<str
       WHERE sr.scan_id = $1 AND s.user_id = $2
       LIMIT 1
     `,
-    [scanId, userId],
+    [scanId, parsedUserId],
   );
   return result.rows[0]?.markdown ?? null;
 }
 
 export function addScan(scan: ScanSummary, findings: Finding[]): void;
-export function addScan(userId: number, scan: ScanSummary, findings: Finding[]): Promise<void>;
+export function addScan(userId: number | string, scan: ScanSummary, findings: Finding[]): Promise<void>;
 export function addScan(
-  userOrScan: number | ScanSummary,
+  userOrScan: number | string | ScanSummary,
   scanOrFindings: ScanSummary | Finding[],
   maybeFindings?: Finding[],
 ): void | Promise<void> {
-  if (typeof userOrScan !== 'number') {
+  if (typeof userOrScan !== 'number' && typeof userOrScan !== 'string') {
     const scan = userOrScan;
     const findings = scanOrFindings as Finding[];
     recentScansStore = [scan, ...recentScansStore].slice(0, 20);
@@ -297,7 +306,8 @@ export function addScan(
     return;
   }
 
-  const userId = userOrScan;
+  const parsedUserId = typeof userOrScan === 'string' ? parseInt(userOrScan, 10) : userOrScan;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return;
   const scan = scanOrFindings as ScanSummary;
   const findings = maybeFindings ?? [];
   return (async () => {
@@ -315,7 +325,7 @@ export function addScan(
         `,
         [
           scan.scanId,
-          userId,
+          parsedUserId,
           scan.repoName,
           scan.repoUrl,
           scan.status,
@@ -367,7 +377,9 @@ export function addScan(
   })();
 }
 
-export async function createRunningScan(userId: number, scan: RunningScanSummary): Promise<void> {
+export async function createRunningScan(userId: number | string, scan: RunningScanSummary): Promise<void> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return;
   await db.query(
     `
       INSERT INTO scans (
@@ -379,7 +391,7 @@ export async function createRunningScan(userId: number, scan: RunningScanSummary
     `,
     [
       scan.scanId,
-      userId,
+      parsedUserId,
       scan.repoName,
       scan.repoUrl,
       scan.status,
@@ -411,7 +423,9 @@ export async function appendTerminalLine(scanId: string, line: {
   return mapTerminalLineRow(result.rows[0]);
 }
 
-export async function getTerminalLines(scanId: string, userId: number): Promise<PersistedTerminalLine[]> {
+export async function getTerminalLines(scanId: string, userId: number | string): Promise<PersistedTerminalLine[]> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return [];
   const result = await db.query<TerminalLineRow>(
     `
       SELECT stl.seq, stl.kind, stl.text, stl.created_at
@@ -420,7 +434,7 @@ export async function getTerminalLines(scanId: string, userId: number): Promise<
       WHERE stl.scan_id = $1 AND s.user_id = $2
       ORDER BY stl.seq ASC
     `,
-    [scanId, userId],
+    [scanId, parsedUserId],
   );
   return result.rows.map(mapTerminalLineRow);
 }

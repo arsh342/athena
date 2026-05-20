@@ -64,7 +64,7 @@ export function HubDiagram() {
         textAnchor="middle"
         dominantBaseline="central"
         fontSize="18"
-        fontFamily="'IBM Plex Mono', monospace"
+        fontFamily="'Space Grotesk', monospace"
         fontWeight="700"
         fill="#1A1A1A"
       >
@@ -77,7 +77,7 @@ export function HubDiagram() {
         dominantBaseline="central"
         fontSize="9"
         letterSpacing="1"
-        fontFamily="'IBM Plex Mono', monospace"
+        fontFamily="'Space Grotesk', monospace"
         fontWeight="600"
         fill="#6B6560"
       >
@@ -112,7 +112,7 @@ export function HubDiagram() {
               dominantBaseline="central"
               fontSize="10"
               letterSpacing="0.6"
-              fontFamily="'IBM Plex Mono', monospace"
+              fontFamily="'Space Grotesk', monospace"
               fontWeight="700"
               fill="#1A1A1A"
             >
@@ -133,7 +133,7 @@ export function HubDiagram() {
               dominantBaseline="central"
               fontSize="8"
               letterSpacing="0.6"
-              fontFamily="'IBM Plex Mono', monospace"
+              fontFamily="'Space Grotesk', monospace"
               fontWeight="600"
               fill="#6B6560"
             >
@@ -148,7 +148,7 @@ export function HubDiagram() {
         y="26"
         fontSize="9"
         letterSpacing="1"
-        fontFamily="'IBM Plex Mono', monospace"
+        fontFamily="'Space Grotesk', monospace"
         fill="#9B9590"
       >
         // PIPELINE: DETECT → SCORE → SECURE

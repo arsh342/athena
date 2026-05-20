@@ -1,0 +1,162 @@
+/* ─────────────────────────────────────────────
+   Web Terminal — xterm.js container styles
+   ───────────────────────────────────────────── */
+
+/* Page layout — terminal fills available height */
+.terminal-page-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 65vh;
+}
+
+/* ── Terminal wrapper ── */
+.web-terminal {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 500px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0a0a0f;
+  box-shadow:
+    0 0 0 1px rgba(161, 161, 170, 0.06),
+    0 20px 60px -12px rgba(0, 0, 0, 0.5),
+    0 0 40px -8px rgba(167, 139, 250, 0.08);
+}
+
+/* ── Chrome bar (macOS-style title bar) ── */
+.web-terminal-chrome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #111116;
+  border-bottom: 1px solid #1e1e24;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.web-terminal-dots {
+  display: flex;
+  gap: 7px;
+}
+
+.web-terminal-dots .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: block;
+}
+
+.dot--red {
+  background: #f87171;
+}
+
+.dot--yellow {
+  background: #facc15;
+}
+
+.dot--green {
+  background: #4ade80;
+}
+
+.web-terminal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.web-terminal-status {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+/* ── Terminal body (xterm.js mount point) ── */
+.web-terminal-body {
+  flex: 1;
+  padding: 8px;
+  min-height: 400px;
+  position: relative;
+}
+
+/* Ensure xterm fills its container */
+.web-terminal-body .xterm {
+  height: 100%;
+}
+
+.web-terminal-body .xterm-viewport {
+  border-radius: 0;
+}
+
+/* Scrollbar styling */
+.web-terminal-body .xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.web-terminal-body .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.web-terminal-body .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+
+.web-terminal-body .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* ── Responsive adjustments ── */
+@media (max-width: 768px) {
+  .web-terminal {
+    min-height: 350px;
+    border-radius: 8px;
+  }
+
+  .web-terminal-chrome {
+    padding: 8px 12px;
+  }
+
+  .web-terminal-dots .dot {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* ── Web Terminal Scan Loading State ── */
+.web-terminal-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--green, #2ee678);
+  box-shadow: 0 0 10px var(--green, #2ee678), 0 0 4px var(--green, #2ee678);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+}
+
+@keyframes terminal-pulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(46, 230, 120, 0.6);
+  }
+  50% {
+    opacity: 0.5;
+    text-shadow: 0 0 2px rgba(46, 230, 120, 0.2);
+  }
+}
+
+.web-terminal-scanning-text {
+  animation: terminal-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+

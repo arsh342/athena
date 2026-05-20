@@ -13,9 +13,11 @@ export function ReportPage() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [markdown, setMarkdown] = useState('');
   const [resolvedId, setResolvedId] = useState('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState('');
 
   const markdownHtml = useMemo(() => {
-    const rendered = marked.parse(markdown ?? '', { mangle: false, headerIds: false }) as string;
+    const rendered = marked.parse(markdown ?? '') as string;
     return DOMPurify.sanitize(rendered);
   }, [markdown]);
 
@@ -90,20 +92,30 @@ export function ReportPage() {
           <button
             type="button"
             className="button button-primary"
-            disabled={!resolvedId}
+            disabled={!resolvedId || pdfLoading}
             onClick={async () => {
               if (!resolvedId) return;
-              const blob = await downloadReportPdf(resolvedId);
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `${resolvedId}.pdf`;
-              link.click();
-              URL.revokeObjectURL(url);
+              setPdfLoading(true);
+              setPdfError('');
+              try {
+                const blob = await downloadReportPdf(resolvedId);
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${resolvedId}.pdf`;
+                link.click();
+                URL.revokeObjectURL(url);
+              } catch (error) {
+                const message = error instanceof Error ? error.message : 'PDF download failed.';
+                setPdfError(message);
+              } finally {
+                setPdfLoading(false);
+              }
             }}
           >
-            Download PDF
+            {pdfLoading ? 'Generating…' : 'Download PDF'}
           </button>
+          {pdfError ? <p className="auth-error">{pdfError}</p> : null}
         </div>
       </section>
 

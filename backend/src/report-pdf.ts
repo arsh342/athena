@@ -21,31 +21,45 @@ export async function renderPdfFromMarkdown(markdown: string): Promise<Buffer> {
 type TokensList = ReturnType<typeof marked.lexer>;
 type PdfDoc = InstanceType<typeof PDFDocument>;
 
+interface TextLike {
+  text?: string;
+  tokens?: TextLike[];
+  raw?: string;
+}
+
+function extractText(token: TextLike): string {
+  if (typeof token.text === 'string') return token.text;
+  if (Array.isArray(token.tokens)) {
+    return token.tokens.map((child) => extractText(child)).join('');
+  }
+  return token.raw ?? '';
+}
+
 function renderTokens(doc: PdfDoc, tokens: TokensList): void {
   for (const token of tokens) {
     switch (token.type) {
       case 'heading': {
         const size = Math.max(12, 20 - token.depth * 2);
-        doc.font('Helvetica-Bold').fontSize(size).text(token.text);
+        doc.font('Helvetica-Bold').fontSize(size).text(extractText(token));
         doc.moveDown(0.4);
         break;
       }
       case 'paragraph':
-        doc.font('Helvetica').fontSize(11).text(token.text);
+        doc.font('Helvetica').fontSize(11).text(extractText(token));
         doc.moveDown(0.4);
         break;
       case 'list':
         for (const item of token.items) {
-          doc.font('Helvetica').fontSize(11).text(`• ${item.text}`, { indent: 12 });
+          doc.font('Helvetica').fontSize(11).text(`• ${extractText(item)}`, { indent: 12 });
         }
         doc.moveDown(0.4);
         break;
       case 'code':
-        doc.font('Courier').fontSize(10).text(token.text, { indent: 12 });
+        doc.font('Courier').fontSize(10).text(token.text ?? '', { indent: 12 });
         doc.moveDown(0.4);
         break;
       case 'blockquote':
-        doc.font('Helvetica-Oblique').fontSize(11).text(token.text, { indent: 12 });
+        doc.font('Helvetica-Oblique').fontSize(11).text(extractText(token), { indent: 12 });
         doc.moveDown(0.4);
         break;
       case 'hr':

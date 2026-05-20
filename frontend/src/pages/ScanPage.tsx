@@ -1,19 +1,20 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { SandboxTerminal, type QueuedTerminalScan } from '../components/SandboxTerminal';
-import { fetchScanTerminalLines, startUploadScan } from '../services/api';
-
-const IGNORED_UPLOAD_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', '.next', '.venv']);
-export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
+import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { startUploadScan } from '../services/api';
+import { MAX_UPLOAD_BYTES, shouldSkipUploadPath } from '../utils/upload';
 
 type ScanSource = 'repo' | 'upload';
 type UploadMode = 'folder' | 'zip';
 
-export function shouldSkipUploadPath(path: string): boolean {
-  return path
-    .replace(/\\/g, '/')
-    .split('/')
-    .filter(Boolean)
-    .some((part) => IGNORED_UPLOAD_DIRS.has(part));
+const WebTerminal = lazy(async () => {
+  const module = await import('../components/WebTerminal');
+  return { default: module.WebTerminal };
+});
+
+/**
+ * Upload scans already run via API; no terminal command should trigger git clone.
+ */
+export function buildUploadQueuedCommand(label: string): string | null {
+  return `upload ${label}`;
 }
 
 function formatBytes(bytes: number): string {
@@ -35,21 +36,15 @@ function getUploadDisplayName(files: File[], mode: UploadMode): string {
   return first ? first.name.replace(/\.zip$/i, '') || first.name : 'local-zip-upload';
 }
 
-function buildQueuedScan(label: string, run: QueuedTerminalScan['run']): QueuedTerminalScan {
-  return {
-    id: Date.now(),
-    label,
-    run,
-  };
-}
-
 export function ScanPage() {
   const [source, setSource] = useState<ScanSource>('repo');
   const [repoUrl, setRepoUrl] = useState('');
-  const [queuedScan, setQueuedScan] = useState<QueuedTerminalScan | null>(null);
+  const [queuedCommand, setQueuedCommand] = useState<{ id: number; command: string } | null>(null);
+  const [terminalSessionId, setTerminalSessionId] = useState('');
   const [uploadMode, setUploadMode] = useState<UploadMode>('folder');
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const uploadBytes = useMemo(
@@ -99,7 +94,7 @@ export function ScanPage() {
   function handleRepoSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!repoUrl.trim()) return;
-    setQueuedScan(buildQueuedScan(repoUrl.trim(), async () => ({ lines: await fetchScanTerminalLines(repoUrl.trim()) })));
+    setQueuedCommand({ id: Date.now(), command: `scan ${repoUrl.trim()}` });
   }
 
   function validateUploadSelection(): string {
@@ -121,6 +116,7 @@ export function ScanPage() {
     }
 
     setUploadError('');
+    setIsUploading(true);
     const payload = new FormData();
     payload.set('mode', uploadMode);
     payload.set('rootName', uploadLabel);
@@ -132,10 +128,18 @@ export function ScanPage() {
       payload.append('files[]', file, fileName);
     }
 
-    setQueuedScan(buildQueuedScan(uploadLabel, async () => {
-      const result = await startUploadScan(payload);
-      return { lines: result.lines };
-    }));
+    void (async () => {
+      try {
+        await startUploadScan(payload, terminalSessionId);
+        const queued = buildUploadQueuedCommand(uploadLabel);
+        if (queued) setQueuedCommand({ id: Date.now(), command: queued });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Upload scan failed.';
+        setUploadError(message);
+      } finally {
+        setIsUploading(false);
+      }
+    })();
   }
 
   return (
@@ -233,16 +237,27 @@ export function ScanPage() {
                 }}
               />
 
-              <div className="scan-upload-meta">
-                <strong>{uploadFiles.length} files</strong>
-                <span>{formatBytes(uploadBytes)}</span>
-                <span>{uploadLabel}</span>
-              </div>
+              {uploadFiles.length > 0 && (
+                <section className="scan-upload-status panel">
+                  <div className="scan-upload-status-head">
+                    <strong>Upload status</strong>
+                    <span>{uploadMode}</span>
+                  </div>
+                  <div className="scan-upload-status-grid">
+                    <span>Root</span>
+                    <span>{uploadLabel}</span>
+                    <span>Files</span>
+                    <span>{uploadFiles.length}</span>
+                    <span>Size</span>
+                    <span>{formatBytes(uploadBytes)}</span>
+                  </div>
+                </section>
+              )}
 
               {uploadError ? <p className="auth-error">{uploadError}</p> : null}
 
-              <button className="button button-primary" type="submit" disabled={uploadFiles.length === 0}>
-                Start upload scan
+              <button className="button button-primary" type="submit" disabled={uploadFiles.length === 0 || isUploading}>
+                {isUploading ? 'Uploading...' : 'Start upload scan'}
               </button>
 
               <div className="scan-rules">
@@ -256,24 +271,9 @@ export function ScanPage() {
         </div>
 
         <div className="scan-output-stack">
-          {source === 'upload' ? (
-            <section className="scan-upload-status panel">
-              <div className="scan-upload-status-head">
-                <strong>Upload status</strong>
-                <span>{uploadMode}</span>
-              </div>
-              <div className="scan-upload-status-grid">
-                <span>Root</span>
-                <span>{uploadLabel}</span>
-                <span>Files</span>
-                <span>{uploadFiles.length}</span>
-                <span>Size</span>
-                <span>{formatBytes(uploadBytes)}</span>
-              </div>
-            </section>
-          ) : null}
-
-          <SandboxTerminal repoUrl={repoUrl} queuedScan={queuedScan} />
+          <Suspense fallback={null}>
+            <WebTerminal queuedCommand={queuedCommand} onSessionId={setTerminalSessionId} />
+          </Suspense>
         </div>
       </section>
     </div>

@@ -160,8 +160,6 @@ export function Landing() {
 
   return (
     <div className="landing brutalist">
-      <div className="br-dotted-canvas" aria-hidden="true" />
-
       {/* ═══ HERO ═══ */}
       <section className="br-hero scanline-overlay" id="hero">
         <h1 className="br-hero-title logo-font" aria-label="Detect. Score. Secure.">
@@ -373,7 +371,7 @@ export function Landing() {
             <Link to="/privacy-policy">PRIVACY POLICY</Link>
             <Link to="/terms">TERMS</Link>
             <Link to="/sitemap">SITEMAP</Link>
-            <a href="https://github.com/example/athena" target="_blank" rel="noopener noreferrer">GITHUB</a>
+            <a href="https://github.com/arsh342/athena" target="_blank" rel="noopener noreferrer">GITHUB</a>
             <a href="https://www.npmjs.com/package/@arsh342/athena" target="_blank" rel="noopener noreferrer">NPM</a>
           </div>
         </div>

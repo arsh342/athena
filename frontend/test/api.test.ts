@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { fetchScans, startScan } from '../src/services/api.ts';
+import { fetchScans, startScan, startUploadScan } from '../src/services/api.ts';
 
 type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = Parameters<typeof fetch>[1];
@@ -79,6 +79,36 @@ test('fetchScans throws on non-ok response', async () => {
 
   try {
     await assert.rejects(fetchScans(), /Request failed: 401/);
+  } finally {
+    (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
+  }
+});
+
+test('startUploadScan includes terminal session header when provided', async () => {
+  const form = new FormData();
+  form.set('mode', 'folder');
+  form.append('files[]', new Blob(['x']), 'src/x.ts');
+
+  let capturedInit: FetchInit | undefined;
+  const mockFetch = async (_input: FetchInput, init?: FetchInit): Promise<MockResponse> => {
+    capturedInit = init;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        scan: { scanId: 's1' },
+        findings: [],
+        lines: [],
+      }),
+    };
+  };
+
+  const originalFetch = globalThis.fetch;
+  (globalThis as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
+
+  try {
+    await startUploadScan(form, 'session-123');
+    assert.equal((capturedInit?.headers as Record<string, string>)['X-Terminal-Session'], 'session-123');
   } finally {
     (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
   }

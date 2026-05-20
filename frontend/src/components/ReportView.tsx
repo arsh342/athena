@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CodeBlock } from './CodeBlock';
 import { SeverityBadge } from './SeverityBadge';
 import type { Finding, Severity } from '../types';
-import { groupFindings, redactFindingText } from '../utils/report';
+import { groupFindings, redactFindingText, shortenPath } from '../utils/report';
 
 interface ReportViewProps {
   findings: Finding[];
@@ -54,7 +54,7 @@ export function ReportView({ findings }: ReportViewProps) {
             {openSeverities[severity] && fileKeys.map((file) => (
               <div className="report-file" key={file}>
                 <div className="report-file-head">
-                  <strong>{file}</strong>
+                  <strong>{shortenPath(file)}</strong>
                   <span>{files[file]?.length ?? 0} findings</span>
                 </div>
                 {files[file]?.map((finding) => (
@@ -68,7 +68,7 @@ export function ReportView({ findings }: ReportViewProps) {
                     </div>
                     <p>{showRawSecrets ? finding.message : redactFindingText(finding.message, finding)}</p>
                     <div className="finding-meta">
-                      <span>{finding.file}:{finding.line}</span>
+                      <span>{shortenPath(finding.file)}:{finding.line}</span>
                       <span>{finding.source}</span>
                       <span>AI score {finding.aiScore}</span>
                     </div>

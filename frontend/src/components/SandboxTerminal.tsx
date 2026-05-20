@@ -39,6 +39,7 @@ export function SandboxTerminal({ repoUrl, queuedScan }: SandboxTerminalProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const runningRef = useRef(false);
   const streamTimerRef = useRef<number | null>(null);
+  const lastQueuedScanIdRef = useRef<number | null>(null);
 
   const prompt = useMemo(() => (running ? 'running...' : 'awaiting command'), [running]);
 
@@ -252,6 +253,8 @@ export function SandboxTerminal({ repoUrl, queuedScan }: SandboxTerminalProps) {
 
   useEffect(() => {
     if (!queuedScan) return;
+    if (lastQueuedScanIdRef.current === queuedScan.id) return;
+    lastQueuedScanIdRef.current = queuedScan.id;
     void executeQueuedScan(queuedScan);
   }, [queuedScan]);
 
