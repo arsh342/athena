@@ -66,3 +66,6 @@ backend/diagnose-db.ts
 semgrep_debug.json
 test.zip
 
+# Test fixtures (intentionally vulnerable code for local scanning)
+/test/
+
