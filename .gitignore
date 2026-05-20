@@ -20,10 +20,8 @@ build/
 *.swp
 *.swo
 *~
-.DS_Store
-Thumbs.db
 
-# Claude Code
+# Agent / AI tooling
 .claude/
 .agent/
 .agents/
@@ -31,6 +29,9 @@ skills-lock.json
 
 # Athena runtime
 .athena/
+
+# Graphify knowledge graph (regenerable via `graphify update .`)
+graphify-out/
 
 # Logs
 *.log
@@ -58,29 +59,10 @@ tmp/
 .Trashes
 ehthumbs.db
 Thumbs.db
-test/
-test.zip
-docs/
-CLAUDE.md
 
-# Allow new task files under ignored test/docs paths
-!backend/test/
-backend/test/*
-!backend/test/auth-supabase.test.ts
-!backend/test/server-user-scope.test.ts
-!backend/test/supabase.test.ts
-!backend/test/*.test.ts
-!frontend/test/
-frontend/test/*
-!frontend/test/auth-store.test.ts
-!frontend/test/*.test.ts
-!docs/
-docs/*
-!docs/supabase/
-docs/supabase/*
-!docs/supabase/schema.sql
-!docs/superpowers/
-!docs/superpowers/specs/
-!docs/superpowers/specs/*.md
-!docs/superpowers/plans/
-!docs/superpowers/plans/*.md
+# Scratch / debug files
+backend/scratch_*
+backend/diagnose-db.ts
+semgrep_debug.json
+test.zip
+
