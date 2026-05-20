@@ -70,3 +70,13 @@ test.zip
 /test/
 
 CLAUDE.md
+core/src/calibration/calibrate-threshold.ts
+frontend/src/components/GridBackground.tsx
+frontend/src/components/ParticleAnimation.tsx
+frontend/src/components/HubDiagram.tsx
+.gitignore
+.gitignore
+.gitignore
+frontend/src/components/ScrollStroke.tsx
+frontend/src/components/SandboxTerminal.tsx
+frontend/src/components/ui/flickering-grid-hero.tsx
