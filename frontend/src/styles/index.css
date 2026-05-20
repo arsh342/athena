@@ -202,8 +202,52 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   gap: 10px;
   font-size: 18px;
   font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: -0.3px;
+}
+
+.logo-font {
   font-family: 'Null Pointer', var(--font-mono);
   letter-spacing: -0.3px;
+}
+
+.system-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-10);
+  background: rgba(255, 255, 255, 0.03);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-ghost);
+}
+
+.panel-offset {
+  box-shadow: var(--shadow-brutalist);
+}
+
+.scanline-overlay {
+  position: relative;
+}
+
+.scanline-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.25;
+  mix-blend-mode: soft-light;
 }
 
 .brand-mark {
@@ -231,7 +275,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 .nav-links a, .nav-cta {
   border-radius: 4px;
   font-size: 14px;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-weight: 400;
   transition: all 0.2s ease;
 }
@@ -260,8 +304,8 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .nav-cta:hover {
-  background: rgba(0, 255, 255, 0.18);
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.08);
+  background: rgba(0, 255, 255, 0.12);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
 /* ═══════════════════════════════════════
@@ -296,6 +340,18 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   background: var(--br-bg);
   color: var(--br-text);
   font-family: var(--br-font);
+}
+
+.landing.brutalist::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.2;
 }
 
 /* ── Grid background ── */
@@ -351,6 +407,9 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 40px;
+  padding: 10px 14px;
+  border: 1px solid var(--br-border-strong);
+  background: rgba(0, 0, 0, 0.03);
   font-family: var(--br-font);
   font-size: 12px;
   font-weight: 500;
@@ -1898,6 +1957,7 @@ p {
   border: 1px solid var(--border-10);
   border-radius: 4px;
   background: var(--bg-deep);
+  box-shadow: var(--shadow-brutalist);
 }
 
 .metric-tile strong,

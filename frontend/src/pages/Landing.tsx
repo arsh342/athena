@@ -163,8 +163,8 @@ export function Landing() {
       <div className="br-dotted-canvas" aria-hidden="true" />
 
       {/* ═══ HERO ═══ */}
-      <section className="br-hero" id="hero">
-        <h1 className="br-hero-title" aria-label="Detect. Score. Secure.">
+      <section className="br-hero scanline-overlay" id="hero">
+        <h1 className="br-hero-title logo-font" aria-label="Detect. Score. Secure.">
           {heroText}
         </h1>
 
@@ -366,7 +366,7 @@ export function Landing() {
       <footer className="br-footer">
         <div className="br-footer-inner">
           <div className="br-footer-brand">
-            <strong>athena</strong>
+            <strong className="logo-font">athena</strong>
             <span>(c) 2026 athena project.</span>
           </div>
           <div className="br-footer-links">

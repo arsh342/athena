@@ -41,7 +41,7 @@ export function Navbar() {
 
   return (
     <header className={classes}>
-      <NavLink className="brand" to="/" aria-label="athena home">
+      <NavLink className="brand logo-font" to="/" aria-label="athena home">
         <span>athena</span>
       </NavLink>
       <nav className="nav-links" aria-label="Primary navigation">
