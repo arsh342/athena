@@ -69,3 +69,4 @@ test.zip
 # Test fixtures (intentionally vulnerable code for local scanning)
 /test/
 
+CLAUDE.md
