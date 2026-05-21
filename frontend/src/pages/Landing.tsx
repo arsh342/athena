@@ -325,9 +325,11 @@ export function Landing() {
           Install athena globally, run local scan, and gate commits in minutes.
           Use quickstart to go from zero to first report.
         </p>
-        <div className="br-install-command" aria-label="npm install command">
-          <span>$</span>
-          <code>npm install -g @arsh342/athena</code>
+        <div className="br-install-command-container">
+          <div className="br-install-command" aria-label="npm install command">
+            <span>$</span>
+            <code>npm install -g @arsh342/athena</code>
+          </div>
         </div>
         <div className="br-route-actions">
           <Link className="br-cta-button" to="/quickstart" id="route-cta-quickstart">

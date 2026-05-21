@@ -506,16 +506,16 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 .br-cta-button {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   height: 52px;
   padding: 0;
   border: none;
   background: #1A1A1A;
   color: #F5F0EB;
-  font-family: var(--br-font);
+  font-family: 'Space Grotesk', var(--br-font);
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   text-transform: lowercase;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -534,6 +534,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   font-size: 20px;
   font-weight: 400;
   flex-shrink: 0;
+  font-family: sans-serif;
 }
 
 .br-cta-text {
@@ -542,7 +543,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   justify-content: center;
   height: 100%;
   padding: 0 28px;
-  line-height: 1; /* Fix vertical metrics centering */
+  line-height: normal;
 }
 
 .br-cta-button:hover {
@@ -1509,18 +1510,32 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 
 /* Removed legacy auto-margin override */
 
+.br-install-command-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  clear: both;
+  margin-bottom: 24px;
+}
+
 .br-install-command {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  margin: 0 auto 24px;
+  margin: 0;
   padding: 14px 18px;
   border: 1px solid var(--br-border-strong);
   background: rgba(0, 0, 0, 0.03);
-  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
+  font-family: 'Space Grotesk', var(--br-font);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--br-text);
+  letter-spacing: 0.5px;
+}
+
+.br-install-command * {
+  font-family: 'Space Grotesk', var(--br-font) !important;
+  font-weight: 500;
 }
 
 .br-install-command span {
@@ -1539,13 +1554,14 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 .br-route-secondary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 42px;
   padding: 0 16px;
   border: 1px solid var(--br-border-strong);
   color: var(--br-text-muted);
-  font-family: var(--br-font);
+  font-family: 'Space Grotesk', var(--br-font);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase;
   transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;

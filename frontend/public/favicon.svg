@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Background: Rounded square with premium dark carbon color -->
+  <rect width="512" height="512" rx="128" fill="#0A0A0F" />
+  
+  <!-- Subtle inner border for premium brutalist contrast -->
+  <rect x="8" y="8" width="496" height="496" rx="120" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="6" />
+  
+  <!-- The Symbol: < \ > in premium Athena Orange -->
+  <g fill="none" stroke="#E87A41" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left Chevron (<) -->
+    <path d="M 190 160 L 100 256 L 190 352" />
+    
+    <!-- Backslash (\) -->
+    <path d="M 230 160 L 282 352" />
+    
+    <!-- Right Chevron (>) -->
+    <path d="M 322 160 L 412 256 L 322 352" />
+  </g>
+</svg>
