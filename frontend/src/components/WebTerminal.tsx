@@ -231,7 +231,12 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
 
       if (!mountedRef.current) return;
 
-      const ws = new WebSocket(wsTargetUrl);
+      const token = localStorage.getItem('athena_token');
+      const wsUrlWithToken = token
+        ? `${wsTargetUrl}${wsTargetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+        : wsTargetUrl;
+
+      const ws = new WebSocket(wsUrlWithToken);
       wsRef.current = ws;
 
       ws.onopen = () => {

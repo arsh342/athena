@@ -23,8 +23,11 @@ export function attachPtyWebSocket(httpServer: HttpServer): void {
   });
 
   wss.on('connection', async (ws, req) => {
+    const urlObj = new URL(req.url ?? '', 'http://localhost');
+    const queryToken = urlObj.searchParams.get('token') ?? undefined;
+
     const cookies = cookie.parse(String(req.headers.cookie ?? ''));
-    const user = await getAuthenticatedUser({ cookies } as any);
+    const user = await getAuthenticatedUser({ cookies } as any, queryToken);
     if (!user) {
       ws.send(JSON.stringify({ type: 'error', message: 'unauthorized' }));
       ws.close();
