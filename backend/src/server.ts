@@ -192,6 +192,12 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     res.json({ ok: true });
   });
 
+  app.get('/api/config', (_req: Request, res: Response) => {
+    res.json({
+      apiOrigin: process.env.API_ORIGIN?.trim() || '',
+    });
+  });
+
   app.get('/api/scans', async (req: Request, res: Response) => {
     const user = await requireAuth(req, res);
     if (!user) return;

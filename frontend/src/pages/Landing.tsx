@@ -351,7 +351,7 @@ export function Landing() {
       <section className="br-partners" id="integrations" ref={observeRef}>
         <div className="br-section-annotation">
           <span>// PARTNERS: TOOLCHAIN_ECOSYSTEM</span>
-          <span>008</span>
+          <span>004</span>
         </div>
 
         <div className="br-partners-grid">

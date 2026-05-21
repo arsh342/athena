@@ -17,12 +17,42 @@ const SPINNER_FRAMES = ['⠋', '⠙', '⠸', '⠴', '⠦', '⠇'];
 /**
  * Resolve the WebSocket URL for the terminal endpoint.
  */
-function resolveWsUrl(): string {
+async function resolveWsUrlAsync(): Promise<string> {
   const wsUrl = import.meta.env.VITE_WS_URL;
   if (wsUrl) {
     const cleanUrl = wsUrl.replace(/\/$/, '');
     return `${cleanUrl}/ws/terminal`;
   }
+  const apiBase = import.meta.env.VITE_API_URL;
+  if (apiBase) {
+    const cleanApiBase = apiBase.replace(/\/$/, '');
+    if (cleanApiBase.startsWith('https://')) {
+      return `${cleanApiBase.replace('https://', 'wss://')}/ws/terminal`;
+    }
+    if (cleanApiBase.startsWith('http://')) {
+      return `${cleanApiBase.replace('http://', 'ws://')}/ws/terminal`;
+    }
+  }
+
+  // Dynamic fallback: request config from the same domain to discover API_ORIGIN
+  try {
+    const response = await fetch('/api/config');
+    if (response.ok) {
+      const data = await response.json() as { apiOrigin?: string };
+      if (data.apiOrigin) {
+        const cleanOrigin = data.apiOrigin.replace(/\/$/, '');
+        if (cleanOrigin.startsWith('https://')) {
+          return `${cleanOrigin.replace('https://', 'wss://')}/ws/terminal`;
+        }
+        if (cleanOrigin.startsWith('http://')) {
+          return `${cleanOrigin.replace('http://', 'ws://')}/ws/terminal`;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[WebTerminal] Failed to fetch backend dynamic config /api/config', error);
+  }
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/ws/terminal`;
 }
@@ -174,7 +204,7 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
     }
 
     /** Connect (or reconnect) to the backend WS. */
-    function doConnect() {
+    async function doConnect() {
       if (!mountedRef.current) return;
 
       // Clean up previous socket
@@ -189,7 +219,19 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
       }
 
       setStatus('connecting');
-      const ws = new WebSocket(resolveWsUrl());
+
+      let wsTargetUrl = '';
+      try {
+        wsTargetUrl = await resolveWsUrlAsync();
+      } catch (err) {
+        console.error('[WebTerminal] Failed to resolve WebSocket URL:', err);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsTargetUrl = `${protocol}//${window.location.host}/ws/terminal`;
+      }
+
+      if (!mountedRef.current) return;
+
+      const ws = new WebSocket(wsTargetUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
