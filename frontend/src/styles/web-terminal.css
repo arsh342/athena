@@ -22,7 +22,7 @@
   box-shadow:
     0 0 0 1px rgba(161, 161, 170, 0.06),
     0 20px 60px -12px rgba(0, 0, 0, 0.5),
-    0 0 40px -8px rgba(167, 139, 250, 0.08);
+    0 0 40px -8px rgba(232, 122, 65, 0.08);
 }
 
 /* ── Chrome bar (macOS-style title bar) ── */
@@ -32,7 +32,7 @@
   gap: 12px;
   padding: 10px 16px;
   background: #111116;
-  border-bottom: 1px solid #1e1e24;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
   user-select: none;
   flex-shrink: 0;
 }
@@ -125,6 +125,7 @@
 
   .web-terminal-chrome {
     padding: 8px 12px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
   }
 
   .web-terminal-dots .dot {
@@ -139,8 +140,8 @@
   bottom: 0;
   left: 0;
   height: 2px;
-  background: var(--green, #2ee678);
-  box-shadow: 0 0 10px var(--green, #2ee678), 0 0 4px var(--green, #2ee678);
+  background: linear-gradient(90deg, rgba(232, 122, 65, 0.65), rgba(232, 122, 65, 1));
+  box-shadow: 0 0 10px rgba(232, 122, 65, 0.6), 0 0 4px rgba(232, 122, 65, 0.3);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: width;
 }
@@ -148,11 +149,11 @@
 @keyframes terminal-pulse {
   0%, 100% {
     opacity: 1;
-    text-shadow: 0 0 8px rgba(46, 230, 120, 0.6);
+    text-shadow: 0 0 8px rgba(232, 122, 65, 0.6);
   }
   50% {
     opacity: 0.5;
-    text-shadow: 0 0 2px rgba(46, 230, 120, 0.2);
+    text-shadow: 0 0 2px rgba(232, 122, 65, 0.2);
   }
 }
 

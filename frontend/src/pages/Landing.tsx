@@ -8,7 +8,7 @@ import type { Finding, LandingContent, LandingStat } from '../types';
 /* ── Scramble-text effect hook ── */
 function useScrambleText(text: string, speed = 40) {
   const [display, setDisplay] = useState('');
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._';
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789._';
 
   useEffect(() => {
     let frame = 0;
@@ -116,7 +116,7 @@ export function Landing() {
   const integrations = landingContent?.integrations ?? [];
   const stats = landingContent?.stats ?? [];
   const feat = features[activeTab];
-  const heroText = useScrambleText('DETECT. SCORE. SECURE.');
+  const heroText = useScrambleText('detect. score. secure.');
   const uptime = useUptime();
 
   useEffect(() => {
@@ -162,7 +162,7 @@ export function Landing() {
     <div className="landing brutalist">
       {/* ═══ HERO ═══ */}
       <section className="br-hero scanline-overlay" id="hero">
-        <h1 className="br-hero-title logo-font" aria-label="Detect. Score. Secure.">
+        <h1 className="br-hero-title" aria-label="Detect. Score. Secure.">
           {heroText}
         </h1>
 
@@ -173,6 +173,7 @@ export function Landing() {
             stepDelayMs={520}
             title="athena"
             promptText="pipeline complete. waiting for next commit"
+            promptSymbol="#"
           />
         </div>
 
@@ -184,7 +185,7 @@ export function Landing() {
 
         <Link className="br-cta-button" to="/scan" id="hero-cta-scan">
           <span className="br-cta-arrow">→</span>
-          GET STARTED
+          <span className="br-cta-text">get started</span>
         </Link>
       </section>
 
@@ -331,7 +332,7 @@ export function Landing() {
         <div className="br-route-actions">
           <Link className="br-cta-button" to="/quickstart" id="route-cta-quickstart">
             <span className="br-cta-arrow">→</span>
-            QUICKSTART
+            <span className="br-cta-text">quickstart</span>
           </Link>
           <a
             className="br-route-secondary"

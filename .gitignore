@@ -80,3 +80,6 @@ frontend/src/components/HubDiagram.tsx
 frontend/src/components/ScrollStroke.tsx
 frontend/src/components/SandboxTerminal.tsx
 frontend/src/components/ui/flickering-grid-hero.tsx
+
+docs/superpowers/**
+docs/IMPLEMENTATION_PLAN.md

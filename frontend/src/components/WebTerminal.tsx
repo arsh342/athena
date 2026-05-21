@@ -1,13 +1,3 @@
-/**
- * WebTerminal — Real terminal emulator powered by xterm.js + WebSocket.
- *
- * Connects to the backend shell via `/ws/terminal`. Supports:
- * - Full shell interaction (zsh/bash)
- * - Auto-resize via FitAddon + ResizeObserver
- * - Clickable URLs via WebLinksAddon
- * - Reconnection on disconnect
- * - React StrictMode safe (guards against double-mount)
- */
 import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -22,6 +12,8 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 /** Delay before first connect to survive React StrictMode unmount cycle. */
 const CONNECT_DELAY_MS = 300;
 
+const SPINNER_FRAMES = ['⠋', '⠙', '⠸', '⠴', '⠦', '⠇'];
+
 /**
  * Resolve the WebSocket URL for the terminal endpoint.
  */
@@ -33,9 +25,10 @@ function resolveWsUrl(): string {
 interface WebTerminalProps {
   queuedCommand?: QueuedCommand | null;
   onSessionId?: (sessionId: string) => void;
+  onScanningStateChange?: (isScanning: boolean) => void;
 }
 
-export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
+export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange }: WebTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -48,9 +41,25 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
   const pendingCommandRef = useRef<QueuedCommand | null>(null);
   const lastQueuedCommandId = useRef<number | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
-  const [isScanning, setIsScanning] = useState(false);
+  const [isScanning, setIsScanningState] = useState(false);
+  const isScanningRef = useRef(false);
+  const setIsScanning = (val: boolean) => {
+    isScanningRef.current = val;
+    setIsScanningState(val);
+    onScanningStateChange?.(val);
+  };
   const [scanStatus, setScanStatus] = useState<string>('');
   const [scanProgress, setScanProgress] = useState<number>(0);
+  const [spinnerFrame, setSpinnerFrame] = useState(0);
+  const printedMilestonesRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!isScanning) return;
+    const timer = setInterval(() => {
+      setSpinnerFrame((prev) => (prev + 1) % SPINNER_FRAMES.length);
+    }, 90);
+    return () => clearInterval(timer);
+  }, [isScanning]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -70,9 +79,9 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
       theme: {
         background: '#0a0a0f',
         foreground: '#e4e4e7',
-        cursor: '#a78bfa',
+        cursor: '#E87A41',
         cursorAccent: '#0a0a0f',
-        selectionBackground: '#a78bfa33',
+        selectionBackground: '#E87A4133',
         selectionForeground: '#e4e4e7',
         black: '#18181b',
         red: '#f87171',
@@ -143,6 +152,22 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
     });
     resizeObserver.observe(container);
 
+    /** Write the large premium welcome banner to terminal. */
+    function printWelcomeBanner() {
+      term.writeln('');
+      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m    _  _____ _   _ _____ _   _    _   \x1b[0m');
+      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m   / \\|_   _| | | | ____| \\ | |  / \\  \x1b[0m');
+      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m  / _ \\ | | | |_| |  _| |  \\| | / _ \\ \x1b[0m');
+      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m / ___ \\| | |  _  | |___| |\\  |/ ___ \\\x1b[0m');
+      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m/_/   \\_\\_| |_| |_|_____|_| \\_/_/   \\_\\\x1b[0m');
+      term.writeln('');
+      term.writeln('  \x1b[2mAI code provenance tracker\x1b[0m                 \x1b[38;2;232;122;65mactive sandbox\x1b[0m');
+      term.writeln('  \x1b[2mparse → score → analyze → report\x1b[0m');
+      term.writeln('');
+      term.writeln('  \x1b[90m─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\x1b[0m');
+      term.writeln('');
+    }
+
     /** Connect (or reconnect) to the backend WS. */
     function doConnect() {
       if (!mountedRef.current) return;
@@ -170,6 +195,8 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
         setStatus('connected');
         reconnectAttempts.current = 0;
 
+        printWelcomeBanner();
+
         const pending = pendingCommandRef.current;
         if (pending) {
           ws.send(encodeCommand(pending.command));
@@ -193,7 +220,7 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
         }
 
         if (decoded.type === 'error') {
-          term.writeln(`[error] ${decoded.message}`);
+          term.writeln(`\r\n\x1b[31m[error] ${decoded.message}\x1b[0m\r\n`);
           setIsScanning(false);
           setScanProgress(0);
           setScanStatus('');
@@ -201,15 +228,72 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
         }
 
         if (decoded.type === 'status') {
-          term.writeln(`[status] ${decoded.label} ${decoded.progress}%`);
+          if (!isScanningRef.current) {
+            printedMilestonesRef.current.clear();
+          }
           setIsScanning(true);
           setScanStatus(decoded.label);
           setScanProgress(decoded.progress);
+
+          const progress = decoded.progress;
+          const milestones = printedMilestonesRef.current;
+
+          if (progress >= 10 && !milestones.has(10)) {
+            milestones.add(10);
+            term.writeln('  \x1b[90m01.\x1b[0m \x1b[2m[sandbox] initialize clone workspace\x1b[0m');
+          }
+          if (progress >= 20 && !milestones.has(20)) {
+            milestones.add(20);
+            term.writeln('  \x1b[90m02.\x1b[0m \x1b[2m[git] clone repository to temporary environment\x1b[0m');
+          }
+          if (progress >= 30 && !milestones.has(30)) {
+            milestones.add(30);
+            term.writeln('  \x1b[90m03.\x1b[0m \x1b[2m[prepare] discover JS/TS source files\x1b[0m');
+          }
+          if (progress >= 60 && !milestones.has(60)) {
+            milestones.add(60);
+            term.writeln('  \x1b[90m04.\x1b[0m \x1b[2m[analyze] run target provenance scorers & local scans\x1b[0m');
+          }
+          if (progress >= 100 && !milestones.has(100)) {
+            milestones.add(100);
+            term.writeln('  \x1b[90m05.\x1b[0m \x1b[2m[report] scan complete, build and persist findings\x1b[0m');
+          }
           return;
         }
 
         if (decoded.type === 'result' && decoded.command === 'clear') {
           term.clear();
+          printWelcomeBanner();
+          return;
+        }
+
+        if (decoded.type === 'result' && (decoded.command === 'scan' || decoded.command === 'upload')) {
+          const scan = decoded.payload as any;
+          if (scan && scan.findings) {
+            const critical = scan.findings.CRITICAL ?? 0;
+            const high = scan.findings.HIGH ?? 0;
+            const medium = scan.findings.MEDIUM ?? 0;
+            const low = scan.findings.LOW ?? 0;
+            const isBlocked = critical > 0 || high > 0;
+
+            term.writeln('');
+            term.writeln('  \x1b[90m─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\x1b[0m');
+            term.writeln('');
+            term.writeln(`  \x1b[1mScan Report: ${scan.repoName || 'sandbox project'}\x1b[0m`);
+            term.writeln(`  \x1b[2mFiles scanned:\x1b[0m ${scan.filesScanned ?? 0}   \x1b[2mCode units:\x1b[0m ${scan.totalUnits ?? 0}`);
+            term.writeln(`  \x1b[2mFindings:\x1b[0m \x1b[31mCRITICAL: ${critical}\x1b[0m | \x1b[38;2;255;122;69mHIGH: ${high}\x1b[0m | \x1b[33mMEDIUM: ${medium}\x1b[0m | \x1b[34mLOW: ${low}\x1b[0m`);
+            term.writeln(`  \x1b[2mAI Risk score:\x1b[0m \x1b[38;2;232;122;65m${Math.round(scan.aiPercentage ?? 0)}%\x1b[0m`);
+            term.writeln('');
+            if (isBlocked) {
+              term.writeln(`  \x1b[31m✗\x1b[0m \x1b[1mgate: \x1b[31mblocked\x1b[0m`);
+            } else {
+              term.writeln(`  \x1b[32m✓\x1b[0m \x1b[1mgate: \x1b[32mpass\x1b[0m`);
+            }
+            term.writeln('');
+          }
+          setIsScanning(false);
+          setScanProgress(0);
+          setScanStatus('');
           return;
         }
 
@@ -222,7 +306,9 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
         }
 
         if (decoded.type === 'done') {
-          term.writeln(`[done] ${decoded.command}`);
+          if (decoded.command !== 'scan' && decoded.command !== 'upload' && decoded.command !== 'clear') {
+            term.writeln(`[done] ${decoded.command}`);
+          }
           setIsScanning(false);
           setScanProgress(0);
           setScanStatus('');
@@ -290,6 +376,7 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
     if (lastQueuedCommandId.current === queuedCommand.id) return;
     lastQueuedCommandId.current = queuedCommand.id;
     pendingCommandRef.current = queuedCommand;
+    printedMilestonesRef.current = new Set();
 
     if (queuedCommand.command.startsWith('scan') || queuedCommand.command.startsWith('upload')) {
       setIsScanning(true);
@@ -326,9 +413,10 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
           <span className="dot dot--yellow" />
           <span className="dot dot--green" />
         </div>
-        <strong className="web-terminal-title">
+        <strong className="web-terminal-title" style={{ fontFamily: 'var(--font-mono)' }}>
           {isScanning ? (
-            <span className="web-terminal-scanning-text" style={{ color: 'var(--green, #2ee678)' }}>
+            <span className="web-terminal-scanning-text" style={{ color: 'var(--orange, #ff7a45)' }}>
+              <span style={{ marginRight: '8px', display: 'inline-block' }}>{SPINNER_FRAMES[spinnerFrame]}</span>
               {scanStatus.toLowerCase().startsWith('upload') ? scanStatus.toLowerCase() : `scanning: ${scanStatus.toLowerCase()}...`}
             </span>
           ) : (
@@ -337,7 +425,7 @@ export function WebTerminal({ queuedCommand, onSessionId }: WebTerminalProps) {
         </strong>
         <div
           className="web-terminal-status"
-          style={{ color: isScanning ? 'var(--green, #2ee678)' : statusColor[status] }}
+          style={{ color: isScanning ? 'var(--orange, #ff7a45)' : statusColor[status] }}
           aria-live="polite"
         >
           {isScanning ? `${scanProgress}%` : statusLabel[status]}

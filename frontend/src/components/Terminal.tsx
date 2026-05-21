@@ -8,6 +8,7 @@ interface TerminalProps {
   loopPauseMs?: number;
   promptText?: string;
   title?: string;
+  promptSymbol?: string;
 }
 
 export function Terminal({
@@ -18,6 +19,7 @@ export function Terminal({
   loopPauseMs = 1400,
   promptText = 'awaiting next repository',
   title = 'athena',
+  promptSymbol = '#',
 }: TerminalProps) {
   const [visibleCount, setVisibleCount] = useState(playback ? 0 : lines.length);
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -80,12 +82,12 @@ export function Terminal({
       <div className="terminal-body" ref={bodyRef}>
         {visibleLines.map((line, idx) => (
           <p key={`${line}-${idx}`}>
-            <span className="terminal-prefix">&gt;</span>
+            <span className="terminal-prefix">{promptSymbol}</span>
             {line}
           </p>
         ))}
         <p className="terminal-cursor">
-          <span className="terminal-prefix">&gt;</span>
+          <span className="terminal-prefix">{promptSymbol}</span>
           {promptText}
         </p>
       </div>

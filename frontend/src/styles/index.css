@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Boxing-Regular';
+  src: url('/fonts/Boxing_Complete/Fonts/WEB/fonts/Boxing-Regular.woff2') format('woff2'),
+       url('/fonts/Boxing_Complete/Fonts/WEB/fonts/Boxing-Regular.woff') format('woff'),
+       url('/fonts/Boxing_Complete/Fonts/WEB/fonts/Boxing-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Athena Design System — Dual mode:
    Dark terminal (dashboard/scan/report) + Brutalist light (landing)
@@ -211,8 +221,9 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .logo-font {
-  font-family: 'Space Grotesk', var(--font-mono);
-  letter-spacing: -0.3px;
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--font-mono);
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 .system-strip {
@@ -387,12 +398,59 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   text-transform: uppercase;
 }
 
+.br-section-annotation span:last-child {
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
 .br-section-annotation::after {
   content: '';
   flex: 1;
   height: 1px;
   background: var(--br-border);
   margin: 0 16px;
+}
+
+/* ── Grid Background Backdrop ── */
+.grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Gradient mask to smoothly fade canvas at edges */
+.grid-bg-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, transparent 20%, var(--br-bg) 80%);
+}
+
+/* ── Glowing & Glassmorphic Utilities ── */
+.br-glass {
+  background: rgba(10, 10, 15, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.br-glow-orange {
+  box-shadow: 
+    0 20px 50px -12px rgba(0, 0, 0, 0.8),
+    0 0 30px -5px rgba(255, 122, 69, 0.15) !important;
+}
+
+.br-glow-cyan {
+  box-shadow: 
+    0 20px 50px -12px rgba(0, 0, 0, 0.8),
+    0 0 30px -5px rgba(0, 255, 255, 0.15) !important;
 }
 
 /* ── Buttons ── */
@@ -448,8 +506,8 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 .br-cta-button {
   display: inline-flex;
   align-items: center;
-  gap: 0;
-  min-height: 52px;
+  justify-content: flex-start;
+  height: 52px;
   padding: 0;
   border: none;
   background: #1A1A1A;
@@ -466,8 +524,9 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .br-cta-arrow {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 52px;
   height: 52px;
   background: var(--br-accent);
@@ -477,14 +536,13 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   flex-shrink: 0;
 }
 
-.br-cta-button span:last-child,
-.br-cta-button:not(:has(span)) {
+.br-cta-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
   padding: 0 28px;
-}
-
-/* Text part of CTA — only direct text, not arrow span */
-.br-cta-button {
-  padding-right: 0;
+  line-height: 1; /* Fix vertical metrics centering */
 }
 
 .br-cta-button:hover {
@@ -511,12 +569,12 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   z-index: 2;
   max-width: 1100px;
   margin: 0 0 0;
-  font-family: 'Space Grotesk', 'Space Grotesk', var(--br-font);
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
   font-size: clamp(48px, 8vw, 120px);
-  font-weight: 700;
+  font-weight: 400;
   line-height: 0.98;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
   color: var(--br-text);
   text-rendering: optimizeSpeed;
   -webkit-font-smoothing: none;
@@ -539,11 +597,16 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 
 .brutalist .br-hero-diagram .terminal,
 .brutalist .br-infra-render-canvas .terminal {
-  border: 1px solid var(--br-border-strong);
-  border-radius: 0;
-  background: #f2ede7;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 12px;
+  background: #0a0a0f;
+  box-shadow:
+    0 0 0 1px rgba(161, 161, 170, 0.06),
+    0 20px 60px -12px rgba(0, 0, 0, 0.5),
+    0 0 40px -8px rgba(232, 122, 65, 0.08);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .brutalist .br-hero-diagram .terminal {
@@ -556,32 +619,130 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 
 .brutalist .br-hero-diagram .terminal-chrome,
 .brutalist .br-infra-render-canvas .terminal-chrome {
-  border-bottom: 1px solid var(--br-border-strong);
-  color: var(--br-text-ghost);
-  font-family: var(--br-font);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #111116;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+  user-select: none;
+  min-height: auto;
+}
+
+.brutalist .br-hero-diagram .terminal-chrome span,
+.brutalist .br-infra-render-canvas .terminal-chrome span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: block;
+}
+
+.brutalist .br-hero-diagram .terminal-chrome span:nth-child(1),
+.brutalist .br-infra-render-canvas .terminal-chrome span:nth-child(1) {
+  background: #f87171;
+}
+
+.brutalist .br-hero-diagram .terminal-chrome span:nth-child(2),
+.brutalist .br-infra-render-canvas .terminal-chrome span:nth-child(2) {
+  background: #facc15;
+}
+
+.brutalist .br-hero-diagram .terminal-chrome span:nth-child(3),
+.brutalist .br-infra-render-canvas .terminal-chrome span:nth-child(3) {
+  background: #4ade80;
+}
+
+.brutalist .br-hero-diagram .terminal-chrome strong,
+.brutalist .br-infra-render-canvas .terminal-chrome strong {
+  margin-left: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.brutalist .br-hero-diagram .terminal-title,
+.brutalist .br-infra-render-canvas .terminal-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.brutalist .br-hero-diagram .terminal-title-brand,
+.brutalist .br-infra-render-canvas .terminal-title-brand {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+  text-shadow: none;
+}
+
+.brutalist .br-hero-diagram .terminal-title-rest,
+.brutalist .br-infra-render-canvas .terminal-title-rest {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
 }
 
 .brutalist .br-hero-diagram .terminal-body,
 .brutalist .br-infra-render-canvas .terminal-body {
   flex: 1;
+  padding: 20px;
+  background: #0a0a0f;
   overflow-y: auto;
-  color: var(--br-text-muted);
-  font-family: var(--br-font);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: 0.2px;
+  text-align: left;
+}
+
+/* Custom scrollbar for mockup terminals */
+.brutalist .br-hero-diagram .terminal-body::-webkit-scrollbar,
+.brutalist .br-infra-render-canvas .terminal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.brutalist .br-hero-diagram .terminal-body::-webkit-scrollbar-track,
+.brutalist .br-infra-render-canvas .terminal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.brutalist .br-hero-diagram .terminal-body::-webkit-scrollbar-thumb,
+.brutalist .br-infra-render-canvas .terminal-body::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
 }
 
 .brutalist .br-hero-diagram .terminal-body p,
 .brutalist .br-infra-render-canvas .terminal-body p {
-  color: var(--br-text-muted);
+  color: #e4e4e7;
+  font-family: inherit;
+  font-size: inherit;
+  margin: 0 0 8px;
 }
 
 .brutalist .br-hero-diagram .terminal-prefix,
 .brutalist .br-infra-render-canvas .terminal-prefix {
-  color: var(--br-accent);
+  color: #E87A41;
+  margin-right: 10px;
 }
 
 .brutalist .br-hero-diagram .terminal-cursor::after,
 .brutalist .br-infra-render-canvas .terminal-cursor::after {
-  background: var(--br-accent);
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  margin-left: 8px;
+  background: #E87A41;
+  vertical-align: -2px;
+  animation: blink 1s steps(2, start) infinite;
+  box-shadow: 0 0 8px rgba(232, 122, 65, 0.6);
 }
 
 .br-hero-sub {
@@ -670,10 +831,10 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 .br-stat-cell strong {
   display: block;
   margin-bottom: 4px;
-  font-family: var(--br-font);
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
   font-size: 36px;
-  font-weight: 700;
-  letter-spacing: -1px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
   color: var(--br-text);
 }
 
@@ -743,26 +904,140 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 
 .br-tab-num {
   color: var(--br-accent);
-  min-width: 20px;
-  font-size: 11px;
+  min-width: 24px;
+  font-size: 12px;
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
 }
 
 .br-bento-terminal {
-  border: 1px solid var(--br-border-strong);
-  border-radius: 0;
+  border: none;
+  overflow: visible;
+  min-height: auto;
+}
+
+/* Override terminal dark theme inside brutalist landing to high-fidelity web terminal */
+.brutalist .br-bento-terminal .terminal {
+  border: 1px solid var(--border, #27272a);
+  border-radius: 12px;
+  background: #0a0a0f;
+  box-shadow:
+    0 0 0 1px rgba(161, 161, 170, 0.06),
+    0 20px 60px -12px rgba(0, 0, 0, 0.5),
+    0 0 40px -8px rgba(232, 122, 65, 0.08);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   min-height: 320px;
 }
 
-/* Override terminal dark theme inside brutalist landing */
-.brutalist .br-bento-terminal .terminal {
-  background: #1A1A1A;
-  border: none;
-  border-radius: 0;
+.brutalist .br-bento-terminal .terminal-chrome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #111116;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+  user-select: none;
+  min-height: auto;
 }
 
-.brutalist .br-bento-terminal .terminal-chrome {
-  border-bottom-color: rgba(255,255,255,0.08);
+.brutalist .br-bento-terminal .terminal-chrome span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: block;
+}
+
+.brutalist .br-bento-terminal .terminal-chrome span:nth-child(1) {
+  background: #f87171;
+}
+
+.brutalist .br-bento-terminal .terminal-chrome span:nth-child(2) {
+  background: #facc15;
+}
+
+.brutalist .br-bento-terminal .terminal-chrome span:nth-child(3) {
+  background: #4ade80;
+}
+
+.brutalist .br-bento-terminal .terminal-chrome strong {
+  margin-left: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.brutalist .br-bento-terminal .terminal-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.brutalist .br-bento-terminal .terminal-title-brand {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+  text-shadow: none;
+}
+
+.brutalist .br-bento-terminal .terminal-title-rest {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+}
+
+.brutalist .br-bento-terminal .terminal-body {
+  flex: 1;
+  padding: 20px;
+  background: #0a0a0f;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: 0.2px;
+}
+
+.brutalist .br-bento-terminal .terminal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.brutalist .br-bento-terminal .terminal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.brutalist .br-bento-terminal .terminal-body::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+
+.brutalist .br-bento-terminal .terminal-body p {
+  color: #e4e4e7;
+  font-family: inherit;
+  font-size: inherit;
+  margin: 0 0 8px;
+}
+
+.brutalist .br-bento-terminal .terminal-prefix {
+  color: #E87A41;
+  margin-right: 10px;
+}
+
+.brutalist .br-bento-terminal .terminal-cursor::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  margin-left: 8px;
+  background: #E87A41;
+  vertical-align: -2px;
+  animation: blink 1s steps(2, start) infinite;
+  box-shadow: 0 0 8px rgba(232, 122, 65, 0.6);
 }
 
 .br-bento-detail {
@@ -773,9 +1048,9 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   display: block;
   margin-bottom: 12px;
   color: var(--br-accent);
-  font-family: var(--br-font);
-  font-size: 12px;
-  font-weight: 600;
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .br-bento-detail h3 {
@@ -1148,10 +1423,10 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .br-infra-uptime-value {
-  font-family: var(--br-font);
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 400;
+  letter-spacing: 0;
   color: var(--br-accent);
 }
 
@@ -1190,10 +1465,10 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .br-infra-stat-value {
-  font-family: var(--br-font);
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
   font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -1px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
   color: var(--br-text);
 }
 
@@ -1210,11 +1485,12 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .br-route-title {
-  font-family: var(--br-font);
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
   font-size: clamp(56px, 10vw, 140px);
-  font-weight: 700;
+  font-weight: 400;
   line-height: 0.9;
-  letter-spacing: 6px;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
   margin: 0 0 32px;
   color: var(--br-text);
   text-rendering: geometricPrecision;
@@ -1231,9 +1507,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   max-width: 520px;
 }
 
-.br-route-cta .br-cta-button {
-  margin: 0 auto;
-}
+/* Removed legacy auto-margin override */
 
 .br-install-command {
   display: inline-flex;
@@ -1243,9 +1517,9 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
   padding: 14px 18px;
   border: 1px solid var(--br-border-strong);
   background: rgba(0, 0, 0, 0.03);
-  font-family: var(--br-font);
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--br-font);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--br-text);
 }
 
@@ -1256,10 +1530,10 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 
 .br-route-actions {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 20px;
 }
 
 .br-route-secondary {
@@ -1346,10 +1620,7 @@ main { min-height: calc(100vh - 72px); padding-top: 72px; }
 }
 
 .br-footer-brand strong {
-  font-family: 'Space Grotesk', var(--br-font);
   font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 1px;
   color: var(--br-text);
   margin-right: 16px;
 }
@@ -1937,8 +2208,9 @@ p {
   display: block;
   margin-bottom: 8px;
   color: var(--primary);
-  font-family: var(--font-display);
+  font-family: 'Boxing-Regular', 'Space Grotesk', var(--font-display);
   font-size: 34px;
+  font-weight: 400;
 }
 
 .metric-tile span,
@@ -3101,7 +3373,7 @@ input:focus {
 
   /* Brutalist landing */
   .br-hero { min-height: 80vh; padding: 100px 20px 60px; }
-  .br-hero-title { font-size: clamp(36px, 7vw, 72px); letter-spacing: 2px; }
+  .br-hero-title { font-size: clamp(36px, 7vw, 72px); }
 
   .br-bento { grid-template-columns: 1fr; }
 
@@ -3142,7 +3414,7 @@ input:focus {
   .stats-row { grid-template-columns: 1fr; }
 
   /* Brutalist landing */
-  .br-hero-title { font-size: 32px; letter-spacing: 1px; }
+  .br-hero-title { font-size: 32px; }
   .br-stats { grid-template-columns: 1fr; }
   .br-partners-grid { grid-template-columns: repeat(2, 1fr); }
   .br-partner-cell:nth-child(3n) { border-right: 1px solid var(--br-border-strong); }

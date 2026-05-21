@@ -45,6 +45,7 @@ export function ScanPage() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const uploadBytes = useMemo(
@@ -190,8 +191,8 @@ export function ScanPage() {
                 onChange={(event) => setRepoUrl(event.target.value)}
                 placeholder="https://github.com/org/repo"
               />
-              <button className="button button-primary" type="submit" disabled={!repoUrl.trim()}>
-                Start scan
+              <button className="button button-primary" type="submit" disabled={!repoUrl.trim() || isScanning}>
+                {isScanning ? 'Scanning...' : 'Start scan'}
               </button>
               <div className="scan-rules">
                 <span>https repositories only</span>
@@ -256,8 +257,8 @@ export function ScanPage() {
 
               {uploadError ? <p className="auth-error">{uploadError}</p> : null}
 
-              <button className="button button-primary" type="submit" disabled={uploadFiles.length === 0 || isUploading}>
-                {isUploading ? 'Uploading...' : 'Start upload scan'}
+              <button className="button button-primary" type="submit" disabled={uploadFiles.length === 0 || isUploading || isScanning}>
+                {isUploading && !isScanning ? 'Uploading...' : isScanning ? 'Scanning...' : 'Start upload scan'}
               </button>
 
               <div className="scan-rules">
@@ -272,7 +273,11 @@ export function ScanPage() {
 
         <div className="scan-output-stack">
           <Suspense fallback={null}>
-            <WebTerminal queuedCommand={queuedCommand} onSessionId={setTerminalSessionId} />
+            <WebTerminal
+              queuedCommand={queuedCommand}
+              onSessionId={setTerminalSessionId}
+              onScanningStateChange={setIsScanning}
+            />
           </Suspense>
         </div>
       </section>
