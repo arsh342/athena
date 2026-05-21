@@ -1,0 +1,64 @@
+# Render Blueprint — deploys the backend as a Web Service.
+# Docs: https://docs.render.com/blueprint-spec
+#
+# Usage:
+#   1. Push this repo to GitHub/GitLab.
+#   2. On Render → New → Blueprint → select this repo.
+#   3. Fill in the env vars marked `sync: false` in the dashboard.
+#   4. Deploy.
+
+services:
+  - type: web
+    name: athena-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    numInstances: 1
+    nodeVersion: "20"
+
+    # Build from repo root so npm workspaces resolve @athena/core
+    buildCommand: >
+      npm ci &&
+      npm run build -w @athena/core &&
+      npm run build -w @athena/backend
+
+    startCommand: node backend/dist/server.js
+
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render sets PORT automatically; the backend reads process.env.PORT
+      # so no need to hardcode it.
+
+      # ── Required: Database ──
+      - key: DATABASE_URL
+        sync: false          # Set in dashboard (e.g. Supabase or Render Postgres URL)
+
+      # ── Required: CORS / Origins ──
+      - key: CORS_ORIGIN
+        sync: false          # Your frontend URL, e.g. https://athena-frontend.onrender.com
+      - key: APP_ORIGIN
+        sync: false          # Same as CORS_ORIGIN
+      - key: API_ORIGIN
+        sync: false          # This service's URL, e.g. https://athena-backend.onrender.com
+
+      # ── Auth provider (legacy | supabase) ──
+      - key: AUTH_PROVIDER
+        value: legacy
+
+      # ── Supabase (only needed if AUTH_PROVIDER=supabase) ──
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # ── Cookie settings (production) ──
+      - key: AUTH_COOKIE_DOMAIN
+        sync: false          # e.g. .onrender.com or your custom domain
+      - key: AUTH_COOKIE_SECURE
+        value: "true"
