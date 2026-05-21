@@ -18,6 +18,11 @@ const SPINNER_FRAMES = ['⠋', '⠙', '⠸', '⠴', '⠦', '⠇'];
  * Resolve the WebSocket URL for the terminal endpoint.
  */
 function resolveWsUrl(): string {
+  const wsUrl = import.meta.env.VITE_WS_URL;
+  if (wsUrl) {
+    const cleanUrl = wsUrl.replace(/\/$/, '');
+    return `${cleanUrl}/ws/terminal`;
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/ws/terminal`;
 }

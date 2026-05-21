@@ -38,8 +38,11 @@ interface AuthResponse {
   user: AuthUser;
 }
 
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  const response = await fetch(url, {
     credentials: 'include',
     ...init,
   });
@@ -75,7 +78,7 @@ export async function fetchReportMarkdown(scanId: string): Promise<string> {
 }
 
 export async function downloadReportPdf(scanId: string): Promise<Blob> {
-  const response = await fetch(`/api/scans/${scanId}/report.pdf`, { credentials: 'include' });
+  const response = await fetch(`${API_BASE}/api/scans/${scanId}/report.pdf`, { credentials: 'include' });
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
   }
