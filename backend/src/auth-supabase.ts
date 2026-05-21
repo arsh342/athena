@@ -54,7 +54,7 @@ function setSupabaseCookies(res: Response, accessToken: string, refreshToken: st
   const secure = process.env.AUTH_COOKIE_SECURE
     ? isTruthy(process.env.AUTH_COOKIE_SECURE)
     : process.env.NODE_ENV === 'production';
-  const sameSite = secure ? 'strict' : 'lax';
+  const sameSite = secure ? 'none' : 'lax';
   const domain = process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
 
   const baseCookie = {
@@ -170,6 +170,7 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
         setSupabaseCookies(res, session.accessToken, session.refreshToken);
         res.status(201).json({ user: { id: localUser.id, email: localUser.email } });
       } catch (error) {
+        console.error({ error: getErrorMessage(error) }, 'User registration failed');
         const message = getErrorMessage(error);
         if (isDuplicateEmailError(message)) {
           res.status(409).json({ error: 'Email already registered.' });
@@ -194,6 +195,7 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
         setSupabaseCookies(res, session.accessToken, session.refreshToken);
         res.json({ user: { id: localUser.id, email: localUser.email } });
       } catch (error) {
+        console.error({ error: getErrorMessage(error) }, 'User login failed');
         const message = getErrorMessage(error);
         if (isInvalidCredentialError(message)) {
           res.status(401).json({ error: 'Invalid credentials.' });
@@ -210,35 +212,51 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
         return;
       }
 
-      const session = await deps.refresh(refreshToken);
-      if (!session) {
+      try {
+        const session = await deps.refresh(refreshToken);
+        if (!session) {
+          clearSupabaseCookies(res);
+          res.status(401).json({ error: 'Invalid refresh token.' });
+          return;
+        }
+
+        const localUser = await deps.upsertLocalUser(session.userId, session.email);
+        setSupabaseCookies(res, session.accessToken, session.refreshToken);
+        res.json({ user: { id: localUser.id, email: localUser.email } });
+      } catch (error) {
+        console.error({ error: getErrorMessage(error) }, 'Session refresh failed');
         clearSupabaseCookies(res);
         res.status(401).json({ error: 'Invalid refresh token.' });
-        return;
       }
-
-      const localUser = await deps.upsertLocalUser(session.userId, session.email);
-      setSupabaseCookies(res, session.accessToken, session.refreshToken);
-      res.json({ user: { id: localUser.id, email: localUser.email } });
     },
 
     async getAuthenticatedUser(req: Request): Promise<LocalAuthUser | null> {
       const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
       if (!accessToken) return null;
 
-      const identity = await deps.me(accessToken);
-      if (!identity) return null;
+      try {
+        const identity = await deps.me(accessToken);
+        if (!identity) return null;
 
-      return deps.upsertLocalUser(identity.userId, identity.email);
+        return await deps.upsertLocalUser(identity.userId, identity.email);
+      } catch (error) {
+        console.error({ error: getErrorMessage(error) }, 'Get authenticated user failed');
+        return null;
+      }
     },
 
     async logoutUser(req: Request, res: Response): Promise<void> {
       const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
       const refreshToken = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
 
-      await deps.logout(accessToken, refreshToken);
-      clearSupabaseCookies(res);
-      res.json({ ok: true });
+      try {
+        await deps.logout(accessToken, refreshToken);
+      } catch (error) {
+        console.error({ error: getErrorMessage(error) }, 'Logout failed');
+      } finally {
+        clearSupabaseCookies(res);
+        res.json({ ok: true });
+      }
     },
 
     async startOAuth(req: Request, res: Response): Promise<void> {
@@ -259,7 +277,8 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
 
         setOAuthFlowCookies(res, codeVerifier);
         res.redirect(302, authorizationUrl);
-      } catch {
+      } catch (error) {
+        console.error({ error: getErrorMessage(error) }, 'OAuth initialization failed');
         clearOAuthFlowCookies(res);
         res.status(500).json({ error: 'Could not start OAuth sign-in.' });
       }
@@ -298,7 +317,8 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
         await deps.upsertLocalUser(session.userId, email);
         setSupabaseCookies(res, session.accessToken, session.refreshToken);
         res.redirect(302, buildFrontendRedirect('/dashboard'));
-      } catch {
+      } catch (error) {
+        console.error({ error: getErrorMessage(error) }, 'OAuth callback completion failed');
         res.redirect(302, buildFrontendRedirect('/login', { oauth_error: 'oauth_failed' }));
       }
     },

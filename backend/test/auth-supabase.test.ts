@@ -95,7 +95,7 @@ test('register maps success to 201 and stable payload shape with auth cookies', 
     );
     assert.equal(state.cookies[0]?.options?.httpOnly, true);
     assert.equal(state.cookies[0]?.options?.secure, true);
-    assert.equal(state.cookies[0]?.options?.sameSite, 'strict');
+    assert.equal(state.cookies[0]?.options?.sameSite, 'none');
     assert.equal(state.cookies[0]?.options?.path, '/');
   } finally {
     process.env.AUTH_COOKIE_SECURE = cookieSecureSnapshot;

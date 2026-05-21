@@ -8,7 +8,9 @@ const connectionString = process.env.DATABASE_URL ?? 'postgres://postgres:postgr
 
 export const db = new Pool({
   connectionString,
-  ssl: connectionString.includes('supabase.co') ? { rejectUnauthorized: false } : false
+  ssl: (connectionString.includes('supabase.co') || connectionString.includes('supabase.com'))
+    ? { rejectUnauthorized: false }
+    : false
 });
 
 export async function ensureAuthSchema(): Promise<void> {

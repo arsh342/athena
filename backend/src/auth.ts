@@ -244,7 +244,7 @@ function setAuthCookies(res: Response, tokens: SessionTokens): void {
   const secure = process.env.AUTH_COOKIE_SECURE
     ? isTruthy(process.env.AUTH_COOKIE_SECURE)
     : process.env.NODE_ENV === 'production';
-  const sameSite = secure ? 'strict' : 'lax';
+  const sameSite = secure ? 'none' : 'lax';
   const domain = process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
 
   const baseCookie = {
