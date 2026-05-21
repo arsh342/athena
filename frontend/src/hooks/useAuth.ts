@@ -36,6 +36,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const refreshToken = params.get('refresh_token');
+
+    if (token) {
+      localStorage.setItem('athena_token', token);
+      if (refreshToken) {
+        localStorage.setItem('athena_refresh_token', refreshToken);
+      }
+
+      params.delete('token');
+      params.delete('refresh_token');
+      const newSearch = params.toString();
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+
     void bootstrap();
   }, [bootstrap]);
 

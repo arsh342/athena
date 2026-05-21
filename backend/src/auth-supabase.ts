@@ -168,7 +168,11 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
         const session = await deps.register(email, password);
         const localUser = await deps.upsertLocalUser(session.userId, session.email);
         setSupabaseCookies(res, session.accessToken, session.refreshToken);
-        res.status(201).json({ user: { id: localUser.id, email: localUser.email } });
+        res.status(201).json({
+          user: { id: localUser.id, email: localUser.email },
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        });
       } catch (error) {
         console.error({ error: getErrorMessage(error) }, 'User registration failed');
         const message = getErrorMessage(error);
@@ -193,7 +197,11 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
         const session = await deps.login(email, password);
         const localUser = await deps.upsertLocalUser(session.userId, session.email);
         setSupabaseCookies(res, session.accessToken, session.refreshToken);
-        res.json({ user: { id: localUser.id, email: localUser.email } });
+        res.json({
+          user: { id: localUser.id, email: localUser.email },
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        });
       } catch (error) {
         console.error({ error: getErrorMessage(error) }, 'User login failed');
         const message = getErrorMessage(error);
@@ -206,7 +214,10 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
     },
 
     async refreshSession(req: Request, res: Response): Promise<void> {
-      const refreshToken = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
+      let refreshToken = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
+      if (!refreshToken) {
+        refreshToken = String(req.body?.refreshToken ?? '').trim();
+      }
       if (!refreshToken) {
         res.status(401).json({ error: 'Missing refresh token.' });
         return;
@@ -222,7 +233,11 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
 
         const localUser = await deps.upsertLocalUser(session.userId, session.email);
         setSupabaseCookies(res, session.accessToken, session.refreshToken);
-        res.json({ user: { id: localUser.id, email: localUser.email } });
+        res.json({
+          user: { id: localUser.id, email: localUser.email },
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        });
       } catch (error) {
         console.error({ error: getErrorMessage(error) }, 'Session refresh failed');
         clearSupabaseCookies(res);
@@ -230,8 +245,17 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
       }
     },
 
-    async getAuthenticatedUser(req: Request): Promise<LocalAuthUser | null> {
-      const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+    async getAuthenticatedUser(req: Request, passedToken?: string): Promise<LocalAuthUser | null> {
+      let accessToken = passedToken || '';
+      if (!accessToken) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+          accessToken = authHeader.substring(7).trim();
+        }
+      }
+      if (!accessToken) {
+        accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+      }
       if (!accessToken) return null;
 
       try {
@@ -246,7 +270,14 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
     },
 
     async logoutUser(req: Request, res: Response): Promise<void> {
-      const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+      let accessToken = '';
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+        accessToken = authHeader.substring(7).trim();
+      }
+      if (!accessToken) {
+        accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+      }
       const refreshToken = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
 
       try {
@@ -316,7 +347,10 @@ export function createSupabaseAuthHandlers(deps: SupabaseAuthDeps) {
 
         await deps.upsertLocalUser(session.userId, email);
         setSupabaseCookies(res, session.accessToken, session.refreshToken);
-        res.redirect(302, buildFrontendRedirect('/dashboard'));
+        res.redirect(302, buildFrontendRedirect('/dashboard', {
+          token: session.accessToken,
+          refresh_token: session.refreshToken
+        }));
       } catch (error) {
         console.error({ error: getErrorMessage(error) }, 'OAuth callback completion failed');
         res.redirect(302, buildFrontendRedirect('/login', { oauth_error: 'oauth_failed' }));

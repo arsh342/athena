@@ -42,9 +42,17 @@ const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  
+  const headers = new Headers(init?.headers);
+  const token = localStorage.getItem('athena_token');
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   const response = await fetch(url, {
     credentials: 'include',
     ...init,
+    headers,
   });
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
@@ -78,7 +86,15 @@ export async function fetchReportMarkdown(scanId: string): Promise<string> {
 }
 
 export async function downloadReportPdf(scanId: string): Promise<Blob> {
-  const response = await fetch(`${API_BASE}/api/scans/${scanId}/report.pdf`, { credentials: 'include' });
+  const headers = new Headers();
+  const token = localStorage.getItem('athena_token');
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  const response = await fetch(`${API_BASE}/api/scans/${scanId}/report.pdf`, {
+    credentials: 'include',
+    headers,
+  });
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
   }
@@ -131,27 +147,44 @@ export async function fetchPipelineStages(): Promise<PipelineStage[]> {
 }
 
 export async function register(email: string, password: string): Promise<AuthUser> {
-  const data = await fetchJson<AuthResponse>('/api/auth/register', {
+  const data = await fetchJson<{ user: AuthUser; accessToken?: string; refreshToken?: string }>('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
+  if (data.accessToken) {
+    localStorage.setItem('athena_token', data.accessToken);
+  }
+  if (data.refreshToken) {
+    localStorage.setItem('athena_refresh_token', data.refreshToken);
+  }
   return data.user;
 }
 
 export async function login(email: string, password: string): Promise<AuthUser> {
-  const data = await fetchJson<AuthResponse>('/api/auth/login', {
+  const data = await fetchJson<{ user: AuthUser; accessToken?: string; refreshToken?: string }>('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
+  if (data.accessToken) {
+    localStorage.setItem('athena_token', data.accessToken);
+  }
+  if (data.refreshToken) {
+    localStorage.setItem('athena_refresh_token', data.refreshToken);
+  }
   return data.user;
 }
 
 export async function logout(): Promise<void> {
-  await fetchJson<{ ok: true }>('/api/auth/logout', {
-    method: 'POST',
-  });
+  try {
+    await fetchJson<{ ok: true }>('/api/auth/logout', {
+      method: 'POST',
+    });
+  } finally {
+    localStorage.removeItem('athena_token');
+    localStorage.removeItem('athena_refresh_token');
+  }
 }
 
 export async function fetchAuthMe(): Promise<AuthUser> {
@@ -160,8 +193,17 @@ export async function fetchAuthMe(): Promise<AuthUser> {
 }
 
 export async function refreshAuth(): Promise<AuthUser> {
-  const data = await fetchJson<AuthResponse>('/api/auth/refresh', {
+  const refreshToken = localStorage.getItem('athena_refresh_token');
+  const data = await fetchJson<{ user: AuthUser; accessToken?: string; refreshToken?: string }>('/api/auth/refresh', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
   });
+  if (data.accessToken) {
+    localStorage.setItem('athena_token', data.accessToken);
+  }
+  if (data.refreshToken) {
+    localStorage.setItem('athena_refresh_token', data.refreshToken);
+  }
   return data.user;
 }

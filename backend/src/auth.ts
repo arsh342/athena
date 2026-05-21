@@ -322,12 +322,21 @@ async function findUserByAccessToken(accessToken: string): Promise<AuthUser | nu
   return result.rows[0] ?? null;
 }
 
-export async function getAuthenticatedUser(req: Request): Promise<AuthUser | null> {
+export async function getAuthenticatedUser(req: Request, passedToken?: string): Promise<AuthUser | null> {
   if (shouldUseSupabaseAuth()) {
-    return supabaseHandlers.getAuthenticatedUser(req);
+    return supabaseHandlers.getAuthenticatedUser(req, passedToken);
   }
 
-  const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+  let accessToken = passedToken || '';
+  if (!accessToken) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+      accessToken = authHeader.substring(7).trim();
+    }
+  }
+  if (!accessToken) {
+    accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+  }
   if (!accessToken) return null;
   return findUserByAccessToken(accessToken);
 }
@@ -367,6 +376,8 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
         id: user.id,
         email: user.email,
       },
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -464,7 +475,11 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
 
   const tokens = await createDbSession(user.id);
   setAuthCookies(res, tokens);
-  res.json({ user: { id: user.id, email: user.email } });
+  res.json({
+    user: { id: user.id, email: user.email },
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+  });
 }
 
 export async function refreshSession(req: Request, res: Response): Promise<void> {
@@ -473,7 +488,10 @@ export async function refreshSession(req: Request, res: Response): Promise<void>
     return;
   }
 
-  const rawRefresh = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
+  let rawRefresh = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
+  if (!rawRefresh) {
+    rawRefresh = String(req.body?.refreshToken ?? '').trim();
+  }
   if (!rawRefresh) {
     res.status(401).json({ error: 'Missing refresh token.' });
     return;
@@ -531,7 +549,11 @@ export async function refreshSession(req: Request, res: Response): Promise<void>
     return;
   }
 
-  res.json({ user: { id: user.id, email: user.email } });
+  res.json({
+    user: { id: user.id, email: user.email },
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+  });
 }
 
 export async function logoutUser(req: Request, res: Response): Promise<void> {
@@ -540,7 +562,14 @@ export async function logoutUser(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+  let accessToken = '';
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+    accessToken = authHeader.substring(7).trim();
+  }
+  if (!accessToken) {
+    accessToken = String(req.cookies?.[ACCESS_COOKIE] ?? '').trim();
+  }
   const refreshToken = String(req.cookies?.[REFRESH_COOKIE] ?? '').trim();
 
   const hashes = [accessToken, refreshToken].filter(Boolean).map(hashToken);
