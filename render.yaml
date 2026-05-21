@@ -14,7 +14,6 @@ services:
     plan: starter
     region: oregon
     numInstances: 1
-    nodeVersion: "20"
 
     # Build from repo root so npm workspaces resolve @athena/core
     buildCommand: >
@@ -27,6 +26,8 @@ services:
     healthCheckPath: /api/health
 
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: NODE_ENV
         value: production
 
