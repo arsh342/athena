@@ -14,7 +14,7 @@ function owningUnit(units: ScoredUnit[], line: number): ScoredUnit | undefined {
 }
 
 /** SARIF 2.1.0 for GitHub code scanning. Secrets are redacted in messages. */
-export function formatSarif(report: ScanReport, options: { toolVersion: string; root: string }): string {
+export function formatSarif(report: ScanReport, options: { toolVersion: string; root: string; uriPrefix?: string }): string {
   const rules = new Map<string, { id: string; shortDescription: { text: string }; fullDescription?: { text: string }; help?: { text: string }; helpUri?: string }>();
   const results: unknown[] = [];
 
@@ -30,7 +30,7 @@ export function formatSarif(report: ScanReport, options: { toolVersion: string; 
       }
       const unit = owningUnit(file.units, finding.line);
       const text = isSecretFinding(finding) ? redactSecrets(finding.message) : finding.message;
-      const uri = relative(options.root, finding.file).split('\\').join('/');
+      const uri = `${options.uriPrefix ?? ''}${relative(options.root, finding.file).split('\\').join('/')}`;
       results.push({
         ruleId: finding.ruleId,
         level: LEVEL[finding.severity],

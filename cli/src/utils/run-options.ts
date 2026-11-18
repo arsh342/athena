@@ -90,7 +90,8 @@ export function resolveRunOptions(
     strict: flags.strict ?? config.strict ?? false,
     quiet: flags.quiet ?? false,
     verbose: flags.verbose ?? false,
-    color: shouldUseColor({ isTTY: stdoutIsTTY }, flags.color, env),
+    // A report written to a file must not contain escape codes, even from a terminal.
+    color: flags.output ? false : shouldUseColor({ isTTY: stdoutIsTTY }, flags.color, env),
     maxFindings,
     showLow: flags.showLow ?? false,
     ...(threshold !== undefined ? { threshold } : {}),

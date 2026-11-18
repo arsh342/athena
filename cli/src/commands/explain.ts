@@ -1,7 +1,7 @@
-import { readFile } from 'node:fs/promises';
-import { relative, resolve } from 'node:path';
+import { readFile, stat } from 'node:fs/promises';
+import { dirname, relative, resolve } from 'node:path';
 import {
-  getRuleInfo, isSecretFinding, redactSecrets,
+  getRuleInfo, isSecretFinding, redactKnownSecrets, redactSecrets,
   type ClassifiedFinding, type FileReport, type ScoredUnit,
 } from '@athena/core';
 import { shouldUseColor } from '../utils/colors.js';
@@ -23,7 +23,8 @@ export async function explainCommand(id: string, opts: { path?: string; color?: 
     return 2;
   };
 
-  const root = resolve(process.cwd(), opts.path ?? '.');
+  const given = resolve(process.cwd(), opts.path ?? '.');
+  const root = (await stat(given).catch(() => null))?.isFile() ? dirname(given) : given;
   if (id.length < MIN_PREFIX) return fail(`finding id must have at least ${MIN_PREFIX} characters`);
 
   const report = await loadLastScan(root);
@@ -64,7 +65,7 @@ export async function explainCommand(id: string, opts: { path?: string; color?: 
     const width = String(to).length;
     out.push(bold('Code'));
     for (let n = from; n <= to; n += 1) {
-      const text = secret ? redactSecrets(lines[n - 1]) : lines[n - 1];
+      const text = secret ? redactSecrets(lines[n - 1]) : redactKnownSecrets(lines[n - 1]);
       out.push(`  ${n === finding.line ? '>' : ' '} ${String(n).padStart(width)} │ ${text.trimEnd()}`);
     }
     out.push('');

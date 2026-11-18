@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { realpath, writeFile } from 'node:fs/promises';
+import { relative, sep } from 'node:path';
 import {
   formatJsonl, formatSarif, formatTerminalReport, mergeConfig, scanFiles,
   type AthenaConfig, type ScanReport,
@@ -7,6 +8,7 @@ import {
 import { withBufferedAthenaCoreConsole } from '../utils/console-buffer.js';
 import { attachScanDelta } from '../utils/delta.js';
 import { exitCodeFor } from '../utils/exit-codes.js';
+import { getGitTopLevel } from '../utils/git.js';
 import { appendScanHistory } from '../utils/history.js';
 import { saveLastScan } from '../utils/last-scan.js';
 import { writeInfo, writeResult } from '../utils/output.js';
@@ -65,7 +67,7 @@ export async function runScan(args: RunArgs): Promise<number> {
     for (const message of messages) writeInfo(`note: ${message.text}`);
   }
 
-  const text = render(report, args);
+  const text = render(report, args, await sarifUriPrefix(root));
   if (options.output) await writeFile(options.output, text.endsWith('\n') ? text : `${text}\n`);
   else writeResult(text);
 
@@ -86,7 +88,19 @@ export async function runScan(args: RunArgs): Promise<number> {
   return exitCodeFor(report, options.strict);
 }
 
-function render(report: ScanReport, args: RunArgs): string {
+/** SARIF uris are relative to the repository root; this is the scanned root's path inside it. */
+async function sarifUriPrefix(root: string): Promise<string> {
+  const top = await getGitTopLevel(root);
+  if (!top) return '';
+  try {
+    const inside = relative(await realpath(top), await realpath(root));
+    return inside && !inside.startsWith('..') ? `${inside.split(sep).join('/')}/` : '';
+  } catch {
+    return '';
+  }
+}
+
+function render(report: ScanReport, args: RunArgs, uriPrefix: string): string {
   const { options } = args;
   switch (options.format) {
     case 'json':
@@ -94,7 +108,7 @@ function render(report: ScanReport, args: RunArgs): string {
     case 'jsonl':
       return formatJsonl(report);
     case 'sarif':
-      return formatSarif(report, { toolVersion: CLI_VERSION, root: args.root });
+      return formatSarif(report, { toolVersion: CLI_VERSION, root: args.root, uriPrefix });
     default: {
       const cache = new Map<string, string[] | null>();
       const readLines = (file: string): string[] | null => {

@@ -61,3 +61,7 @@ test('colour: off for NO_COLOR, non-TTY and --no-color', () => {
   assert.equal(resolve({ color: false }, {}, {}, true).color, false);
   assert.equal(shouldUseColor({ isTTY: true }, undefined, {}), true);
 });
+
+test('colour is off when the report goes to a file', () => {
+  assert.equal(resolve({ output: 'r.txt' }, {}, {}, true).color, false);
+});

@@ -5,7 +5,7 @@ import { marked } from 'marked';
 import { ReportView } from '../components/ReportView';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { downloadReportPdf, fetchFindingsByScanId, fetchReportMarkdown, fetchScan, fetchScans } from '../services/api';
-import { coverageGaps, formatProvenance } from '../utils/provenance';
+import { coverageGaps, coverageLabel, formatProvenance } from '../utils/provenance';
 import type { Finding, ScanSummary } from '../types';
 
 export function ReportPage() {
@@ -138,7 +138,7 @@ export function ReportPage() {
         {scan ? (
           <article className="panel stat-panel">
             <span>Coverage</span>
-            <strong>{coverageGaps(scan).length === 0 ? 'Complete' : 'Incomplete'}</strong>
+            <strong>{coverageLabel(scan)}</strong>
             {coverageGaps(scan).map((gap) => <p key={gap}>{gap}</p>)}
           </article>
         ) : null}

@@ -8,7 +8,13 @@ import test from 'node:test';
 import { isAiCommit, type CommitMeta } from '../src/provenance/ai-markers.ts';
 import { recordedAiLines } from '../src/provenance/git-recorded.ts';
 import { repoKey } from '../src/util/athena-home.ts';
-import { makeRepo } from './helpers/git-fixture.ts';
+import { git, makeRepo } from './helpers/git-fixture.ts';
+
+function makeRepo2(dir: string, file: string, body: string): void {
+  writeFileSync(join(dir, file), body);
+  git(dir, 'add', file);
+  git(dir, 'commit', '-q', '-m', 'unrelated');
+}
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'athena-git-'));
 const meta = (over: Partial<CommitMeta> = {}): CommitMeta => ({
@@ -21,6 +27,17 @@ test('isAiCommit recognises trailers, bot authors and ignores dependabot', () =>
   assert.equal(isAiCommit(meta({ authorName: 'copilot-swe-agent[bot]' })), true);
   assert.equal(isAiCommit(meta({ authorName: 'dependabot[bot]', message: 'chore: bump' })), false);
   assert.equal(isAiCommit(meta({ message: 'fix: cursor position in editor' })), false);
+});
+
+test('human names and pair-programming trailers are not AI', () => {
+  assert.equal(isAiCommit(meta({ authorName: 'Claude Dupont', authorEmail: 'claude.dupont@corp.fr' })), false);
+  assert.equal(isAiCommit(meta({ authorName: 'Devin Lee', authorEmail: 'devin@corp.com' })), false);
+  assert.equal(isAiCommit(meta({ message: 'feat: x\n\nCo-authored-by: Jules Martin <jules@corp.fr>' })), false);
+  assert.equal(isAiCommit(meta({ message: 'feat: x\n\nCo-authored-by: Gemini Rossi <gemini.rossi@corp.it>' })), false);
+  assert.equal(isAiCommit(meta({ message: 'feat: x\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>' })), true);
+  assert.equal(isAiCommit(meta({ message: 'feat: x\n\nCo-authored-by: Cursor Agent <cursoragent@cursor.com>' })), true);
+  assert.equal(isAiCommit(meta({ message: 'feat: x\n\nAssisted-by: Claude' })), true);
+  assert.equal(isAiCommit(meta({ authorName: 'Claude', authorEmail: 'noreply@anthropic.com' })), true);
 });
 
 test('lines from an AI-trailer commit are recorded; human commit lines are not', async () => {
@@ -62,6 +79,18 @@ test('non-git directory and shallow clone are unavailable with reasons', async (
   const r = await recordedAiLines(clone, [join(clone, 'a.ts')], { cacheDir: tmp() });
   assert.equal(r.available, false);
   assert.equal(r.reason, 'shallow clone: history not available');
+});
+
+test('cache is keyed by file content, not HEAD: an unrelated commit adds no cache files', async () => {
+  const dir = tmp();
+  const cacheDir = tmp();
+  makeRepo(dir, [{ files: { 'a.ts': 'one\n', 'b.ts': 'x\n' }, message: 'init' }]);
+  await recordedAiLines(dir, [join(dir, 'a.ts')], { cacheDir });
+  const count = () => readdirSync(join(cacheDir, repoKey(dir))).length;
+  const before = count();
+  makeRepo2(dir, 'b.ts', 'y\n');
+  await recordedAiLines(dir, [join(dir, 'a.ts')], { cacheDir });
+  assert.equal(count(), before);
 });
 
 test('first run writes one cache file per blamed file under cacheDir/<repoKey>/', async () => {

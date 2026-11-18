@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { coverageGaps, formatProvenance } from '../src/utils/provenance.ts';
+import { coverageGaps, coverageLabel, formatProvenance } from '../src/utils/provenance.ts';
 import type { ScanSummary } from '../src/types/index.ts';
 
 const base: ScanSummary = {
@@ -38,4 +38,16 @@ test('coverageGaps lists gaps only for incomplete scans', () => {
   assert.deepEqual(coverageGaps({ ...base, coverage: { complete: false, gaps: ['x', 'y'], analyzedFiles: 1, totalFiles: 2 } }), ['x', 'y']);
   assert.deepEqual(coverageGaps({ ...base, coverage: null }), []);
   assert.deepEqual(coverageGaps(base), []);
+});
+
+test('coverageLabel distinguishes complete, incomplete and not recorded', () => {
+  assert.equal(coverageLabel({ ...base, coverage: null }), 'Not recorded');
+  assert.equal(coverageLabel(base), 'Not recorded');
+  assert.equal(coverageLabel({ ...base, coverage: { complete: true, gaps: [], analyzedFiles: 1, totalFiles: 1 } }), 'Complete');
+  assert.equal(coverageLabel({ ...base, coverage: { complete: false, gaps: ['x'], analyzedFiles: 1, totalFiles: 2 } }), 'Incomplete');
+});
+
+test('formatProvenance includes the reason when recorded is unavailable', () => {
+  const p = { ...provenance({ lines: 0, available: false }), recorded: { lines: 0, available: false, reason: 'not a git repository' } };
+  assert.equal(formatProvenance({ ...base, aiProvenance: p }), 'recorded n/a (not a git repository) · estimated 35–44%');
 });

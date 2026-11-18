@@ -1,4 +1,5 @@
-import { relative, resolve } from 'node:path';
+import { stat } from 'node:fs/promises';
+import { dirname, relative, resolve } from 'node:path';
 import { defaultConfig, mergeConfig, scanFiles, type AiProvenance } from '@athena/core';
 import { shouldUseColor } from '../utils/colors.js';
 import { findSourceFilesWithExclusions } from '../utils/file-filter.js';
@@ -37,9 +38,10 @@ export async function provenanceCommand(
   const format = opts.format ?? 'terminal';
   if (format !== 'terminal' && format !== 'json') throw new UsageError(`unknown --format "${format}" (use terminal, json)`);
 
-  const root = resolve(process.cwd(), path);
+  const given = resolve(process.cwd(), path);
+  const root = (await stat(given).catch(() => null))?.isFile() ? dirname(given) : given;
   const project = await loadProjectConfig(root);
-  const { files } = await findSourceFilesWithExclusions(root, [...defaultConfig.exclude, ...(project.exclude ?? [])]);
+  const { files } = await findSourceFilesWithExclusions(given, [...defaultConfig.exclude, ...(project.exclude ?? [])]);
   const config = mergeConfig({
     semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' },
     eslint: { enabled: false, timeoutMs: 1000 },

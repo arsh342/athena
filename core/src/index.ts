@@ -37,10 +37,10 @@ export type {
 export { athenaHome, repoKey } from './util/athena-home.js';
 export { recordedAiLines } from './provenance/git-recorded.js';
 export type { RecordedFile, RecordedRepo } from './provenance/git-recorded.js';
-export { isAiCommit, AI_BOT_LOGINS, AI_IDENTITY_PATTERNS, AI_TRAILER_KEYS } from './provenance/ai-markers.js';
+export { isAiCommit, AI_BOT_LOGINS, AI_EMAIL_PATTERNS, AI_TOOL_NAME, AI_TRAILER_KEYS } from './provenance/ai-markers.js';
 export type { CommitMeta } from './provenance/ai-markers.js';
 export { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
-export { isSecretFinding, redactSecrets } from './report/redact.js';
+export { isSecretFinding, redactSecrets, redactKnownSecrets } from './report/redact.js';
 export { getRuleInfo } from './rules/catalog.js';
 export type { RuleInfo } from './rules/catalog.js';
 export { formatSarif } from './report/sarif.js';

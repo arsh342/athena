@@ -14,3 +14,8 @@ test('isSecretFinding uses source and keywords', () => {
   assert.equal(isSecretFinding({ source: 'eslint', type: 'Hardcoded password', message: '' }), true);
   assert.equal(isSecretFinding({ source: 'eslint', type: 'Unsafe regex', message: 'slow' }), false);
 });
+
+test('redactSecrets covers ghs_ tokens and template-literal strings', () => {
+  assert.equal(redactSecrets('t = ghs_' + 'b'.repeat(30)), 't = [REDACTED]');
+  assert.equal(redactSecrets('k = `supersecretvalue`'), 'k = [REDACTED]');
+});

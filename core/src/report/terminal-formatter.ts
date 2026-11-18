@@ -1,6 +1,6 @@
 import { relative } from 'node:path';
 import type { ClassifiedFinding, ScanReport, ScoredUnit, Severity } from '../types.js';
-import { isSecretFinding, redactSecrets } from './redact.js';
+import { isSecretFinding, redactKnownSecrets, redactSecrets } from './redact.js';
 
 export type FailOn = 'critical' | 'high' | 'medium' | 'low' | 'none';
 
@@ -170,7 +170,12 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     out.push('');
   }
 
-  if (shown.length > 0) out.push(`Next: athena explain ${shown[0].finding.id.slice(0, 6)}`);
+  if (shown.length > 0) {
+    const where = options.mode === 'scan' && options.target !== '.'
+      ? ` --path ${/\s/.test(options.target) ? JSON.stringify(options.target) : options.target}`
+      : '';
+    out.push(`Next: athena explain ${shown[0].finding.id.slice(0, 6)}${where}`);
+  }
 
   return out.join('\n').replace(/\n+$/, '') + '\n';
 }
@@ -190,7 +195,7 @@ function codeFrame(finding: ClassifiedFinding, readLines?: (file: string) => str
   const secret = isSecretFinding(finding);
   const frame: string[] = [];
   for (let n = from; n <= to; n += 1) {
-    const text = secret ? redactSecrets(lines[n - 1]) : lines[n - 1];
+    const text = secret ? redactSecrets(lines[n - 1]) : redactKnownSecrets(lines[n - 1]);
     frame.push(`${n === finding.line ? '>' : ' '} ${String(n).padStart(width)} │ ${text.trimEnd()}`);
   }
   return frame;

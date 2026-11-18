@@ -60,7 +60,7 @@ test('blocked report shows gate, findings sorted, LOW collapsed, explain hint', 
   assert.ok(out.indexOf('Type CRITICAL') < out.indexOf('Type HIGH'));
   assert.match(out, /\+ 2 low \(use --show-low\)/);
   assert.match(out, /src\/a\.ts:12/);
-  assert.match(out, /^Next: athena explain [0-9a-f]{6}$/m);
+  assert.match(out, /^Next: athena explain [0-9a-f]{6} --path \.\/app$/m);
   assert.doesNotMatch(out, /\x1b\[/);
 });
 
@@ -135,4 +135,20 @@ test('delta line summarises new and resolved findings', () => {
   };
   const out = formatTerminalReport(report([], { delta }), opts);
   assert.match(out, /^Since last scan: \+1 critical · −3 low$/m);
+});
+
+test('code frames redact secrets even when the finding itself is not a secret finding', () => {
+  const lines = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`);
+  lines[11] = `const password = "hunter2hunter2xyz"; axios.fetchData(password);`;
+  const f = finding('h1', 'HIGH', 12, { source: 'hallucination-detector', type: 'Hallucinated API call', ruleId: 'hallucination.invalid-api-call', message: 'axios.fetchData is not part of the known API surface.' });
+  const out = formatTerminalReport(report([f]), { ...opts, readLines: () => lines });
+  assert.doesNotMatch(out, /hunter2/);
+  assert.match(out, /\[REDACTED\]/);
+});
+
+test('explain hint carries --path when the target is not the current directory', () => {
+  const out = formatTerminalReport(blocked(), { ...opts, target: 'leak/src' });
+  assert.match(out, /^Next: athena explain [0-9a-f]{6} --path leak\/src$/m);
+  const here = formatTerminalReport(blocked(), { ...opts, target: '.' });
+  assert.match(here, /^Next: athena explain [0-9a-f]{6}$/m);
 });

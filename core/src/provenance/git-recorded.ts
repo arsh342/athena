@@ -8,6 +8,8 @@ import { isAiCommit, type CommitMeta } from './ai-markers.js';
 
 const execFileAsync = promisify(execFile);
 const MAX_BUFFER = 64 * 1024 * 1024;
+/** Bump when the AI markers change so cached blame results are recomputed. */
+const MARKERS_VERSION = 'm2';
 
 export interface RecordedFile {
   available: boolean;
@@ -48,12 +50,6 @@ export async function recordedAiLines(
     // older git: assume full history
   }
 
-  let head = 'none';
-  try {
-    head = (await git(root, ['rev-parse', 'HEAD'])).trim();
-  } catch {
-    // repository without commits: every file will be untracked
-  }
   const cacheRoot = join(options.cacheDir ?? join(athenaHome(), 'cache', 'blame'), repoKey(root));
   const aiBySha = new Map<string, boolean>();
 
@@ -66,7 +62,7 @@ export async function recordedAiLines(
       files.set(filePath, { available: false, reason: 'not tracked by git', aiLines: new Set() });
       return;
     }
-    const key = `${createHash('sha1').update(rel).digest('hex')}-${head}-${createHash('sha1').update(content).digest('hex').slice(0, 12)}.json`;
+    const key = `${createHash('sha1').update(rel).digest('hex')}-${createHash('sha1').update(content).digest('hex').slice(0, 12)}-${MARKERS_VERSION}.json`;
     const cachePath = join(cacheRoot, key);
     try {
       const cached = JSON.parse(await readFile(cachePath, 'utf8')) as number[];

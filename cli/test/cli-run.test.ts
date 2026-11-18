@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -88,4 +89,35 @@ test('--help exits 0', async () => {
   const r = await runCli(['--help']);
   assert.equal(r.code, 0);
   assert.match(r.stdout, /scan/);
+});
+
+function gitRepoWithAiFile(): { dir: string; file: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'athena-repo-'));
+  mkdirSync(join(dir, 'sub'));
+  const file = join(dir, 'sub', 'x.ts');
+  writeFileSync(file, 'export function f(a: number) {\n  const b = a + 1;\n  const c = b * 2;\n  return c;\n}\n');
+  const g = (...a: string[]) => execFileSync('git', ['-C', dir, '-c', 'user.name=T', '-c', 'user.email=t@e.com', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...a]);
+  g('init', '-q', '-b', 'main');
+  g('add', '.');
+  g('commit', '-q', '-m', 'feat: x\n\nCo-Authored-By: Claude <noreply@anthropic.com>');
+  return { dir, file };
+}
+
+test('scanning a single file still finds its git history and uses a non-empty SARIF uri', async () => {
+  const { file } = gitRepoWithAiFile();
+  const json = await runCli(['scan', file, '--format', 'json', ...OFF]);
+  const p = JSON.parse(json.stdout).summary.aiProvenance;
+  assert.equal(p.recorded.available, true, json.stderr);
+  assert.ok(p.recorded.lines > 0);
+});
+
+test('SARIF uris are relative to the git repository root', async () => {
+  const { dir, file } = gitRepoWithAiFile();
+  writeFileSync(file, readFileSync(file, 'utf8').replace('return c;', "const k = 'AKIAQ7XZ4HJ2KL9MN3PW';\n  return c;"));
+  for (const target of [join(dir, 'sub'), file]) {
+    const r = await runCli(['scan', target, '--format', 'sarif', ...OFF]);
+    const uris = JSON.parse(r.stdout).runs[0].results.map((x: { locations: Array<{ physicalLocation: { artifactLocation: { uri: string } } }> }) => x.locations[0].physicalLocation.artifactLocation.uri);
+    assert.ok(uris.length > 0, r.stderr);
+    assert.ok(uris.every((u: string) => u === 'sub/x.ts'), uris.join(','));
+  }
 });

@@ -70,7 +70,8 @@ export async function runNodejsscan(projectRoot: string, config: NodejsscanConfi
 
     const detail = withStreams?.stderr?.trim() || withStreams?.message || String(error);
     console.warn(`[athena-core] nodejsscan execution failed: ${detail}`);
-    return [];
+    // Rethrow so the registry reports this check as failed instead of "ran".
+    throw new Error(`nodejsscan execution failed: ${detail}`);
   }
 }
 
