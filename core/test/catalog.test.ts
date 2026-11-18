@@ -6,7 +6,7 @@ import { getRuleInfo } from '../src/rules/catalog.ts';
 const EMITTED_IDS = [
   'secret.aws-access-key', 'secret.github-token', 'secret.jwt', 'secret.private-key', 'secret.high-entropy-string',
   'secret.hardcoded-password', 'secret.hardcoded-api-key', 'secret.hardcoded-token', 'secret.hardcoded-secret',
-  'secret.sequelize-connection-metadata', 'hallucination.invalid-api-call',
+  'secret.sequelize-connection-metadata', 'secret.sequelize-constructor-credentials', 'hallucination.invalid-api-call',
 ];
 
 test('every rule id the core emits has catalog info', () => {

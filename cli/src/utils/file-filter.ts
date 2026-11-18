@@ -50,30 +50,41 @@ export function isExcludedPath(filePath: string, root: string, excludes: string[
   });
 }
 
-export async function findSourceFiles(root: string, excludes: string[] = []): Promise<string[]> {
-  const rootStat = await stat(root).catch(() => null);
-  if (!rootStat) return [];
-  if (rootStat.isFile()) return isSourceFile(root) && !isExcludedPath(root, root, excludes) ? [root] : [];
-
-  const output: string[] = [];
-  await walk(root, root, output, excludes);
-  return output;
+export interface SourceDiscovery {
+  files: string[];
+  /** Source files left out by configured excludes; reported in coverage, never silently dropped. */
+  excluded: string[];
 }
 
-async function walk(dir: string, root: string, output: string[], excludes: string[]): Promise<void> {
+export async function findSourceFilesWithExclusions(root: string, excludes: string[] = []): Promise<SourceDiscovery> {
+  const rootStat = await stat(root).catch(() => null);
+  const result: SourceDiscovery = { files: [], excluded: [] };
+  if (!rootStat) return result;
+  if (rootStat.isFile()) {
+    if (isSourceFile(root)) (isExcludedPath(root, root, excludes) ? result.excluded : result.files).push(root);
+    return result;
+  }
+  await walk(root, root, result, excludes, false);
+  return result;
+}
+
+export async function findSourceFiles(root: string, excludes: string[] = []): Promise<string[]> {
+  return (await findSourceFilesWithExclusions(root, excludes)).files;
+}
+
+async function walk(dir: string, root: string, result: SourceDiscovery, excludes: string[], underExcluded: boolean): Promise<void> {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      if (!ignoredDirs.has(entry.name) && !isExcludedPath(fullPath, root, excludes)) {
-        await walk(fullPath, root, output, excludes);
-      }
+      if (ignoredDirs.has(entry.name)) continue;
+      await walk(fullPath, root, result, excludes, underExcluded || isExcludedPath(fullPath, root, excludes));
       continue;
     }
 
-    if (entry.isFile() && isSourceFile(fullPath) && !isExcludedPath(fullPath, root, excludes)) {
-      output.push(fullPath);
+    if (entry.isFile() && isSourceFile(fullPath)) {
+      (underExcluded || isExcludedPath(fullPath, root, excludes) ? result.excluded : result.files).push(fullPath);
     }
   }
 }

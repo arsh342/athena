@@ -24,6 +24,7 @@ const rules: RuleInfo[] = [
   secretRule('secret.hardcoded-api-key', 'Hardcoded API key'),
   secretRule('secret.hardcoded-token', 'Hardcoded token'),
   secretRule('secret.hardcoded-secret', 'Hardcoded secret'),
+  secretRule('secret.sequelize-constructor-credentials', 'Hardcoded database credentials'),
   secretRule('secret.sequelize-connection-metadata', 'Hardcoded database connection metadata', 'Database names and users in code help attackers target the database and often sit next to its password.'),
   {
     id: 'hallucination.invalid-api-call',
