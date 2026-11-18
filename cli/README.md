@@ -26,21 +26,24 @@ Scan current directory:
 athena scan .
 ```
 
-Check staged files:
+Check staged files (what the pre-commit hook runs):
 
 ```bash
 athena check
 ```
 
-Install pre-commit hook:
+Explain one finding from the last scan, and see how much code was AI-written:
+
+```bash
+athena explain 3f9a2c          # id shown in the report (at least 4 characters)
+athena provenance .            # per-file AI provenance
+athena provenance --about      # how it is measured
+```
+
+Install or remove the pre-commit hook:
 
 ```bash
 athena init
-```
-
-Remove pre-commit hook:
-
-```bash
 athena uninstall
 ```
 
@@ -48,43 +51,50 @@ Setup scanner dependencies:
 
 ```bash
 athena setup all
-athena setup all --auto
-athena setup semgrep
 athena setup semgrep --auto
 ```
 
-## Common Options
+## Options (scan and check)
 
-Set threshold (default is `9`):
+| Flag | Meaning |
+|---|---|
+| `-f, --format <terminal\|json\|jsonl\|sarif>` | Output format. `json` and `sarif` print only that document on stdout. |
+| `-o, --output <file>` | Write the report to a file instead of stdout. |
+| `--fail-on <critical\|high\|medium\|low\|none>` | Block on findings at or above this level (default `high`). |
+| `--strict` | Exit 3 when the scan was incomplete (files or checks skipped). |
+| `-q, --quiet` / `-v, --verbose` | No progress / also print scanner notes. |
+| `--no-color` | Disable colour (also off for `NO_COLOR` and non-TTY output). |
+| `-m, --max-findings <n\|all>`, `--show-low` | Control how many findings are listed. |
+| `--no-eslint`, `--no-npm-audit`, `--no-nodejsscan`, `--no-bearer`, `--no-semgrep` | Skip a scanner. |
+| `-t, --threshold <n>` | Deprecated: only affects the heuristic AI fallback. |
 
-```bash
-athena scan . --threshold 9
-athena check --threshold 9
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Pass |
+| 1 | Blocked by findings at or above `--fail-on` |
+| 2 | Usage or internal error |
+| 3 | Incomplete scan, only with `--strict` |
+
+Blocked wins over incomplete.
+
+## Project config
+
+Optional `athena.config.json` at the scanned root. Flags override it.
+
+```json
+{ "failOn": "high", "exclude": ["generated/"], "strict": false }
 ```
 
-Choose output format:
+## What the report tells you
 
-```bash
-athena scan . --format terminal
-athena scan . --format json
-athena scan . --format jsonl
-```
+- **Gate**: `BLOCKED`, `PASS`, or `PASS (incomplete)`. A scan never reads as a plain pass when files could not be parsed, were too large, or a scanner was unavailable.
+- **Findings**: grouped by severity with a code frame. Secrets are redacted. LOW findings are collapsed unless `--show-low`.
+- **AI provenance** (by lines): *recorded* is what git history credits to AI tools (co-author trailers, agent bot authors). It is a floor, and unavailable outside git or in shallow clones. *estimated* is a style heuristic with no measured accuracy yet, labelled low confidence. Uncertain is shown separately.
+- **Coverage**: which files and checks ran, and what was skipped.
 
-## Terminal UI Behavior
-
-- Selector mode renders in-place and re-renders dynamically.
-- Scan/check reports separate AI-origin confidence from security findings.
-- Direct command runs clear the terminal before rendering report output.
-
-## Report Highlights
-
-Terminal reports include:
-
-- Top-level metrics (`files`, `units`, `ai-flagged units`, `duration`)
-- AI-origin confidence section
-- Top weighted signals
-- Security findings section
-- Gate status and gate reason
+Results go to stdout; progress and warnings go to stderr, so `athena scan --format json | jq .` works.
 
 ## Development
 

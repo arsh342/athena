@@ -2,6 +2,8 @@
 import { Command, CommanderError } from 'commander';
 import { checkCommand } from './commands/check.js';
 import { doctorCommand } from './commands/doctor.js';
+import { explainCommand } from './commands/explain.js';
+import { provenanceCommand } from './commands/provenance.js';
 import { initCommand } from './commands/init.js';
 import { menuCommand } from './commands/menu.js';
 import { scanCommand } from './commands/scan.js';
@@ -51,6 +53,28 @@ addRunFlags(
     .argument('[files...]', 'files to check; defaults to staged JS/TS files')
     .description('check changed files for blocking findings'),
 ).action(checkCommand);
+
+program
+  .command('explain')
+  .argument('<id>', 'finding id (at least 4 characters of the id shown in the report)')
+  .option('-p, --path <dir>', 'directory that was scanned', '.')
+  .option('--no-color', 'disable colour')
+  .description('explain one finding from the last scan')
+  .action(async (id: string, opts: { path?: string; color?: boolean }) => {
+    process.exitCode = await explainCommand(id, opts);
+  });
+
+program
+  .command('provenance')
+  .argument('[path]', 'directory to measure', '.')
+  .option('--sort <key>', 'ai | recorded | lines', 'ai')
+  .option('--about', 'explain how AI provenance is measured')
+  .option('-f, --format <format>', 'terminal | json', 'terminal')
+  .option('--no-color', 'disable colour')
+  .description('show how much of the code was written by AI, per file')
+  .action(async (path: string, opts: { sort?: string; about?: boolean; format?: string; color?: boolean }) => {
+    process.exitCode = await provenanceCommand(path, opts);
+  });
 
 program.command('init').description('install Athena pre-commit hook').action(initCommand);
 program.command('uninstall').description('remove Athena pre-commit hook').action(uninstallCommand);
