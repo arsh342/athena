@@ -43,6 +43,20 @@ function dedupeFindings(findings: Finding[]): Finding[] {
   return output;
 }
 
+function describeProvenance(scan: ScanSummary): string {
+  const p = scan.aiProvenance;
+  if (!p) return 'not measured';
+  const pct = (lines: number) => Math.round((100 * lines) / Math.max(1, p.totalLines));
+  const recorded = p.recorded.available ? `recorded ${pct(p.recorded.lines)}% (floor)` : `recorded n/a (${p.recorded.reason ?? 'unavailable'})`;
+  const e = p.estimated;
+  return `${recorded} · estimated ${pct(e.aiLines)}–${pct(e.aiLines + e.mixedLines)}% (heuristic, low confidence)`;
+}
+
+function describeCoverage(scan: ScanSummary): string {
+  if (!scan.coverage) return 'not recorded';
+  return scan.coverage.complete ? 'complete' : `incomplete — ${scan.coverage.gaps.join('; ')}`;
+}
+
 /** Generate redacted markdown snapshot for a scan report. */
 export function generateReportMarkdown(scan: ScanSummary, findings: Finding[]): string {
   const deduped = dedupeFindings(findings);
@@ -58,7 +72,8 @@ export function generateReportMarkdown(scan: ScanSummary, findings: Finding[]): 
     + `- Repo URL: ${scan.repoUrl}\n`
     + `- Created: ${scan.createdAt}\n\n`
     + `## Summary\n`
-    + `- AI involvement: ${scan.aiPercentage}%\n`
+    + `- AI provenance: ${describeProvenance(scan)}\n`
+    + `- Coverage: ${describeCoverage(scan)}\n`
     + `- Findings: ${findings.length}\n`
     + `- Risk density: ${scan.riskDensity.findingsPer1kLoc}\n`
     + `- Flagged ratio: ${Math.round(scan.riskDensity.flaggedRatio * 100)}%\n\n`

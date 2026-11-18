@@ -16,6 +16,11 @@ const scan: ScanSummary = {
   findings: { CRITICAL: 0, HIGH: 1, MEDIUM: 0, LOW: 0 },
   riskDensity: { findingsPer1kLoc: 1, criticalPer1kLoc: 0, flaggedRatio: 0.5 },
   duration: 100,
+  aiProvenance: {
+    unit: 'lines', totalLines: 100, recorded: { lines: 18, available: true },
+    estimated: { method: 'heuristic', aiLines: 35, mixedLines: 9, uncertainLines: 7, humanLines: 49 }, topFiles: [],
+  },
+  coverage: { complete: false, gaps: ['1 file(s) not parsed', 'semgrep unavailable'], analyzedFiles: 1, totalFiles: 2 },
 };
 
 const findings: Finding[] = [
@@ -55,6 +60,18 @@ test('generateReportMarkdown redacts secrets and dedupes', () => {
   const markdown = generateReportMarkdown(scan, findings);
   assert.ok(markdown.includes('### HIGH'));
   assert.ok(markdown.includes('#### src/a.ts'));
-  assert.ok(markdown.includes('***REDACTED***'));
+  assert.ok(markdown.includes('[REDACTED]'));
   assert.equal(markdown.match(/Hardcoded secret/g)?.length, 1);
+});
+
+test('generateReportMarkdown reports provenance and coverage', () => {
+  const markdown = generateReportMarkdown(scan, findings);
+  assert.match(markdown, /- AI provenance: recorded 18% \(floor\) · estimated 35–44% \(heuristic, low confidence\)/);
+  assert.match(markdown, /- Coverage: incomplete — 1 file\(s\) not parsed; semgrep unavailable/);
+});
+
+test('generateReportMarkdown says not measured for old scans', () => {
+  const markdown = generateReportMarkdown({ ...scan, aiProvenance: null, coverage: null }, findings);
+  assert.match(markdown, /- AI provenance: not measured/);
+  assert.match(markdown, /- Coverage: not recorded/);
 });

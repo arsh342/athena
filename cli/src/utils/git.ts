@@ -37,3 +37,13 @@ export async function getStagedFiles(): Promise<string[]> {
     return [];
   }
 }
+
+/** Git top-level for a directory, or null outside git. Silent: not being in git is normal. */
+export async function getGitTopLevel(dir: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync('git', ['rev-parse', '--show-toplevel'], { cwd: dir });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}

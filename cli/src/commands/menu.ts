@@ -37,14 +37,14 @@ export async function menuCommand(program: Command): Promise<void> {
       desc: 'Run full recursive JS/TS scan from cwd.',
       command: 'athena scan .',
       detail: 'Parse code units, score AI provenance, run targeted security checks, print report.',
-      run: () => scanCommand('.', { threshold: '9', format: 'terminal', maxFindings: 'all', quietHeader: true }),
+      run: () => scanCommand('.', { format: 'terminal' }),
     },
     {
       label: 'Check staged files',
       desc: 'Scan staged JS/TS files, same path used by pre-commit hook.',
       command: 'athena check',
       detail: 'Fast gate for commit flow. Reads git staged files and exits 1 on blocking risk.',
-      run: () => checkCommand([], { threshold: '9', format: 'terminal', maxFindings: 'all', quietHeader: true }),
+      run: () => checkCommand([], { format: 'terminal' }),
     },
     {
       label: 'Install pre-commit hook',
@@ -102,7 +102,6 @@ export async function menuCommand(program: Command): Promise<void> {
       // Leave alternate screen so long scan output remains scrollable in normal terminal scrollback.
       exitAltScreen();
       try {
-        clear();
         await items[choice].run();
         await waitForReturnToMenu();
       } finally {

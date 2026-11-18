@@ -75,12 +75,58 @@ export interface ExplainedScore {
   }[];
 }
 
+export type UnitProvenance = 'ai' | 'human' | 'mixed' | 'uncertain';
+export type FileCoverageStatus = 'analyzed' | 'parse-failed' | 'skipped-size' | 'skipped-excluded' | 'missing';
+export type CheckStatus = 'ran' | 'unavailable' | 'failed' | 'disabled';
+
+export interface FileCoverage {
+  path: string;
+  status: FileCoverageStatus;
+  reason?: string;
+}
+
+export interface CheckCoverage {
+  name: string;
+  status: CheckStatus;
+  detail?: string;
+}
+
+export interface ScanCoverage {
+  files: FileCoverage[];
+  checks: CheckCoverage[];
+  complete: boolean;
+  gaps: string[];
+}
+
+export interface AiProvenance {
+  unit: 'lines';
+  totalLines: number;
+  recorded: { lines: number; available: boolean; reason?: string };
+  estimated: {
+    method: 'heuristic';
+    aiLines: number;
+    mixedLines: number;
+    uncertainLines: number;
+    humanLines: number;
+  };
+  files: Array<{
+    path: string;
+    lines: number;
+    recordedLines: number;
+    aiLines: number;
+    mixedLines: number;
+    uncertainLines: number;
+  }>;
+}
+
 export interface ScoredUnit {
   unit: CodeUnit;
   score: number;
   signals: SignalResult[];
   flagged: boolean;
   explained: ExplainedScore;
+  provenance: UnitProvenance;
+  recorded: boolean;
 }
 
 export interface ClassifiedFinding {
@@ -154,6 +200,8 @@ export interface ScanReport {
       corpusVersion?: string;
     };
     delta?: ScanDelta;
+    coverage?: ScanCoverage;
+    aiProvenance?: AiProvenance;
   };
   files: FileReport[];
 }

@@ -1,234 +1,202 @@
-import type { ScanReport, Severity } from '../types.js';
+import { relative } from 'node:path';
+import type { ClassifiedFinding, ScanReport, ScoredUnit, Severity } from '../types.js';
+import { isSecretFinding, redactKnownSecrets, redactSecrets } from './redact.js';
 
-interface TerminalReportOptions {
+export type FailOn = 'critical' | 'high' | 'medium' | 'low' | 'none';
+
+export interface TerminalReportOptions {
+  color: boolean;
+  version: string;
+  mode: 'scan' | 'check';
+  /** Shown in the header exactly as the user typed it. */
+  target: string;
+  failOn: FailOn;
+  /** Absolute scan root, used to print paths relative to it. */
+  root?: string;
   maxFindings?: number;
-  codePreviewLines?: number;
+  showLow?: boolean;
+  /** Returns a file's lines (index 0 = line 1) for code frames, or null. */
+  readLines?: (file: string) => string[] | null;
 }
 
-const c = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  orange: '\x1b[38;5;208m',
-  red: '\x1b[31m',
-  gray: '\x1b[90m',
-  white: '\x1b[97m',
+const ORDER: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+const BLOCKING: Record<FailOn, Severity[]> = {
+  critical: ['CRITICAL'],
+  high: ['CRITICAL', 'HIGH'],
+  medium: ['CRITICAL', 'HIGH', 'MEDIUM'],
+  low: ORDER,
+  none: [],
 };
-
-const severityColor: Record<Severity, string> = {
-  CRITICAL: c.red,
-  HIGH: c.orange,
-  MEDIUM: c.yellow,
-  LOW: c.gray,
+const SEVERITY_COLOR: Record<Severity, string> = {
+  CRITICAL: '\x1b[91m',
+  HIGH: '\x1b[38;5;202m',
+  MEDIUM: '\x1b[33m',
+  LOW: '\x1b[2m',
 };
+const BRAND = '\x1b[38;2;232;122;65m';
+const RESET = '\x1b[0m';
 
-/**
- * Format a ScanReport as a styled ANSI terminal string.
- * Includes section rules, metric rows, severity bar, and finding cards.
- */
-export function formatTerminalReport(report: ScanReport, options: TerminalReportOptions = {}): string {
-  const lines: string[] = [];
-  const summary = report.summary;
-  const maxFindings = Number.isFinite(options.maxFindings) ? Math.max(0, options.maxFindings ?? 0) : Number.POSITIVE_INFINITY;
-  const codePreviewLines = Math.max(1, options.codePreviewLines ?? 8);
-  const securityFindingsTotal = Object.values(summary.findings).reduce((sum, count) => sum + count, 0);
-  const thresholdUsed = summary.calibration?.thresholdUsed;
-  const aiScoreRelation =
-    typeof thresholdUsed === 'number'
-      ? summary.aiScore === thresholdUsed
-        ? 'at threshold'
-        : summary.aiScore < thresholdUsed
-          ? 'below threshold'
-          : 'above threshold'
-      : 'threshold unavailable';
-  const gateReason = summary.blocked
-    ? securityFindingsTotal > 0
-      ? 'blocked (security findings matched block policy)'
-      : `blocked (ai score ${aiScoreRelation})`
-    : securityFindingsTotal === 0
-      ? `pass (no security findings, ai score ${aiScoreRelation})`
-      : `pass (security findings present but below block policy, ai score ${aiScoreRelation})`;
-  const deltaGateContext = summary.delta && !summary.delta.baseline
-    ? `, ${formatSigned(summary.delta.findings.newBySeverity.HIGH + summary.delta.findings.newBySeverity.CRITICAL)} high-risk vs last run`
-    : '';
+export function gateLine(
+  report: ScanReport,
+  failOn: FailOn,
+): { status: 'BLOCKED' | 'PASS' | 'PASS (incomplete)'; detail: string } {
+  const { summary } = report;
+  const coverage = summary.coverage;
+  const incomplete = coverage ? !coverage.complete : false;
 
-  // ── Title ──
-  lines.push('');
-  lines.push(sectionRule('Athena Report'));
-  lines.push('');
-
-  // ── Metrics ──
-  lines.push(metricLine([
-    ['files', String(summary.filesScanned)],
-    ['units', String(summary.totalUnits)],
-    ['ai-flagged units', String(summary.flaggedUnits)],
-    ['duration', `${report.duration}ms`],
-  ]));
-  lines.push(metricLine([
-    ['AI score', `${summary.aiScore}/100`],
-    ['AI%', `${summary.aiPercentage}%`],
-    ['risk', `${summary.riskDensity.findingsPer1kLoc}/1k LOC`],
-    ['gate', summary.blocked ? `${c.red}blocked${c.reset}` : `${c.green}pass${c.reset}`],
-  ]));
-  lines.push(`  ${c.dim}gate reason${c.reset} ${c.white}${gateReason}${deltaGateContext}${c.reset}`);
-  lines.push('');
-
-  if (summary.delta) {
-    lines.push(`  ${c.bold}Delta Since Last Scan${c.reset}`);
-    if (summary.delta.baseline) {
-      lines.push(`  ${c.dim}baseline captured; future scans will show new and resolved findings${c.reset}`);
-    } else {
-      const delta = summary.delta;
-      const riskColor = delta.riskScore.change > 0 ? c.red : delta.riskScore.change < 0 ? c.green : c.gray;
-      lines.push(metricLine([
-        ['new', String(delta.findings.new)],
-        ['resolved', String(delta.findings.resolved)],
-        ['risk delta', `${riskColor}${formatSigned(delta.riskScore.change)}${c.reset}`],
-        ['alert', delta.regressionAlert ? `${c.red}regression${c.reset}` : `${c.green}stable${c.reset}`],
-      ]));
-
-      if (delta.folders.length > 0) {
-        lines.push(`  ${c.dim}folder movement${c.reset} ${delta.folders
-          .map((folder) => `${folder.folder}:${formatSigned(folder.change)}`)
-          .join('   ')}`);
-      }
-    }
-    lines.push('');
+  if (summary.blocked) {
+    const parts = BLOCKING[failOn]
+      .filter((severity) => summary.findings[severity] > 0)
+      .map((severity) => `${summary.findings[severity]} ${severity.toLowerCase()}`);
+    const base = parts.length > 0 ? `${parts.join(' · ')}   (fail-on: ${failOn})` : 'findings matched the block policy';
+    return { status: 'BLOCKED', detail: incomplete ? `${base} · scan incomplete` : base };
   }
+  if (incomplete) return { status: 'PASS (incomplete)', detail: coverage!.gaps.join(' · ') };
 
-  // ── AI-Origin Confidence (separate block) ──
-  if (summary.aiOrigin) {
-    lines.push(`  ${c.bold}AI-Origin Confidence${c.reset}`);
-    lines.push(metricLine([
-      ['score', `${summary.aiOrigin.score}/100`],
-      ['flagged units', String(summary.aiOrigin.flaggedUnits)],
-      ['ratio', `${Math.round(summary.aiOrigin.flagRatio * 100)}%`],
-      ['threshold', String(summary.calibration?.thresholdUsed ?? 'n/a')],
-    ]));
-    lines.push('');
-  }
+  const total = ORDER.reduce((sum, severity) => sum + summary.findings[severity], 0);
+  if (failOn === 'none') return { status: 'PASS', detail: total === 0 ? 'no findings' : `${total} finding(s), fail-on: none` };
+  return { status: 'PASS', detail: `no findings at or above ${failOn}` };
+}
 
-  // ── Weighted signal contributions ──
-  if (summary.weightedContributions && summary.weightedContributions.length > 0) {
-    lines.push(`  ${c.bold}Top Weighted Signals${c.reset}`);
-    lines.push(`  ${summary.weightedContributions
-      .slice(0, 4)
-      .map((item) => `${c.dim}${item.signal}${c.reset} ${c.orange}${item.contribution}%${c.reset}`)
-      .join('   ')}`);
-    lines.push('');
-  }
+export function formatTerminalReport(report: ScanReport, options: TerminalReportOptions): string {
+  const paint = (code: string, text: string) => (options.color ? `${code}${text}${RESET}` : text);
+  const dim = (text: string) => paint('\x1b[2m', text);
+  const bold = (text: string) => paint('\x1b[1m', text);
+  const rel = (file: string) => (options.root ? relative(options.root, file).split('\\').join('/') || file : file);
+  const { summary } = report;
+  const out: string[] = [];
 
-  // ── Security summary (separate block) ──
-  if (summary.security) {
-    lines.push(`  ${c.bold}Security Findings${c.reset}`);
-    lines.push(metricLine([
-      ['critical', String(summary.security.findings.CRITICAL)],
-      ['high', String(summary.security.findings.HIGH)],
-      ['medium', String(summary.security.findings.MEDIUM)],
-      ['low', String(summary.security.findings.LOW)],
-    ]));
-    lines.push('');
-  }
+  out.push(`${paint(BRAND, 'athena')} ${options.version} · ${options.mode} ${options.target} · ${summary.filesScanned} files · ${(report.duration / 1000).toFixed(1)}s`);
+  out.push('');
 
-  // ── Severity ──
-  lines.push(`  ${c.bold}Severity${c.reset}`);
-  lines.push(`  ${severityBar(report)}`);
-  lines.push('');
-
-  // ── Confidence bands ──
-  const bands = summary.confidenceBands;
-  lines.push(metricLine([
-    ['LOW', String(bands.LOW)],
-    ['UNCERTAIN', String(bands.UNCERTAIN)],
-    ['HIGH', String(bands.HIGH)],
-  ]));
-  lines.push('');
+  const gate = gateLine(report, options.failOn);
+  const gateColor = gate.status === 'BLOCKED' ? '\x1b[1;91m' : gate.status === 'PASS' ? '\x1b[1;32m' : '\x1b[1;33m';
+  out.push(` ${paint(gateColor, gate.status)}  ${gate.detail}`);
+  out.push('');
 
   // ── Findings ──
-  const findings = report.files.flatMap((file) => file.findings);
-  if (findings.length === 0) {
-    lines.push(`  ${c.green}✓${c.reset} No findings. Clean scan.`);
-    lines.push('');
-    return lines.join('\n');
+  const all: Array<{ finding: ClassifiedFinding; unit?: ScoredUnit }> = [];
+  for (const file of report.files) {
+    for (const finding of file.findings) all.push({ finding, unit: owningUnit(file.units, finding.line) });
+  }
+  all.sort((a, b) =>
+    ORDER.indexOf(a.finding.severity) - ORDER.indexOf(b.finding.severity)
+    || a.finding.file.localeCompare(b.finding.file)
+    || a.finding.line - b.finding.line);
+
+  const visible = options.showLow ? all : all.filter(({ finding }) => finding.severity !== 'LOW');
+  const hiddenLow = all.length - visible.length;
+  const limit = Number.isFinite(options.maxFindings) ? Math.max(0, options.maxFindings ?? 0) : Number.POSITIVE_INFINITY;
+  const shown = visible.slice(0, limit);
+
+  if (all.length > 0) {
+    out.push(bold('Findings'));
+    for (const { finding, unit } of shown) {
+      const label = paint(SEVERITY_COLOR[finding.severity], finding.severity.padEnd(9));
+      const left = ` ${finding.severity.padEnd(9)} ${finding.type}`;
+      const location = `${rel(finding.file)}:${finding.line}`;
+      out.push(` ${label} ${finding.type}${' '.repeat(Math.max(2, 60 - left.length))}${dim(location)}`);
+      const aiNote = unit && (unit.provenance === 'ai' || unit.provenance === 'mixed' || unit.recorded) ? ' · in AI-estimated code' : '';
+      out.push(`           ${dim(`${finding.ruleId}${aiNote} · id ${finding.id.slice(0, 6)}`)}`);
+      for (const frameLine of codeFrame(finding, options.readLines)) out.push(`           ${frameLine}`);
+    }
+    if (visible.length > shown.length) out.push(dim(` … ${visible.length - shown.length} more (use --max-findings all)`));
+    if (hiddenLow > 0) out.push(dim(` + ${hiddenLow} low (use --show-low)`));
+    out.push('');
   }
 
-  lines.push(sectionRule('Findings'));
-  lines.push('');
+  // ── AI provenance ──
+  const provenance = summary.aiProvenance;
+  if (provenance) {
+    out.push(`${bold('AI provenance')}  (by lines)`);
+    if (provenance.totalLines === 0) {
+      out.push('  no code lines measured');
+    } else {
+      const pct = (lines: number) => Math.round((100 * lines) / provenance.totalLines);
+      const e = provenance.estimated;
+      out.push(provenance.recorded.available
+        ? `  recorded: ${pct(provenance.recorded.lines)}% (floor)`
+        : `  recorded: not available (${provenance.recorded.reason ?? 'unknown'})`);
+      out.push(`  estimated: ${pct(e.aiLines)}–${pct(e.aiLines + e.mixedLines)}%`);
+      out.push(`  uncertain: ${pct(e.uncertainLines)}%`);
+      out.push(`  human (est.): ${pct(e.humanLines)}%`);
+      out.push(dim('  method: heuristic (low confidence) — classifier coming in a later release'));
+      const top = provenance.files
+        .filter((file) => file.aiLines > 0)
+        .slice(0, 3)
+        .map((file) => `${rel(file.path)} ${Math.round((100 * file.aiLines) / Math.max(1, file.lines))}%`);
+      if (top.length > 0) out.push(`  most AI-estimated: ${top.join(' · ')}`);
+    }
+    out.push('');
+  }
 
-  const shownFindings = findings.slice(0, maxFindings);
-  for (const finding of shownFindings) {
-    const sevColor = severityColor[finding.severity];
-    lines.push(`  ${sevColor}● ${finding.severity}${c.reset}  ${c.bold}${finding.type}${c.reset}  ${c.dim}${finding.id}${c.reset}`);
-    lines.push(`    ${c.orange}${finding.file}:${finding.line}${c.reset}  ${c.dim}source=${finding.source}${c.reset}  ${c.dim}ai=${finding.aiScore}${c.reset}`);
-    lines.push(`    ${c.dim}${finding.message}${c.reset}`);
-
-    const snippet = formatCodeSnippet(finding.code, codePreviewLines);
-    if (snippet.length > 0) {
-      lines.push(`    ${c.dim}code:${c.reset}`);
-      for (const line of snippet) {
-        lines.push(`      ${c.white}${line}${c.reset}`);
+  // ── Coverage ──
+  const coverage = summary.coverage;
+  if (coverage) {
+    out.push(bold('Coverage'));
+    const considered = coverage.files.filter((file) => file.status !== 'skipped-excluded');
+    const excluded = coverage.files.length - considered.length;
+    const marker = considered.every((file) => file.status === 'analyzed') ? '✓' : '!';
+    out.push(`  ${marker} ${considered.filter((f) => f.status === 'analyzed').length}/${considered.length} files analyzed${excluded > 0 ? ` · ${excluded} excluded by config` : ''}`);
+    for (const gap of coverage.gaps.filter((g) => !/ (unavailable|failed)$/.test(g))) {
+      out.push(`  ! ${gap}`);
+      const status = gap.includes('not parsed') ? 'parse-failed' : gap.includes('skipped') ? 'skipped-size' : 'missing';
+      for (const file of coverage.files.filter((f) => f.status === status).slice(0, 3)) {
+        out.push(dim(`      ${rel(file.path)}${file.reason ? ` (${file.reason})` : ''}`));
       }
     }
+    const checks = coverage.checks
+      .filter((check) => check.status !== 'disabled' && !(check.name === 'recorded-provenance' && check.status === 'unavailable'))
+      .map((check) => {
+        if (check.status === 'ran') return `✓ ${check.name}${check.detail ? ` (${check.detail})` : ''}`;
+        if (check.status === 'unavailable') return `! ${check.name} unavailable → athena doctor`;
+        return `! ${check.name} failed`;
+      });
+    if (checks.length > 0) out.push(`  ${checks.join('   ')}`);
+    out.push('');
+  }
 
-    if (finding.explainedScore.topSignals.length > 0) {
-      const signals = finding.explainedScore.topSignals
-        .map((s) => `${s.signal}:${c.orange}${s.contribution}%${c.reset}`)
-        .join('  ');
-      lines.push(`    ${c.dim}signals:${c.reset} ${signals}`);
+  // ── Delta ──
+  const delta = summary.delta;
+  if (delta && !delta.baseline) {
+    const parts: string[] = [];
+    for (const severity of ORDER) {
+      if (delta.findings.newBySeverity[severity] > 0) parts.push(`+${delta.findings.newBySeverity[severity]} ${severity.toLowerCase()}`);
     }
-
-    lines.push('');
+    for (const severity of ORDER) {
+      if (delta.findings.resolvedBySeverity[severity] > 0) parts.push(`−${delta.findings.resolvedBySeverity[severity]} ${severity.toLowerCase()}`);
+    }
+    out.push(`Since last scan: ${parts.length > 0 ? parts.join(' · ') : 'no change'}`);
+    out.push('');
   }
 
-  if (findings.length > shownFindings.length) {
-    lines.push(`  ${c.dim}… ${findings.length - shownFindings.length} more findings omitted${c.reset}`);
-    lines.push(`  ${c.dim}tip: rerun with --max-findings all to print every finding${c.reset}`);
-    lines.push('');
+  if (shown.length > 0) {
+    const where = options.mode === 'scan' && options.target !== '.'
+      ? ` --path ${/\s/.test(options.target) ? JSON.stringify(options.target) : options.target}`
+      : '';
+    out.push(`Next: athena explain ${shown[0].finding.id.slice(0, 6)}${where}`);
   }
 
-  return lines.join('\n');
+  return out.join('\n').replace(/\n+$/, '') + '\n';
 }
 
-/** Inline section rule with title: ── Title ──────────── */
-function sectionRule(title: string): string {
-  const ruleWidth = Math.max(48, title.length + 10);
-  const dashCount = ruleWidth - title.length - 5;
-  return `  ${c.orange}──${c.reset} ${c.bold}${title}${c.reset} ${c.orange}${'─'.repeat(dashCount)}${c.reset}`;
+function owningUnit(units: ScoredUnit[], line: number): ScoredUnit | undefined {
+  return units
+    .filter((u) => line >= u.unit.startLine && line <= u.unit.endLine)
+    .sort((a, b) => (a.unit.endLine - a.unit.startLine) - (b.unit.endLine - b.unit.startLine))[0];
 }
 
-/** Row of label:value pairs with dim labels and bright values. */
-function metricLine(metrics: [string, string][]): string {
-  return '  ' + metrics
-    .map(([label, value]) => `${c.dim}${label}${c.reset} ${c.white}${value}${c.reset}`)
-    .join('   ');
-}
-
-/** Visual severity distribution bar, only showing non-zero counts. */
-function severityBar(report: ScanReport): string {
-  const total = Object.values(report.summary.findings).reduce((sum, count) => sum + count, 0);
-  if (total === 0) return `${c.green}████████████${c.reset} ${c.dim}clean${c.reset}`;
-
-  return (['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Severity[])
-    .filter((severity) => report.summary.findings[severity] > 0)
-    .map((severity) => {
-      const count = report.summary.findings[severity];
-      const width = Math.max(2, Math.round((count / total) * 16));
-      return `${severityColor[severity]}${'█'.repeat(width)}${c.reset} ${severity}:${count}`;
-    })
-    .join('  ');
-}
-
-function formatCodeSnippet(code: string, maxLines: number): string[] {
-  return code
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => line.trim().length > 0)
-    .slice(0, maxLines);
-}
-
-function formatSigned(value: number): string {
-  if (value > 0) return `+${value}`;
-  return String(value);
+function codeFrame(finding: ClassifiedFinding, readLines?: (file: string) => string[] | null): string[] {
+  const lines = readLines?.(finding.file);
+  if (!lines || lines.length === 0) return [];
+  const from = Math.max(1, finding.line - 1);
+  const to = Math.min(lines.length, finding.line + 1);
+  const width = String(to).length;
+  const secret = isSecretFinding(finding);
+  const frame: string[] = [];
+  for (let n = from; n <= to; n += 1) {
+    const text = secret ? redactSecrets(lines[n - 1]) : redactKnownSecrets(lines[n - 1]);
+    frame.push(`${n === finding.line ? '>' : ' '} ${String(n).padStart(width)} │ ${text.trimEnd()}`);
+  }
+  return frame;
 }

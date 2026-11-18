@@ -11,11 +11,26 @@ const supportedScriptKinds: Record<string, ts.ScriptKind> = {
 };
 
 export async function parseFile(filePath: string): Promise<CodeUnit[]> {
-  const source = await readFile(filePath, 'utf8');
-  return parseSource(filePath, source);
+  return (await parseFileDetailed(filePath)).units;
+}
+
+/** Like parseFile, but reports a read error or the first parse diagnostic instead of hiding it. */
+export async function parseFileDetailed(filePath: string): Promise<{ units: CodeUnit[]; error?: string }> {
+  let source: string;
+  try {
+    source = await readFile(filePath, 'utf8');
+  } catch (error) {
+    return { units: [], error: error instanceof Error ? error.message : String(error) };
+  }
+  const { units, error } = parseSourceDetailed(filePath, source);
+  return error ? { units, error } : { units };
 }
 
 export function parseSource(filePath: string, source: string): CodeUnit[] {
+  return parseSourceDetailed(filePath, source).units;
+}
+
+function parseSourceDetailed(filePath: string, source: string): { units: CodeUnit[]; error?: string } {
   const scriptKind = supportedScriptKinds[filePath.match(/\.[^.]+$/)?.[0] ?? '.ts'] ?? ts.ScriptKind.TS;
   const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, scriptKind);
   const units: CodeUnit[] = [];
@@ -29,7 +44,13 @@ export function parseSource(filePath: string, source: string): CodeUnit[] {
   }
 
   visit(sourceFile);
-  return units;
+
+  const diagnostics = (sourceFile as unknown as { parseDiagnostics?: ts.Diagnostic[] }).parseDiagnostics ?? [];
+  const first = diagnostics[0];
+  if (!first) return { units };
+  const line = first.start === undefined ? undefined : sourceFile.getLineAndCharacterOfPosition(first.start).line + 1;
+  const message = ts.flattenDiagnosticMessageText(first.messageText, ' ');
+  return { units, error: line === undefined ? message : `${message} (line ${line})` };
 }
 
 function createUnit(node: ts.Node, sourceFile: ts.SourceFile, source: string, filePath: string): CodeUnit | null {

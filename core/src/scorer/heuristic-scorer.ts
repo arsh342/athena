@@ -1,4 +1,4 @@
-import type { AthenaConfig, CodeUnit, ConfidenceBand, ExplainedScore, ScoredUnit, SignalResult } from '../types.js';
+import type { AthenaConfig, CodeUnit, ConfidenceBand, ExplainedScore, ScoredUnit, SignalResult, UnitProvenance } from '../types.js';
 import { scoreBurstiness } from '../analyzers/burstiness-analyzer.js';
 import { scorePerplexity } from '../analyzers/perplexity-analyzer.js';
 
@@ -40,14 +40,24 @@ export function scoreUnit(unit: CodeUnit, config: AthenaConfig): ScoredUnit {
   const raw = signals.reduce((sum, signal) => sum + signal.score, 0);
   const score = Math.round((raw / max) * 100);
   const explained = explain(score, signals);
+  const provenance = heuristicProvenance(score, config.threshold);
 
   return {
     unit,
     score,
     signals,
-    flagged: score >= config.threshold,
+    flagged: provenance === 'ai' || provenance === 'mixed',
     explained,
+    provenance,
+    recorded: false,
   };
+}
+
+/** Heuristic fallback: >= 70 is ai, >= threshold uncertain, otherwise human. */
+export function heuristicProvenance(score: number, threshold: number): UnitProvenance {
+  if (score >= 70) return 'ai';
+  if (score >= threshold) return 'uncertain';
+  return 'human';
 }
 
 function signal(signal: string, score: number, maxWeight: number, evidence: string): SignalResult {

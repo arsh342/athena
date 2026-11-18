@@ -41,6 +41,21 @@ export interface Finding {
   topSignals: SignalContribution[];
 }
 
+export interface AiProvenanceSummary {
+  unit: 'lines';
+  totalLines: number;
+  recorded: { lines: number; available: boolean; reason?: string };
+  estimated: { method: 'heuristic'; aiLines: number; mixedLines: number; uncertainLines: number; humanLines: number };
+  topFiles: Array<{ path: string; lines: number; recordedLines: number; aiLines: number; mixedLines: number; uncertainLines: number }>;
+}
+
+export interface CoverageSummary {
+  complete: boolean;
+  gaps: string[];
+  analyzedFiles: number;
+  totalFiles: number;
+}
+
 export interface ScanSummary {
   scanId: string;
   repoName: string;
@@ -58,6 +73,9 @@ export interface ScanSummary {
     flaggedRatio: number;
   };
   duration: number;
+  /** Null or missing for scans saved before provenance was measured. */
+  aiProvenance?: AiProvenanceSummary | null;
+  coverage?: CoverageSummary | null;
 }
 
 export interface LandingStat {

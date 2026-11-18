@@ -2,11 +2,13 @@ import { stat } from 'node:fs/promises';
 import { mergeConfig } from './config.js';
 import { analyzeSecurity } from './analyzers/security-analyzer.js';
 import { runSemgrep } from './analyzers/semgrep-adapter.js';
-import { parseFile } from './parser/ast-parser.js';
+import { parseFileDetailed } from './parser/ast-parser.js';
 import { generateReport } from './report/report-generator.js';
 import { scoreUnit } from './scorer/heuristic-scorer.js';
-import { scannerRegistry } from './scanner-registry.js';
-import type { AthenaConfig, ExplainedScore, FileReport, ScoredUnit, ScanReport, Severity } from './types.js';
+import { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
+import { recordedAiLines, type RecordedRepo } from './provenance/git-recorded.js';
+import { scannerRegistry, type ScannerRegistry } from './scanner-registry.js';
+import type { AthenaConfig, CheckCoverage, ExplainedScore, FileCoverage, FileReport, ScanCoverage, ScoredUnit, ScanReport, Severity } from './types.js';
 
 export interface ScanProgressEvent {
   phase:
@@ -28,10 +30,20 @@ interface ScanHooks {
   onScannerStage?: (event: ScanProgressEvent) => void;
 }
 
+export interface ScanFilesOptions {
+  /** Project root for external scanners. Defaults to process.cwd(). */
+  root?: string;
+  /** Files discovered but excluded by configuration; listed in coverage, never a gap. */
+  excludedFiles?: string[];
+  recordedProvenance?: boolean;
+  registry?: ScannerRegistry;
+}
+
 export async function scanFiles(
   filePaths: string[],
   configInput: Partial<AthenaConfig> = {},
   hooks: ScanHooks = {},
+  options: ScanFilesOptions = {},
 ): Promise<ScanReport> {
   const startedAt = Date.now();
   const config = mergeConfig(configInput);
@@ -40,6 +52,8 @@ export async function scanFiles(
   let skippedFiles = 0;
   const totalFiles = filePaths.length;
   let processedFiles = 0;
+  const fileCoverage: FileCoverage[] = [];
+  const registry = options.registry ?? scannerRegistry;
 
   hooks.onFileProgress?.({
     phase: 'prepare',
@@ -65,6 +79,7 @@ export async function scanFiles(
 
     const fileStat = await stat(filePath).catch(() => null);
     if (!fileStat) {
+      fileCoverage.push({ path: filePath, status: 'missing', reason: 'file not found' });
       processedFiles += 1;
       hooks.onFileProgress?.({
         phase: 'files',
@@ -79,6 +94,7 @@ export async function scanFiles(
 
     if (fileStat.size > config.maxFileSize) {
       skippedFiles += 1;
+      fileCoverage.push({ path: filePath, status: 'skipped-size', reason: `larger than ${config.maxFileSize} bytes` });
       processedFiles += 1;
       hooks.onFileProgress?.({
         phase: 'files',
@@ -102,7 +118,10 @@ export async function scanFiles(
       detail: 'running secret + hallucination analyzers',
     });
 
-    const units = await parseFile(filePath).catch(() => []);
+    const { units, error: parseError } = await parseFileDetailed(filePath);
+    fileCoverage.push(parseError
+      ? { path: filePath, status: 'parse-failed', reason: parseError }
+      : { path: filePath, status: 'analyzed' });
     const scoredUnits = units.map((unit) => scoreUnit(unit, config));
     const findings = scoredUnits.flatMap((scored) => analyzeSecurity(scored, config));
     totalLoc += units.reduce((sum, unit) => sum + unit.metadata.loc, 0);
@@ -125,8 +144,24 @@ export async function scanFiles(
     });
   }
 
+  const projectRoot = options.root ?? process.cwd();
+  const recorded: RecordedRepo = options.recordedProvenance === false
+    ? { available: false, reason: 'disabled', files: new Map() }
+    : await recordedAiLines(projectRoot, files.map((file) => file.path));
+  markRecordedUnits(files, recorded);
+
   // Run external scanners using the scanner registry
-  const projectRoot = process.cwd();
+  const scannerOutcome = new Map<string, CheckCoverage['status']>();
+  const trackStage: ScanHooks['onScannerStage'] = (event) => {
+    const detail = event.detail ?? '';
+    const unavailable = detail.match(/^(\S+) unavailable$/);
+    const complete = detail.match(/^(\S+) complete$/);
+    const failed = detail.match(/^(\S+) failed$/);
+    if (unavailable) scannerOutcome.set(unavailable[1], 'unavailable');
+    else if (complete) scannerOutcome.set(complete[1], 'ran');
+    else if (failed) scannerOutcome.set(failed[1], 'failed');
+    hooks.onScannerStage?.(event);
+  };
   hooks.onScannerStage?.({
     phase: 'external-scanners',
     filePath: '',
@@ -136,7 +171,7 @@ export async function scanFiles(
     findings: 0,
     detail: 'starting external scanners',
   });
-  const externalFindings = await scannerRegistry.runEnabledScanners(filePaths, projectRoot, config, hooks.onScannerStage);
+  const externalFindings = await registry.runEnabledScanners(filePaths, projectRoot, config, trackStage);
 
   // Merge external findings into file reports
   if (externalFindings.length > 0) {
@@ -186,7 +221,54 @@ export async function scanFiles(
     detail: 'assembling final report',
   });
 
-  return generateReport(startedAt, files, totalLoc, skippedFiles, config);
+  for (const excluded of options.excludedFiles ?? []) {
+    fileCoverage.push({ path: excluded, status: 'skipped-excluded', reason: 'excluded by configuration' });
+  }
+  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded);
+
+  return generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded));
+}
+
+function buildCoverage(
+  files: FileCoverage[],
+  config: AthenaConfig,
+  registry: ScannerRegistry,
+  scannerOutcome: Map<string, CheckCoverage['status']>,
+  recorded: RecordedRepo,
+): ScanCoverage {
+  const checks: CheckCoverage[] = [
+    { name: 'secrets', status: config.secretDetection ? 'ran' : 'disabled' },
+    { name: 'hallucination', status: config.hallucinationDetection ? 'ran' : 'disabled' },
+    { name: 'ai-provenance', status: 'ran', detail: 'heuristic' },
+    recorded.reason === 'disabled'
+      ? { name: 'recorded-provenance', status: 'disabled' }
+      : recorded.available
+        ? { name: 'recorded-provenance', status: 'ran' }
+        : { name: 'recorded-provenance', status: 'unavailable', detail: recorded.reason },
+  ];
+  for (const scanner of registry.getAllScanners()) {
+    const scannerConfig = config[scanner.name as keyof AthenaConfig] as { enabled?: boolean } | undefined;
+    if (!scannerConfig || typeof scannerConfig !== 'object' || !scannerConfig.enabled) {
+      checks.push({ name: scanner.name, status: 'disabled' });
+    } else {
+      checks.push({ name: scanner.name, status: scannerOutcome.get(scanner.name) ?? 'failed' });
+    }
+  }
+
+  const count = (status: FileCoverage['status']) => files.filter((f) => f.status === status).length;
+  const gaps: string[] = [];
+  if (count('parse-failed') > 0) gaps.push(`${count('parse-failed')} file(s) not parsed`);
+  if (count('skipped-size') > 0) gaps.push(`${count('skipped-size')} file(s) skipped: larger than ${config.maxFileSize} bytes`);
+  if (count('missing') > 0) gaps.push(`${count('missing')} file(s) missing`);
+  for (const check of checks) {
+    // Recorded provenance depends on the input (not a git repo, shallow clone); shown in its own section.
+    if (check.status === 'unavailable' && check.name !== 'recorded-provenance') gaps.push(`${check.name} unavailable`);
+  }
+  for (const check of checks) {
+    if (check.status === 'failed') gaps.push(`${check.name} failed`);
+  }
+
+  return { files, checks, complete: gaps.length === 0, gaps };
 }
 
 function selectUnitForLine(units: ScoredUnit[], line: number): ScoredUnit | null {

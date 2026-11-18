@@ -2,7 +2,7 @@
 
 **AI Code Provenance Tracker** — detect AI-generated code and run targeted security analysis on JavaScript and TypeScript repositories.
 
-Athena identifies likely AI-generated sections in your codebase using an 11-signal heuristic scorer and runs multi-engine security analysis on flagged code. It operates as both a **CLI tool** (pre-commit scanning) and a **web platform** (GitHub repo scanner with live terminal streaming).
+Athena identifies likely AI-generated sections in your codebase using git history and a style heuristic (labelled low confidence) and runs multi-engine security analysis on flagged code. It operates as both a **CLI tool** (pre-commit scanning) and a **web platform** (GitHub repo scanner with live terminal streaming).
 
 ---
 
@@ -22,7 +22,7 @@ Athena specifically targets these risks by identifying AI-generated code section
 ## Features
 
 ### Core Analysis Engine
-- **11-signal heuristic scorer** — detects AI-generated code using naming entropy, comment patterns, boilerplate detection, perplexity analysis, burstiness scoring, and more
+- **AI provenance by lines** — *recorded* (git co-author trailers and agent authors, a floor) plus a *heuristic estimate* from style signals, always reported as a range with its method
 - **AST parsing** via the TypeScript Compiler API — no Babel dependency
 - **Multi-engine security scanning:**
   - Secret detection (regex + Shannon entropy)
@@ -138,7 +138,15 @@ npx @arsh342/athena scan .
 # Or install globally
 npm install -g @arsh342/athena
 athena scan /path/to/repo
+
+# CI-friendly: JSON or SARIF on stdout, exit codes 0 pass / 1 blocked / 3 incomplete (--strict)
+athena scan . --format sarif --output athena.sarif --fail-on high --strict
+
+athena explain <finding-id>    # why it matters and how to fix
+athena provenance .            # how much code was written by AI, per file
 ```
+
+See [cli/README.md](cli/README.md) for all options.
 
 ---
 
@@ -149,7 +157,8 @@ athena scan /path/to/repo
 The shared scanning library used by both the CLI and backend.
 
 - `engine.ts` — orchestrates the full scan pipeline
-- `scorer/heuristic-scorer.ts` — 11-signal AI detection scorer
+- `scorer/heuristic-scorer.ts` — heuristic style scorer (fallback estimate)
+- `provenance/` — recorded AI provenance from git and line-based aggregation
 - `parser/ast-parser.ts` — TypeScript AST code unit extraction
 - `analyzers/` — security scanner adapters (Semgrep, ESLint, npm audit, Bearer, NodeJSScan, secret detection, hallucination detection)
 - `scanner-registry.ts` — plugin registry for external scanners

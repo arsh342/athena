@@ -93,7 +93,8 @@ export async function runNpmAudit(projectRoot: string, config: NpmAuditConfig): 
 
     const detail = withStreams?.stderr?.trim() || withStreams?.message || String(error);
     console.warn(`[athena-core] npm audit execution failed: ${detail}`);
-    return [];
+    // Rethrow so the registry reports this check as failed instead of "ran".
+    throw new Error(`npm audit execution failed: ${detail}`);
   }
 }
 

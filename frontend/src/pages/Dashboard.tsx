@@ -4,6 +4,7 @@ import { ScoreGauge } from '../components/ScoreGauge';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { fetchScans } from '../services/api';
 import { getDashboardEmptyState } from '../utils/dashboard';
+import { formatProvenance } from '../utils/provenance';
 import type { ScanSummary } from '../types';
 
 export function Dashboard() {
@@ -94,7 +95,7 @@ export function Dashboard() {
                   <small>{scan.createdAt}</small>
                 </span>
                 <span>{scan.filesScanned} files</span>
-                <span>{scan.aiPercentage}% AI</span>
+                <span>{formatProvenance(scan)}</span>
                 <span>{scan.flaggedUnits} flagged</span>
                 <span className={`status status-${scan.status.toLowerCase()}`}>{scan.status}</span>
               </Link>

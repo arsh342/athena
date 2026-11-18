@@ -6,7 +6,7 @@ export const c = {
   italic: '\x1b[3m',
   inverse: '\x1b[7m',
 
-  red: '\x1b[38;2;232;122;65m',
+  red: '\x1b[91m',
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
@@ -29,3 +29,14 @@ export const c = {
   /** ATHENA logo glyph color matches site dark bg (#0f0f0f). */
   bannerFg: '\x1b[38;2;15;15;15m',
 } as const;
+
+/** Colour only on a TTY, never with NO_COLOR (any value, even empty) or --no-color. */
+export function shouldUseColor(
+  stream: { isTTY?: boolean },
+  flag: boolean | undefined,
+  env: NodeJS.ProcessEnv,
+): boolean {
+  if (flag === false) return false;
+  if (env.NO_COLOR !== undefined) return false;
+  return Boolean(stream.isTTY);
+}

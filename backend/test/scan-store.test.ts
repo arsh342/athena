@@ -160,8 +160,10 @@ test('getScans and getScan return persisted summaries for one user', async () =>
     const scan = await getScan('scan-one', 7);
 
     assert.equal(scans.length, 1);
-    assert.deepEqual(scans[0], createScan('scan-one'));
-    assert.deepEqual(scan, createScan('scan-one'));
+    // Rows saved before provenance was measured map the new columns to null.
+    const expected = { ...createScan('scan-one'), aiProvenance: null, coverage: null };
+    assert.deepEqual(scans[0], expected);
+    assert.deepEqual(scan, expected);
   });
 });
 

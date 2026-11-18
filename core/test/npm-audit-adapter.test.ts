@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import { normalizeNpmAuditOutput } from '../src/analyzers/npm-audit-adapter.js';
+import test, { describe, it } from 'node:test';
+import { normalizeNpmAuditOutput, runNpmAudit } from '../src/analyzers/npm-audit-adapter.js';
 
 describe('npm-audit-adapter', () => {
   const projectRoot = '/tmp/athena-test';
@@ -108,4 +108,8 @@ describe('npm-audit-adapter', () => {
     assert.equal(findings[0]?.severity, 'LOW');
     assert.equal(findings[0]?.ruleId, 'npm-audit:404');
   });
+});
+
+test('runNpmAudit rethrows unexpected execution failures so coverage reports failed', async () => {
+  await assert.rejects(() => runNpmAudit(new URL('../package.json', import.meta.url).pathname, { enabled: true, timeoutMs: 5000 }));
 });

@@ -82,7 +82,8 @@ export async function runBearer(projectRoot: string, config: BearerConfig): Prom
 
     const detail = withStreams?.stderr?.trim() || withStreams?.message || String(error);
     console.warn(`[athena-core] Bearer execution failed: ${detail}`);
-    return [];
+    // Rethrow so the registry reports this check as failed instead of "ran".
+    throw new Error(`Bearer execution failed: ${detail}`);
   }
 }
 
