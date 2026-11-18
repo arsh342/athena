@@ -58,6 +58,8 @@ function createEmptyScan(scanId: string, repoName: string, repoUrl: string, stat
     findings: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
     riskDensity: { findingsPer1kLoc: 0, criticalPer1kLoc: 0, flaggedRatio: 0 },
     duration: 0,
+    aiProvenance: null,
+    coverage: null,
   };
 }
 
@@ -119,7 +121,7 @@ function mapFinding(finding: ClassifiedFinding): Finding {
 }
 
 /** Map core ScanReport to API ScanSummary shape. */
-function mapScanSummary(report: ScanReport, scanId: string, repoName: string, repoUrl: string): ScanSummary {
+export function mapScanSummary(report: ScanReport, scanId: string, repoName: string, repoUrl: string): ScanSummary {
   return {
     scanId,
     repoName,
@@ -133,6 +135,27 @@ function mapScanSummary(report: ScanReport, scanId: string, repoName: string, re
     findings: report.summary.findings,
     riskDensity: report.summary.riskDensity,
     duration: report.duration,
+    aiProvenance: toProvenanceSummary(report),
+    coverage: toCoverageSummary(report),
+  };
+}
+
+function toProvenanceSummary(report: ScanReport): ScanSummary['aiProvenance'] {
+  const provenance = report.summary.aiProvenance;
+  if (!provenance) return null;
+  const { files, ...rest } = provenance;
+  return { ...rest, topFiles: files.slice(0, 5) };
+}
+
+function toCoverageSummary(report: ScanReport): ScanSummary['coverage'] {
+  const coverage = report.summary.coverage;
+  if (!coverage) return null;
+  const considered = coverage.files.filter((file) => file.status !== 'skipped-excluded');
+  return {
+    complete: coverage.complete,
+    gaps: coverage.gaps,
+    analyzedFiles: considered.filter((file) => file.status === 'analyzed').length,
+    totalFiles: considered.length,
   };
 }
 
@@ -272,7 +295,7 @@ async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: strin
   processWithMutableCwd.cwd = () => projectRoot;
 
   try {
-    return await scanFiles(sourceFiles);
+    return await scanFiles(sourceFiles, {}, {}, { root: projectRoot });
   } finally {
     processWithMutableCwd.cwd = originalCwd;
   }

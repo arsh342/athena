@@ -75,6 +75,9 @@ export async function ensureAuthSchema(): Promise<void> {
     );
   `);
 
+  await db.query(`ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_provenance JSONB;`);
+  await db.query(`ALTER TABLE scans ADD COLUMN IF NOT EXISTS coverage JSONB;`);
+
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_scans_user_created_at ON scans(user_id, created_at DESC);
   `);

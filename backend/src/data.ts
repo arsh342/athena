@@ -14,6 +14,21 @@ export type FindingSource =
   | 'trivy'
   | 'horusec';
 
+export interface AiProvenanceSummary {
+  unit: 'lines';
+  totalLines: number;
+  recorded: { lines: number; available: boolean; reason?: string };
+  estimated: { method: 'heuristic'; aiLines: number; mixedLines: number; uncertainLines: number; humanLines: number };
+  topFiles: Array<{ path: string; lines: number; recordedLines: number; aiLines: number; mixedLines: number; uncertainLines: number }>;
+}
+
+export interface CoverageSummary {
+  complete: boolean;
+  gaps: string[];
+  analyzedFiles: number;
+  totalFiles: number;
+}
+
 export interface ScanSummary {
   scanId: string;
   repoName: string;
@@ -31,6 +46,9 @@ export interface ScanSummary {
     flaggedRatio: number;
   };
   duration: number;
+  /** Null for scans saved before provenance was measured. */
+  aiProvenance?: AiProvenanceSummary | null;
+  coverage?: CoverageSummary | null;
 }
 
 export interface RunningScanSummary extends ScanSummary {
@@ -98,6 +116,8 @@ interface ScanSummaryRow {
   findings: ScanSummary['findings'];
   risk_density: ScanSummary['riskDensity'];
   duration: number;
+  ai_provenance?: AiProvenanceSummary | null;
+  coverage?: CoverageSummary | null;
 }
 
 interface FindingRow {
@@ -140,6 +160,8 @@ function mapScanSummaryRow(row: ScanSummaryRow): ScanSummary {
     findings: row.findings,
     riskDensity: row.risk_density,
     duration: row.duration,
+    aiProvenance: row.ai_provenance ?? null,
+    coverage: row.coverage ?? null,
   };
 }
 
@@ -178,7 +200,8 @@ export function getScans(userId?: number | string): ScanSummary[] | Promise<Scan
   return db.query<ScanSummaryRow>(
     `
       SELECT scan_id, repo_name, repo_url, status, created_at, ai_percentage,
-             flagged_units, files_scanned, total_units, findings, risk_density, duration
+             flagged_units, files_scanned, total_units, findings, risk_density, duration,
+             ai_provenance, coverage
       FROM scans
       WHERE user_id = $1
       ORDER BY created_at DESC
@@ -198,7 +221,8 @@ export function getScan(scanId: string, userId?: number | string): ScanSummary |
   return db.query<ScanSummaryRow>(
     `
       SELECT scan_id, repo_name, repo_url, status, created_at, ai_percentage,
-             flagged_units, files_scanned, total_units, findings, risk_density, duration
+             flagged_units, files_scanned, total_units, findings, risk_density, duration,
+             ai_provenance, coverage
       FROM scans
       WHERE scan_id = $1 AND user_id = $2
       LIMIT 1
@@ -319,9 +343,9 @@ export function addScan(
           INSERT INTO scans (
             scan_id, user_id, repo_name, repo_url, status, created_at,
             ai_percentage, flagged_units, files_scanned, total_units,
-            findings, risk_density, duration
+            findings, risk_density, duration, ai_provenance, coverage
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14::jsonb, $15::jsonb)
         `,
         [
           scan.scanId,
@@ -337,6 +361,8 @@ export function addScan(
           JSON.stringify(scan.findings),
           JSON.stringify(scan.riskDensity),
           scan.duration,
+          scan.aiProvenance ? JSON.stringify(scan.aiProvenance) : null,
+          scan.coverage ? JSON.stringify(scan.coverage) : null,
         ],
       );
 
@@ -385,9 +411,9 @@ export async function createRunningScan(userId: number | string, scan: RunningSc
       INSERT INTO scans (
         scan_id, user_id, repo_name, repo_url, status, created_at,
         ai_percentage, flagged_units, files_scanned, total_units,
-        findings, risk_density, duration
+        findings, risk_density, duration, ai_provenance, coverage
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14::jsonb, $15::jsonb)
     `,
     [
       scan.scanId,
@@ -403,6 +429,8 @@ export async function createRunningScan(userId: number | string, scan: RunningSc
       JSON.stringify(scan.findings),
       JSON.stringify(scan.riskDensity),
       scan.duration,
+      scan.aiProvenance ? JSON.stringify(scan.aiProvenance) : null,
+      scan.coverage ? JSON.stringify(scan.coverage) : null,
     ],
   );
 }

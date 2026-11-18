@@ -24,8 +24,13 @@ create table if not exists public.scans (
   total_units integer not null,
   findings jsonb not null,
   risk_density jsonb not null,
-  duration integer not null
+  duration integer not null,
+  ai_provenance jsonb,
+  coverage jsonb
 );
+
+alter table public.scans add column if not exists ai_provenance jsonb;
+alter table public.scans add column if not exists coverage jsonb;
 
 create table if not exists public.scan_findings (
   id bigserial primary key,
