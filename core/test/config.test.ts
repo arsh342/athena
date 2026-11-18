@@ -25,6 +25,6 @@ test('mergeConfig overrides top-level and weight values without mutating default
   assert.equal(merged.weights.commentRatio, 3);
   assert.equal(merged.weights.burstiness, defaultWeights.burstiness);
 
-  assert.equal(defaultConfig.threshold, 9);
+  assert.equal(defaultConfig.threshold, 40);
   assert.equal(defaultWeights.genericNames, 15);
 });

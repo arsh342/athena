@@ -17,7 +17,7 @@ export const defaultWeights = {
 };
 
 export const defaultConfig: AthenaConfig = {
-  threshold: 9,
+  threshold: 40,
   blockOn: ['CRITICAL', 'HIGH'],
   exclude: ['node_modules/', 'dist/', 'build/', '.git/', 'coverage/', 'test/', 'tests/', '__tests__/'],
   secretDetection: true,

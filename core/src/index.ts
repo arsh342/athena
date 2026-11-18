@@ -2,7 +2,7 @@ export { mergeConfig, defaultConfig, defaultWeights } from './config.js';
 export { scanFiles } from './engine.js';
 export type { ScanProgressEvent } from './engine.js';
 export { parseFile, parseSource } from './parser/ast-parser.js';
-export { scoreUnit } from './scorer/heuristic-scorer.js';
+export { scoreUnit, heuristicProvenance } from './scorer/heuristic-scorer.js';
 export { analyzeSecurity } from './analyzers/security-analyzer.js';
 export { formatJsonl } from './report/report-generator.js';
 export { formatTerminalReport } from './report/terminal-formatter.js';
@@ -25,4 +25,11 @@ export type {
   BearerConfig,
   Severity,
   SignalResult,
+  UnitProvenance,
+  FileCoverageStatus,
+  CheckStatus,
+  FileCoverage,
+  CheckCoverage,
+  ScanCoverage,
+  AiProvenance,
 } from './types.js';
