@@ -38,3 +38,4 @@ export { recordedAiLines } from './provenance/git-recorded.js';
 export type { RecordedFile, RecordedRepo } from './provenance/git-recorded.js';
 export { isAiCommit, AI_BOT_LOGINS, AI_IDENTITY_PATTERNS, AI_TRAILER_KEYS } from './provenance/ai-markers.js';
 export type { CommitMeta } from './provenance/ai-markers.js';
+export { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';

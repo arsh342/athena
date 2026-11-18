@@ -5,6 +5,8 @@ import { runSemgrep } from './analyzers/semgrep-adapter.js';
 import { parseFileDetailed } from './parser/ast-parser.js';
 import { generateReport } from './report/report-generator.js';
 import { scoreUnit } from './scorer/heuristic-scorer.js';
+import { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
+import { recordedAiLines, type RecordedRepo } from './provenance/git-recorded.js';
 import { scannerRegistry, type ScannerRegistry } from './scanner-registry.js';
 import type { AthenaConfig, CheckCoverage, ExplainedScore, FileCoverage, FileReport, ScanCoverage, ScoredUnit, ScanReport, Severity } from './types.js';
 
@@ -142,8 +144,13 @@ export async function scanFiles(
     });
   }
 
-  // Run external scanners using the scanner registry
   const projectRoot = options.root ?? process.cwd();
+  const recorded: RecordedRepo = options.recordedProvenance === false
+    ? { available: false, reason: 'disabled', files: new Map() }
+    : await recordedAiLines(projectRoot, files.map((file) => file.path));
+  markRecordedUnits(files, recorded);
+
+  // Run external scanners using the scanner registry
   const scannerOutcome = new Map<string, CheckCoverage['status']>();
   const trackStage: ScanHooks['onScannerStage'] = (event) => {
     const detail = event.detail ?? '';
@@ -217,9 +224,9 @@ export async function scanFiles(
   for (const excluded of options.excludedFiles ?? []) {
     fileCoverage.push({ path: excluded, status: 'skipped-excluded', reason: 'excluded by configuration' });
   }
-  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome);
+  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded);
 
-  return generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage);
+  return generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded));
 }
 
 function buildCoverage(
@@ -227,12 +234,17 @@ function buildCoverage(
   config: AthenaConfig,
   registry: ScannerRegistry,
   scannerOutcome: Map<string, CheckCoverage['status']>,
+  recorded: RecordedRepo,
 ): ScanCoverage {
   const checks: CheckCoverage[] = [
     { name: 'secrets', status: config.secretDetection ? 'ran' : 'disabled' },
     { name: 'hallucination', status: config.hallucinationDetection ? 'ran' : 'disabled' },
     { name: 'ai-provenance', status: 'ran', detail: 'heuristic' },
-    { name: 'recorded-provenance', status: 'disabled' },
+    recorded.reason === 'disabled'
+      ? { name: 'recorded-provenance', status: 'disabled' }
+      : recorded.available
+        ? { name: 'recorded-provenance', status: 'ran' }
+        : { name: 'recorded-provenance', status: 'unavailable', detail: recorded.reason },
   ];
   for (const scanner of registry.getAllScanners()) {
     const scannerConfig = config[scanner.name as keyof AthenaConfig] as { enabled?: boolean } | undefined;
@@ -249,7 +261,8 @@ function buildCoverage(
   if (count('skipped-size') > 0) gaps.push(`${count('skipped-size')} file(s) skipped: larger than ${config.maxFileSize} bytes`);
   if (count('missing') > 0) gaps.push(`${count('missing')} file(s) missing`);
   for (const check of checks) {
-    if (check.status === 'unavailable') gaps.push(`${check.name} unavailable`);
+    // Recorded provenance depends on the input (not a git repo, shallow clone); shown in its own section.
+    if (check.status === 'unavailable' && check.name !== 'recorded-provenance') gaps.push(`${check.name} unavailable`);
   }
   for (const check of checks) {
     if (check.status === 'failed') gaps.push(`${check.name} failed`);

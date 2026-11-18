@@ -1,4 +1,4 @@
-import type { AthenaConfig, ClassifiedFinding, FileReport, ScanCoverage, ScanReport, ScoredUnit, Severity } from '../types.js';
+import type { AthenaConfig, ClassifiedFinding, FileReport, AiProvenance, ScanCoverage, ScanReport, ScoredUnit, Severity } from '../types.js';
 
 const severityOrder: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
@@ -9,6 +9,7 @@ export function generateReport(
   skippedFiles: number,
   config: AthenaConfig,
   coverage: ScanCoverage,
+  aiProvenance: AiProvenance,
 ): ScanReport {
   const units = files.flatMap((file) => file.units);
   const findings = files.flatMap((file) => file.findings);
@@ -33,7 +34,7 @@ export function generateReport(
     score: aiScore,
     flaggedUnits,
     flagRatio: flaggedUnits / Math.max(1, units.length),
-    percentage: Math.round((flaggedUnits / Math.max(1, units.length)) * 100),
+    percentage: Math.round((100 * aiProvenance.estimated.aiLines) / Math.max(1, aiProvenance.totalLines)),
     confidenceBands,
   };
   const weightedContributions = summarizeWeightedContributions(units);
@@ -65,6 +66,7 @@ export function generateReport(
         source: 'default',
       },
       coverage,
+      aiProvenance,
     },
     files,
   };
