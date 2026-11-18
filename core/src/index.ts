@@ -5,7 +5,8 @@ export { parseFile, parseFileDetailed, parseSource } from './parser/ast-parser.j
 export { scoreUnit, heuristicProvenance } from './scorer/heuristic-scorer.js';
 export { analyzeSecurity } from './analyzers/security-analyzer.js';
 export { formatJsonl } from './report/report-generator.js';
-export { formatTerminalReport } from './report/terminal-formatter.js';
+export { formatTerminalReport, gateLine } from './report/terminal-formatter.js';
+export type { TerminalReportOptions, FailOn } from './report/terminal-formatter.js';
 export { scannerRegistry, ScannerRegistry } from './scanner-registry.js';
 export type {
   AthenaConfig,
