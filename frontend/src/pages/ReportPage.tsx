@@ -5,6 +5,7 @@ import { marked } from 'marked';
 import { ReportView } from '../components/ReportView';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { downloadReportPdf, fetchFindingsByScanId, fetchReportMarkdown, fetchScan, fetchScans } from '../services/api';
+import { coverageGaps, formatProvenance } from '../utils/provenance';
 import type { Finding, ScanSummary } from '../types';
 
 export function ReportPage() {
@@ -126,7 +127,21 @@ export function ReportPage() {
         </div>
         <article className="panel">
           <ScoreGauge score={scan?.aiPercentage ?? 0} />
+          {scan ? (
+            <p>
+              AI provenance: {formatProvenance(scan)}
+              <br />
+              <small>Recorded is what git history credits to AI tools (a floor). Estimated is a heuristic estimate, low confidence.</small>
+            </p>
+          ) : null}
         </article>
+        {scan ? (
+          <article className="panel stat-panel">
+            <span>Coverage</span>
+            <strong>{coverageGaps(scan).length === 0 ? 'Complete' : 'Incomplete'}</strong>
+            {coverageGaps(scan).map((gap) => <p key={gap}>{gap}</p>)}
+          </article>
+        ) : null}
         <article className="panel stat-panel">
           <span>Findings</span>
           <strong>{findings.length}</strong>

@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { decodeEvent, encodeCommand } from './web-terminal-protocol';
+import { formatProvenance } from '../utils/provenance';
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 type QueuedCommand = { id: number; command: string };
@@ -334,7 +335,7 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
             term.writeln(`  \x1b[1mScan Report: ${scan.repoName || 'sandbox project'}\x1b[0m`);
             term.writeln(`  \x1b[2mFiles scanned:\x1b[0m ${scan.filesScanned ?? 0}   \x1b[2mCode units:\x1b[0m ${scan.totalUnits ?? 0}`);
             term.writeln(`  \x1b[2mFindings:\x1b[0m \x1b[31mCRITICAL: ${critical}\x1b[0m | \x1b[38;2;255;122;69mHIGH: ${high}\x1b[0m | \x1b[33mMEDIUM: ${medium}\x1b[0m | \x1b[34mLOW: ${low}\x1b[0m`);
-            term.writeln(`  \x1b[2mAI Risk score:\x1b[0m \x1b[38;2;232;122;65m${Math.round(scan.aiPercentage ?? 0)}%\x1b[0m`);
+            term.writeln(`  \x1b[2mAI (estimated):\x1b[0m \x1b[38;2;232;122;65m${formatProvenance(scan)}\x1b[0m`);
             term.writeln('');
             if (isBlocked) {
               term.writeln(`  \x1b[31m✗\x1b[0m \x1b[1mgate: \x1b[31mblocked\x1b[0m`);
