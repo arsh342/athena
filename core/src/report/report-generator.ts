@@ -1,4 +1,4 @@
-import type { AthenaConfig, ClassifiedFinding, FileReport, ScanReport, ScoredUnit, Severity } from '../types.js';
+import type { AthenaConfig, ClassifiedFinding, FileReport, ScanCoverage, ScanReport, ScoredUnit, Severity } from '../types.js';
 
 const severityOrder: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
@@ -8,6 +8,7 @@ export function generateReport(
   totalLoc: number,
   skippedFiles: number,
   config: AthenaConfig,
+  coverage: ScanCoverage,
 ): ScanReport {
   const units = files.flatMap((file) => file.units);
   const findings = files.flatMap((file) => file.findings);
@@ -63,6 +64,7 @@ export function generateReport(
         thresholdUsed: config.threshold,
         source: 'default',
       },
+      coverage,
     },
     files,
   };

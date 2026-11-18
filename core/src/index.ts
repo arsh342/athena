@@ -1,7 +1,7 @@
 export { mergeConfig, defaultConfig, defaultWeights } from './config.js';
 export { scanFiles } from './engine.js';
-export type { ScanProgressEvent } from './engine.js';
-export { parseFile, parseSource } from './parser/ast-parser.js';
+export type { ScanProgressEvent, ScanFilesOptions } from './engine.js';
+export { parseFile, parseFileDetailed, parseSource } from './parser/ast-parser.js';
 export { scoreUnit, heuristicProvenance } from './scorer/heuristic-scorer.js';
 export { analyzeSecurity } from './analyzers/security-analyzer.js';
 export { formatJsonl } from './report/report-generator.js';
