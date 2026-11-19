@@ -44,3 +44,5 @@ export { isSecretFinding, redactSecrets, redactKnownSecrets } from './report/red
 export { getRuleInfo } from './rules/catalog.js';
 export type { RuleInfo } from './rules/catalog.js';
 export { formatSarif } from './report/sarif.js';
+export * from './lang/languages.js';
+export { getParser, ParserUnavailableError, type TreeSitterParser } from './lang/parser-pool.js';
