@@ -4,6 +4,10 @@ import type { PersistedTerminalLine, TerminalLineKind } from './scan-stream.ts';
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type FindingSource =
   | 'secret-detector'
+  | 'athena-secrets'
+  | 'athena-rules'
+  | 'athena-taint'
+  | 'athena-investigate'
   | 'hallucination-detector'
   | 'security-analyzer'
   | 'semgrep'
@@ -68,6 +72,11 @@ export interface Finding {
   aiScore: number;
   code: string;
   ruleId: string;
+  /** Offline verification result; `low` means "needs review" and is not counted in the summary. */
+  confidence?: 'high' | 'medium' | 'low';
+  evidence?: string[];
+  trace?: Array<{ file: string; line: number; note: string }>;
+  exposure?: 'public' | 'authenticated' | 'internal';
   topSignals: Array<{
     signal: string;
     contribution: number;

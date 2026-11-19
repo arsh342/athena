@@ -134,3 +134,33 @@ test('scan finds a secret in a Python file and the header lists languages', asyn
   const text = await runCli(['scan', dir, ...OFF]);
   assert.match(text.stdout, /· 2 files \(py 1 · sh 1\)/);
 });
+
+test('scan reports a source-to-sink path and exits 1 for an injection in a Python route', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'athena-taint-'));
+  writeFileSync(join(dir, 'app.py'), '@app.route("/u")\ndef user():\n    uid = request.args.get("id")\n    cursor.execute("SELECT * FROM users WHERE id = " + uid)\n    return "ok"\n');
+  const r = await runCli(['scan', dir, ...OFF]);
+  assert.equal(r.code, 1, r.stderr);
+  assert.match(r.stdout, /SQL injection/);
+  assert.match(r.stdout, /path: app\.py:3 → app\.py:3 → app\.py:4/);
+  assert.match(r.stdout, /public/);
+});
+
+test('publicRoutes in athena.config.json silences the missing-auth convention', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'athena-pub-'));
+  const routes = [0, 1, 2, 3, 4, 5].map((i) => (i === 3 ? `router.get('/r${i}', (req, res) => res.send('x'));` : `router.get('/r${i}', requireAuth, (req, res) => res.send('x'));`)).join('\n');
+  writeFileSync(join(dir, 'routes.js'), routes + '\n');
+  const before = await runCli(['scan', dir, '--format', 'json', ...OFF]);
+  assert.ok(JSON.parse(before.stdout).files.flatMap((f: { findings: Array<{ ruleId: string }> }) => f.findings).some((x: { ruleId: string }) => x.ruleId === 'conv.missing-auth'));
+  writeFileSync(join(dir, 'athena.config.json'), JSON.stringify({ publicRoutes: ['/r3'] }));
+  const after = await runCli(['scan', dir, '--format', 'json', ...OFF]);
+  assert.ok(!JSON.parse(after.stdout).files.flatMap((f: { findings: Array<{ ruleId: string }> }) => f.findings).some((x: { ruleId: string }) => x.ruleId === 'conv.missing-auth'));
+});
+
+test('a secret in a .env file is found, redacted, and blocks', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'athena-env-'));
+  writeFileSync(join(dir, '.env'), 'STRIPE_KEY=sk_live_' + 'Qz8WmN3xT6vB1cY4uR7eK2pL\n');
+  const r = await runCli(['scan', dir, ...OFF]);
+  assert.equal(r.code, 1, r.stderr);
+  assert.match(r.stdout, /Stripe live secret key/);
+  assert.doesNotMatch(r.stdout, /Qz8WmN3xT6vB1cY4uR7eK2pL/);
+});

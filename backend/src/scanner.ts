@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from 'node:fs/prom
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, normalize, resolve } from 'node:path';
 import AdmZip from 'adm-zip';
-import { hasExtension, isSupportedSource, languageFromShebang, scanFiles } from '@athena/core';
+import { hasExtension, isConfigTextFile, isSupportedSource, languageFromShebang, scanFiles } from '@athena/core';
 import type { ClassifiedFinding, ScanReport } from '@athena/core';
 import { simpleGit } from 'simple-git';
 import { addScan } from './data.ts';
@@ -86,7 +86,7 @@ async function isSourceCandidate(filePath: string): Promise<boolean> {
 }
 
 /** Walk directory tree and collect source file paths. */
-async function collectSourceFiles(dir: string): Promise<string[]> {
+async function collectSourceFiles(dir: string, textOut?: string[]): Promise<string[]> {
   const results: string[] = [];
 
   async function walk(current: string): Promise<void> {
@@ -100,6 +100,8 @@ async function collectSourceFiles(dir: string): Promise<string[]> {
         await walk(fullPath);
       } else if (entry.isFile() && (await isSourceCandidate(fullPath))) {
         results.push(fullPath);
+      } else if (entry.isFile() && textOut && isConfigTextFile(fullPath)) {
+        textOut.push(fullPath);
       }
     }
   }
@@ -131,6 +133,10 @@ function mapFinding(finding: ClassifiedFinding): Finding {
     aiScore: finding.aiScore,
     code: finding.code,
     ruleId: finding.ruleId,
+    ...(finding.confidence ? { confidence: finding.confidence } : {}),
+    ...(finding.evidence ? { evidence: finding.evidence } : {}),
+    ...(finding.trace ? { trace: finding.trace } : {}),
+    ...(finding.exposure ? { exposure: finding.exposure } : {}),
     topSignals: finding.explainedScore.topSignals.slice(0, 5),
   };
 }
@@ -251,7 +257,8 @@ async function scanFromPath(input: {
   try {
     emit?.status?.('Collecting source files', 30);
     log('Collecting source files');
-    const sourceFiles = await collectSourceFiles(rootPath);
+    const textFiles: string[] = [];
+    const sourceFiles = await collectSourceFiles(rootPath, textFiles);
     log(`Found ${sourceFiles.length} source files`);
 
     if (sourceFiles.length === 0) {
@@ -267,7 +274,7 @@ async function scanFromPath(input: {
     log('Running 11-signal heuristic scorer');
     log('Running security analyzers (secret detection + hallucination check)');
 
-    const report: ScanReport = await runScanFilesInProjectRoot(rootPath, sourceFiles);
+    const report: ScanReport = await runScanFilesInProjectRoot(rootPath, sourceFiles, textFiles);
     const allFindings = report.files.flatMap((file) => file.findings).map(mapFinding);
     const scanSummary = mapScanSummary(report, scanId, repoName, repoUrl);
 
@@ -304,13 +311,13 @@ async function scanFromPath(input: {
   }
 }
 
-async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: string[]): Promise<ScanReport> {
+async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: string[], textFiles: string[] = []): Promise<ScanReport> {
   const originalCwd = process.cwd.bind(process);
   const processWithMutableCwd = process as NodeJS.Process & { cwd: () => string };
   processWithMutableCwd.cwd = () => projectRoot;
 
   try {
-    return await scanFiles(sourceFiles, {}, {}, { root: projectRoot });
+    return await scanFiles(sourceFiles, {}, {}, { root: projectRoot, textFiles });
   } finally {
     processWithMutableCwd.cwd = originalCwd;
   }

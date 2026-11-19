@@ -16,7 +16,7 @@ export function shortenPath(filePath: string): string {
 
 export function isSecretFinding(finding: Finding): boolean {
   const haystack = `${finding.type} ${finding.message}`.toLowerCase();
-  return finding.source === 'secret-detector'
+  return (finding.source === 'secret-detector' || finding.source === 'athena-secrets')
     || /secret|token|password|key|credential|jwt/.test(haystack);
 }
 

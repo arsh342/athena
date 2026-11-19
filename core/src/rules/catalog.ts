@@ -35,9 +35,14 @@ const rules: RuleInfo[] = [
   },
 ];
 
+import { ruleMeta } from './registry.js';
+
 const byId = new Map(rules.map((rule) => [rule.id, rule]));
 
 /** Explanatory copy for rules Athena emits itself; null for external scanners' rules. */
 export function getRuleInfo(ruleId: string): RuleInfo | null {
-  return byId.get(ruleId) ?? null;
+  const own = byId.get(ruleId);
+  if (own) return own;
+  const meta = ruleMeta(ruleId);
+  return meta ? { id: meta.id, title: meta.title, why: meta.why, fix: meta.fix, references: meta.references } : null;
 }

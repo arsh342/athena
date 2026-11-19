@@ -12,7 +12,10 @@ export function generateReport(
   aiProvenance: AiProvenance,
 ): ScanReport {
   const units = files.flatMap((file) => file.units);
-  const findings = files.flatMap((file) => file.findings);
+  const allFindings = files.flatMap((file) => file.findings);
+  // Low-confidence findings are "needs review": listed, but never counted toward the gate.
+  const findings = allFindings.filter((finding) => finding.confidence !== 'low');
+  const needsReview = allFindings.length - findings.length;
   const severityCounts = severityOrder.reduce<Record<Severity, number>>(
     (acc, severity) => ({ ...acc, [severity]: findings.filter((finding) => finding.severity === severity).length }),
     { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
@@ -48,6 +51,7 @@ export function generateReport(
       totalUnits: units.length,
       flaggedUnits,
       findings: severityCounts,
+      ...(needsReview > 0 ? { needsReview } : {}),
       blocked,
       aiScore,
       aiFlagRatio: aiOrigin.flagRatio,

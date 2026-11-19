@@ -1,14 +1,20 @@
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { mergeConfig } from './config.js';
 import { analyzeSecurity } from './analyzers/security-analyzer.js';
 import { runSemgrep } from './analyzers/semgrep-adapter.js';
-import { detectLanguage, type LanguageId } from './lang/languages.js';
+import { detectLanguage, LANGUAGE_FAMILY, type LanguageId } from './lang/languages.js';
 import { parseFileDetailed, warmParsers } from './parser/ast-parser.js';
 import { generateReport } from './report/report-generator.js';
 import { scoreUnit } from './scorer/heuristic-scorer.js';
 import { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
 import { recordedAiLines, type RecordedRepo } from './provenance/git-recorded.js';
 import { classifyUnit, loadFastModel, type FastModel } from './provenance/fast-model.js';
+import { analyzeProject, loadProjectFiles } from './analysis/project.js';
+import { ruleMeta } from './rules/registry.js';
+import type { RawFinding } from './rules/types.js';
+import { scanTextForSecrets } from './secrets/scan.js';
+import { redactKnownSecrets } from './report/redact.js';
+import { createHash } from 'node:crypto';
 import { scannerRegistry, type ScannerRegistry } from './scanner-registry.js';
 import type { AthenaConfig, CheckCoverage, ExplainedScore, FileCoverage, FileReport, ScanCoverage, ScoredUnit, ScanReport, Severity } from './types.js';
 
@@ -41,6 +47,10 @@ export interface ScanFilesOptions {
   registry?: ScannerRegistry;
   /** Override the bundled fast detector (tests). `null` forces the heuristic. */
   fastModel?: FastModel | null;
+  /** Config-style text files (.env, YAML, JSON, ...) searched for secrets only. */
+  textFiles?: string[];
+  /** Run Athena's own rule packs and taint analysis (default true). */
+  analysis?: boolean;
 }
 
 export async function scanFiles(
@@ -171,6 +181,86 @@ export async function scanFiles(
     });
   }
 
+  const analysisFamilies = new Map<string, number>();
+  let skippedMinified = 0;
+  const reportsByPath = new Map(files.map((f) => [f.path, f]));
+  const addRaw = (path: string, raw: RawFinding): void => {
+    const meta = ruleMeta(raw.ruleId);
+    if (!meta) return;
+    let report = reportsByPath.get(path);
+    if (!report) {
+      report = { path, units: [], findings: [] };
+      files.push(report);
+      reportsByPath.set(path, report);
+    }
+    const unit = selectUnitForLine(report.units, raw.line);
+    // Node text can contain credentials that sit next to a vulnerability: scrub every free-text field.
+    const scrub = (text: string): string => redactKnownSecrets(text);
+    report.findings.push({
+      id: createHash('sha1').update(`${raw.ruleId}:${path}:${raw.line}:${raw.code}`).digest('hex').slice(0, 10),
+      severity: meta.severity, type: meta.title, category: meta.category,
+      message: scrub(raw.message ?? meta.title), file: path, line: raw.line, column: raw.column ?? 1, code: scrub(raw.code),
+      aiScore: unit?.score ?? config.threshold, explainedScore: unit?.explained ?? emptyExplainedScore(),
+      source: raw.source, ruleId: raw.ruleId,
+      confidence: raw.confidence ?? meta.confidence ?? 'medium',
+      ...(raw.evidence && raw.evidence.length > 0 ? { evidence: raw.evidence.map(scrub) } : {}),
+      ...(raw.exposure ? { exposure: raw.exposure } : {}),
+      ...(raw.priority !== undefined ? { priority: raw.priority } : {}),
+      ...(raw.trace ? { trace: raw.trace.map((t) => ({ file: t.file ?? path, line: t.line, note: scrub(t.note) })) } : {}),
+    });
+  };
+
+  const analyzedPaths = fileCoverage.filter((f) => f.status === 'analyzed' || f.status === 'parse-failed').map((f) => f.path);
+  if (options.analysis !== false) {
+    const project = await analyzeProject(await loadProjectFiles(analyzedPaths), { publicRoutes: config.publicRoutes ?? [], root: options.root ?? process.cwd() });
+    for (const family of project.families) analysisFamilies.set(family, 0);
+    for (const path of project.failed) {
+      const lang = detectLanguage(path);
+      const family = lang ? LANGUAGE_FAMILY[lang] : 'js';
+      analysisFamilies.set(family, (analysisFamilies.get(family) ?? 0) + 1);
+    }
+    skippedMinified = project.skippedMinified.length;
+    const skipped = new Set(project.skippedMinified);
+    for (const entry of fileCoverage) {
+      if (skipped.has(entry.path)) {
+        entry.status = 'skipped-excluded';
+        entry.reason = 'vendored, generated or minified code (not rule-analysed)';
+      }
+    }
+    for (const path of project.timedOut) {
+      const lang = detectLanguage(path);
+      const family = lang ? LANGUAGE_FAMILY[lang] : 'js';
+      analysisFamilies.set(family, (analysisFamilies.get(family) ?? 0) + 1);
+    }
+    for (const [path, raws] of project.findings) for (const raw of raws) addRaw(path, raw);
+  }
+
+  if (config.secretDetection) {
+    // Secrets are searched in the whole text of every source file and of config-style text files (.env, YAML, JSON, ...).
+    const textPaths = [...new Set(options.textFiles ?? [])];
+    for (const path of textPaths) {
+      try {
+        const info = await stat(path);
+        if (info.size > 1_000_000) {
+          fileCoverage.push({ path, status: 'skipped-size', reason: 'larger than 1 MB' });
+          continue;
+        }
+        fileCoverage.push({ path, status: 'analyzed' });
+      } catch {
+        fileCoverage.push({ path, status: 'missing', reason: 'file not found' });
+      }
+    }
+    for (const path of [...analyzedPaths, ...textPaths]) {
+      let text: string;
+      try {
+        text = await readFile(path, 'utf8');
+      } catch {
+        continue;
+      }
+      for (const raw of scanTextForSecrets(path, text)) addRaw(path, raw);
+    }
+  }
+
   const projectRoot = options.root ?? process.cwd();
   const recorded: RecordedRepo = options.recordedProvenance === false
     ? { available: false, reason: 'disabled', files: new Map() }
@@ -262,7 +352,7 @@ export async function scanFiles(
         method: 'heuristic' as const,
         ...(fastModel ? { heuristicDetail: `heuristic · athena-detect-fast ${fastModel.meta.version} not enabled for these languages (below release targets)` } : {}),
       };
-  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers, method);
+  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers, method, analysisFamilies, skippedMinified);
 
   const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded, method));
   if (Object.keys(languages).length > 0) report.summary.languages = languages;
@@ -277,6 +367,8 @@ function buildCoverage(
   recorded: RecordedRepo,
   unavailableParsers: Set<LanguageId> = new Set(),
   method: { method: 'fast' | 'heuristic'; model?: string; heuristicLanguages?: LanguageId[]; heuristicDetail?: string } = { method: 'heuristic' },
+  analysisFamilies: Map<string, number> = new Map(),
+  skippedMinified = 0,
 ): ScanCoverage {
   const checks: CheckCoverage[] = [
     { name: 'secrets', status: config.secretDetection ? 'ran' : 'disabled' },
@@ -288,6 +380,13 @@ function buildCoverage(
         ? { name: 'recorded-provenance', status: 'ran' }
         : { name: 'recorded-provenance', status: 'unavailable', detail: recorded.reason },
   ];
+  for (const [family, timedOut] of [...analysisFamilies].sort()) {
+    checks.push({ name: `rules:${family}`, status: 'ran' });
+    checks.push(timedOut > 0
+      ? { name: `taint:${family}`, status: 'failed', detail: `${timedOut} file(s) exceeded the time budget or could not be analysed` }
+      : { name: `taint:${family}`, status: 'ran' });
+  }
+  if (skippedMinified > 0) checks.push({ name: 'rules-skipped', status: 'ran', detail: `${skippedMinified} minified or generated file(s) not rule-analyzed` });
   for (const lang of [...unavailableParsers].sort()) {
     checks.push({ name: `parser:${lang}`, status: 'unavailable', detail: 'grammar failed to load' });
   }

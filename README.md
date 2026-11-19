@@ -23,17 +23,17 @@ Athena specifically targets these risks by identifying AI-generated code section
 
 | Language | Extensions | Today |
 |---|---|---|
-| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | units, AI provenance, secrets (inside functions and classes), hallucinated APIs, external scanners |
-| Python | `.py .pyi`, `#!…python` scripts | units, AI provenance, secrets (inside functions and classes) |
-| Java | `.java` | units, AI provenance, secrets (inside functions and classes) |
-| C# | `.cs` | units, AI provenance, secrets (inside functions and classes) |
-| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | units, AI provenance, secrets (inside functions and classes) (C is parsed with the C++ grammar) |
-| Go | `.go` | units, AI provenance, secrets (inside functions and classes) |
-| Rust | `.rs` | units, AI provenance, secrets (inside functions and classes) |
-| PHP | `.php .phtml` | units, AI provenance, secrets (inside functions and classes) |
-| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | units, AI provenance, secrets (inside functions and classes) |
+| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | own rules + taint, secrets, units, AI provenance , hallucinated APIs, external scanners |
+| Python | `.py .pyi`, `#!…python` scripts | own rules + taint, secrets, units, AI provenance  |
+| Java | `.java` | own rules + taint, secrets, units, AI provenance  |
+| C# | `.cs` | own rules + taint, secrets, units, AI provenance  |
+| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | own rules + taint, secrets, units, AI provenance  (C is parsed with the C++ grammar) |
+| Go | `.go` | own rules + taint, secrets, units, AI provenance  |
+| Rust | `.rs` | own rules + taint, secrets, units, AI provenance  |
+| PHP | `.php .phtml` | own rules + taint, secrets, units, AI provenance  |
+| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | own rules + taint, secrets, units, AI provenance  |
 
-Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. The external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only; Athena's own rules for every language arrive in later releases.
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
 
 ## How the AI-code estimate is made
 
@@ -41,6 +41,22 @@ Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled
 - **Estimated**: Athena's own detector, `athena-detect-fast` — style statistics plus hashed token and character n-grams into a calibrated classifier (under 2 MB, pure TypeScript, runs on any machine). It is enabled **per language, only where it meets the release targets** on Athena-Bench (human false-positive rate <= 5%, F1 >= 0.85). Every other language uses the labelled style heuristic.
 - **Current status (v0.1.0):** trained only on real commits from GitHub (permissively licensed human code from before 2021; AI code from commits that agents marked). No language meets the targets yet — see [`docs/athena-bench/RESULTS.md`](docs/athena-bench/RESULTS.md) for the numbers — so all estimates still use the heuristic and say so. A language is enabled only when it passes the gate on at least 5 distinct test repositories per class; the human side of the current data is from an earlier era than the AI side (an era confound documented in RESULTS.md), so more of the *same* data would not be enough — era-matched human code is needed first. `athena provenance --about` prints the per-language status.
 - **Reproduce:** `npm run build -w @athena/core && cd ml && uv sync && uv run python -m athena_ml.collect_all all 20 && uv run python -m athena_ml.run_train 0.1.0` (needs a GitHub token via `GITHUB_TOKEN` or `gh auth login`; about an hour of network time; results vary with GitHub search). `ml/data/` is not committed; `ml/bench/manifest.jsonl.gz` lists the benchmark units by repository and commit, without any third-party code.
+
+## What Athena checks (its own analysis engine)
+
+No external scanner is needed for these; they run offline on every supported language.
+
+- **Rule packs** for each language family: injection, path traversal, SSRF, XSS, unsafe deserialization, open redirect, weak crypto, disabled TLS verification, JWT misuse, risky cookies/CORS, debug mode, stack-trace leaks, ReDoS, mass assignment, memory-unsafe C functions, `unsafe` Rust/Go, shell pitfalls (`curl | sh`, unquoted `rm -rf $VAR`).
+- **Taint analysis**: follows user input (request parameters, command-line arguments, `$_GET`, ...) through variables, helper functions and — for JS/TS and Python — across files, to dangerous calls. A finding shows the path, e.g. `path: app.py:3 → app.py:3 → app.py:4`. Sanitizers, parameterised queries, argument vectors and path-prefix checks stop a flow.
+- **Secrets**: 60+ provider formats (AWS, GitHub, Stripe, OpenAI, Anthropic, ...), connection strings, private keys and generic random-looking credentials, in source files and in config files (`.env`, YAML, JSON, TOML, Dockerfiles). Findings never contain the secret itself; placeholders and `.env.example` files are ignored. Detected keys are not verified with their provider (nothing is sent anywhere).
+- **Investigation engine** — the way a reviewer works, offline:
+  - *Entry points*: finds routes (Express, Fastify, NestJS, Next.js, Flask, FastAPI, Django, Spring, ASP.NET, gin/net/http, actix/axum, Laravel), CLI commands, queue consumers, uploads and websockets, with their authentication guards.
+  - *Siblings*: if 5 of 6 routes in a router require authentication, or 5 of 6 queries on a table filter by `user_id`, the odd one out is reported with two conforming examples cited (needs at least 4 siblings and 75% agreement; test files are ignored; list intentional public routes in `athena.config.json` as `"publicRoutes": ["/health"]`).
+  - *Intent vs code*: validators that can never fail, comments that promise sanitizing/validation the next lines do not do, security TODOs, tests without assertions.
+  - *Lifecycles, error paths and races*: resources never released, cleanup attached only after an `await`, success status written but not the failure status, errors turned into success-looking values, read-then-write races, floating promises, unreachable states.
+- **Confidence**: every finding is checked for reachability from an entry point, defenses on the path and impact (exposure, sensitive data). `high`/`medium` findings count toward the gate; `low` ones are listed as **needs review** and never block. Findings are ordered by severity × exposure × confidence.
+
+Benchmarks against known-vulnerable apps: [`docs/athena-bench/SAST.md`](docs/athena-bench/SAST.md) (recall against a hand-verified, partial answer key; precision is not yet measured).
 
 ---
 

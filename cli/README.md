@@ -91,19 +91,23 @@ Optional `athena.config.json` at the scanned root. Flags override it.
 
 | Language | Extensions | Today |
 |---|---|---|
-| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | units, AI provenance, secrets (inside functions and classes), hallucinated APIs, external scanners |
-| Python | `.py .pyi`, `#!…python` scripts | units, AI provenance, secrets (inside functions and classes) |
-| Java | `.java` | units, AI provenance, secrets (inside functions and classes) |
-| C# | `.cs` | units, AI provenance, secrets (inside functions and classes) |
-| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | units, AI provenance, secrets (inside functions and classes) (C is parsed with the C++ grammar) |
-| Go | `.go` | units, AI provenance, secrets (inside functions and classes) |
-| Rust | `.rs` | units, AI provenance, secrets (inside functions and classes) |
-| PHP | `.php .phtml` | units, AI provenance, secrets (inside functions and classes) |
-| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | units, AI provenance, secrets (inside functions and classes) |
+| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | own rules + taint (cross-file), secrets, hallucinated APIs, units, AI provenance, external scanners |
+| Python | `.py .pyi`, `#!…python` scripts | own rules + taint, secrets, units, AI provenance |
+| Java | `.java` | own rules + taint, secrets, units, AI provenance |
+| C# | `.cs` | own rules + taint, secrets, units, AI provenance |
+| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | own rules + taint, memory-safety checks, secrets, units, AI provenance (C is parsed with the C++ grammar) |
+| Go | `.go` | own rules + taint, secrets, units, AI provenance |
+| Rust | `.rs` | own rules + taint, secrets, units, AI provenance |
+| PHP | `.php .phtml` | own rules + taint, secrets, units, AI provenance |
+| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | own rules + taint, secrets, units, AI provenance |
 
-Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. The external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only; Athena's own rules for every language arrive in later releases.
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
 
 The report header shows files per language, e.g. `12 files (js 3 · py 2 · go 1)`.
+
+## What Athena checks
+
+Athena's own offline engine covers all supported languages: rule packs, taint analysis with source-to-sink paths, 60+ secret formats (also in `.env`, YAML and JSON files), and an investigation engine that finds routes missing the authentication or owner filter their siblings use, validators that never fail, error paths that report success, read-then-write races and more. Each finding carries a confidence; `low` ones appear under **needs review** and never block. Mark routes that are public on purpose in `athena.config.json`: `{ "publicRoutes": ["/health"] }`. See the main README for details.
 
 ## How AI-written code is estimated
 

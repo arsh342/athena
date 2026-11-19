@@ -33,7 +33,8 @@ export function formatSarif(report: ScanReport, options: { toolVersion: string; 
       const uri = `${options.uriPrefix ?? ''}${relative(options.root, finding.file).split('\\').join('/')}`;
       results.push({
         ruleId: finding.ruleId,
-        level: LEVEL[finding.severity],
+        // Findings Athena could not confirm are notes: they must not fail a code-scanning gate the CLI would pass.
+        level: finding.confidence === 'low' ? 'note' : LEVEL[finding.severity],
         message: { text },
         locations: [{
           physicalLocation: {

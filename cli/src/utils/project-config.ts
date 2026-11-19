@@ -5,6 +5,8 @@ import type { FailOn } from './run-options.js';
 export interface ProjectConfig {
   failOn?: FailOn;
   exclude?: string[];
+  /** Routes that are public on purpose (not flagged for missing authentication). */
+  publicRoutes?: string[];
   strict?: boolean;
 }
 
@@ -45,6 +47,12 @@ export async function loadProjectConfig(root: string): Promise<ProjectConfig> {
       throw new ConfigError(`${file}: "exclude" must be an array of strings`);
     }
     config.exclude = data.exclude as string[];
+  }
+  if (data.publicRoutes !== undefined) {
+    if (!Array.isArray(data.publicRoutes) || data.publicRoutes.some((item) => typeof item !== 'string')) {
+      throw new ConfigError(`${file}: "publicRoutes" must be an array of strings`);
+    }
+    config.publicRoutes = data.publicRoutes as string[];
   }
   if (data.strict !== undefined) {
     if (typeof data.strict !== 'boolean') throw new ConfigError(`${file}: "strict" must be true or false`);

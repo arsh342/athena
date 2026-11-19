@@ -37,6 +37,7 @@ export interface RunOptions {
   showLow: boolean;
   threshold?: number;
   exclude: string[];
+  publicRoutes: string[];
   scanners: { eslint: boolean; npmAudit: boolean; nodejsscan: boolean; bearer: boolean; semgrep: boolean };
   warnings: string[];
 }
@@ -96,6 +97,7 @@ export function resolveRunOptions(
     showLow: flags.showLow ?? false,
     ...(threshold !== undefined ? { threshold } : {}),
     exclude: [...defaultConfig.exclude, ...(config.exclude ?? [])],
+    publicRoutes: config.publicRoutes ?? [],
     scanners: {
       eslint: flags.eslint !== false,
       npmAudit: flags.npmAudit !== false,

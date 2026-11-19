@@ -53,7 +53,8 @@ test('a 1 MB one-line minified file finishes quickly without exploding units', a
   const elapsed = Date.now() - started;
   assert.ok(elapsed < 2000, `took ${elapsed} ms`);
   assert.equal(report.summary.totalUnits, 0);
-  assert.equal(report.summary.coverage!.files[0]!.status, 'analyzed');
+  assert.equal(report.summary.coverage!.files[0]!.status, 'skipped-excluded');
+  assert.match(report.summary.coverage!.files[0]!.reason ?? '', /minified|generated|vendored/);
 });
 
 test('binary content with a source extension is parse-failed, not a crash', async () => {
@@ -98,7 +99,7 @@ test('deeply nested one-line code is fast (rows < 3 are skipped before metadata)
 test('deeply nested multi-line code stops at a work budget and is reported, not hung', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'athena-nest2-'));
   const file = join(dir, 'n.js');
-  await writeFile(file, 'const f = ' + '() => (\n'.repeat(3000) + '1' + ')'.repeat(3000) + ';\n');
+  await writeFile(file, 'const f = ' + '() => (\n'.repeat(3000) + '1' + ')\n'.repeat(3000) + ';\n');
   const started = Date.now();
   const report = await scanFiles([file], mergeConfig(noExternal), {}, options(dir));
   assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);

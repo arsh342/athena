@@ -10,6 +10,6 @@ export async function scanCommand(dir: string, flags: RunFlags): Promise<void> {
   // Scanning one file: the project root is its folder, so scanners and git run from a directory.
   const root = (await stat(given).catch(() => null))?.isFile() ? dirname(given) : given;
   const options = resolveRunOptions(flags, await loadProjectConfig(root), process.env, Boolean(process.stdout.isTTY));
-  const { files, excluded } = await findSourceFilesWithExclusions(given, options.exclude);
-  process.exitCode = await runScan({ mode: 'scan', root, target: dir, files, excluded, options });
+  const { files, excluded, textFiles } = await findSourceFilesWithExclusions(given, options.exclude);
+  process.exitCode = await runScan({ mode: 'scan', root, target: dir, files, excluded, textFiles, options });
 }
