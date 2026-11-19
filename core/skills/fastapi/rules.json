@@ -1,0 +1,32 @@
+{
+ "rules": [
+  {
+   "id": "fastapi.cors-wildcard-credentials",
+   "title": "CORS allows every origin with credentials",
+   "severity": "MEDIUM",
+   "cwe": [
+    942
+   ],
+   "category": "cors",
+   "why": "A wildcard origin together with credentials lets other sites make authenticated calls.",
+   "fix": "List the allowed origins.",
+   "match": {
+    "kind": "call",
+    "callee": "\\.add_middleware$",
+    "where": [
+     {
+      "op": "callTextMatches",
+      "regex": "allow_origins\\s*=\\s*\\[\\s*[\\'\"]\\*[\\'\"]"
+     },
+     {
+      "op": "callTextMatches",
+      "regex": "allow_credentials\\s*=\\s*True"
+     }
+    ]
+   },
+   "families": [
+    "python"
+   ]
+  }
+ ]
+}

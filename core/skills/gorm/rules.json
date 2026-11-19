@@ -1,0 +1,32 @@
+{
+ "rules": [
+  {
+   "id": "gorm.raw-concat",
+   "title": "GORM raw SQL built by concatenation",
+   "severity": "HIGH",
+   "cwe": [
+    89
+   ],
+   "category": "injection",
+   "why": "Raw/Exec/Where with a formatted string is SQL injection.",
+   "fix": "Use placeholders: Where(\"id = ?\", id).",
+   "match": {
+    "kind": "call",
+    "callee": "\\.(?:Raw|Exec|Where)$",
+    "where": [
+     {
+      "op": "argIsConcat",
+      "index": 0
+     },
+     {
+      "op": "fileTextMatches",
+      "regex": "gorm\\.io"
+     }
+    ]
+   },
+   "families": [
+    "go"
+   ]
+  }
+ ]
+}

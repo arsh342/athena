@@ -1,0 +1,21 @@
+{
+ "families": [
+  "python"
+ ],
+ "sinks": [
+  {
+   "rule": "taint.path-traversal",
+   "callee": "^os\\.path\\.join$",
+   "args": [
+    1
+   ]
+  },
+  {
+   "rule": "taint.path-traversal",
+   "callee": "\\.save$",
+   "args": [
+    0
+   ]
+  }
+ ]
+}

@@ -152,6 +152,8 @@ export interface ClassifiedFinding {
   confidence?: 'high' | 'medium' | 'low';
   /** Why the confidence is what it is, one line per lens. */
   evidence?: string[];
+  /** Skill that produced the finding (additive). */
+  skill?: string;
   /** Who can reach the code: from the entry point that contains it, when one does. */
   exposure?: 'public' | 'authenticated' | 'internal';
   /** severity x exposure x confidence; used to order findings. */
@@ -177,6 +179,10 @@ export interface ScanReport {
     findings: Record<Severity, number>;
     /** Findings Athena could not confirm (low confidence): shown, never blocking. */
     needsReview?: number;
+    /** Skills that were active for this scan and why. */
+    skills?: Array<{ name: string; source: string; reason: string }>;
+    /** Problems loading skills (overrides refused, invalid skills ignored, slow skills switched off). */
+    skillWarnings?: string[];
     blocked: boolean;
     aiScore: number;
     aiFlagRatio: number;

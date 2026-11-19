@@ -1,0 +1,52 @@
+{
+ "rules": [
+  {
+   "id": "file-uploads.multer-no-limits",
+   "title": "multer without limits",
+   "severity": "MEDIUM",
+   "cwe": [
+    770
+   ],
+   "category": "dos",
+   "why": "multer without limits accepts files of any size.",
+   "fix": "Pass limits: { fileSize: ... }.",
+   "match": {
+    "kind": "call",
+    "callee": "^multer$",
+    "where": [
+     {
+      "op": "callTextNotMatches",
+      "regex": "limits"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  },
+  {
+   "id": "file-uploads.original-name-in-path",
+   "title": "Client file name used to build a path",
+   "severity": "HIGH",
+   "cwe": [
+    22
+   ],
+   "category": "path-traversal",
+   "why": "file.originalname is attacker controlled; using it in a path allows ../ traversal and overwrites.",
+   "fix": "Generate the stored name yourself (uuid) and keep the original only as metadata.",
+   "match": {
+    "kind": "call",
+    "callee": "^path\\.(?:join|resolve)$",
+    "where": [
+     {
+      "op": "callTextMatches",
+      "regex": "originalname|file\\.name\\b"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  }
+ ]
+}

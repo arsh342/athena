@@ -1,0 +1,14 @@
+{
+ "families": [
+  "go"
+ ],
+ "sinks": [
+  {
+   "rule": "taint.path-traversal",
+   "callee": "^c\\.(?:File|FileAttachment)$",
+   "args": [
+    0
+   ]
+  }
+ ]
+}

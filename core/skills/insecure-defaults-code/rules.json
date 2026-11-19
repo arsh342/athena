@@ -1,0 +1,24 @@
+{
+ "rules": [
+  {
+   "id": "insecure-defaults-code.env-secret-fallback",
+   "title": "Secret falls back to a hard-coded value",
+   "severity": "HIGH",
+   "cwe": [
+    1188,
+    798
+   ],
+   "category": "config",
+   "why": "If the environment variable is missing the app silently uses a known value, so anyone can forge tokens or sessions.",
+   "fix": "Require the variable and exit with a clear error when it is absent.",
+   "match": {
+    "kind": "line",
+    "line": "(?:process\\.env\\.\\w*(?:SECRET|KEY|TOKEN|PASSWORD)\\w*|os\\.environ\\.get\\([\\'\"]\\w*(?:SECRET|KEY|TOKEN|PASSWORD)\\w*[\\'\"])\\s*(?:\\|\\||\\?\\?|,)\\s*[`\\'\"][^`\\'\"]{3,}"
+   },
+   "families": [
+    "js",
+    "python"
+   ]
+  }
+ ]
+}

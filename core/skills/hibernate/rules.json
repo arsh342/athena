@@ -1,0 +1,28 @@
+{
+ "rules": [
+  {
+   "id": "hibernate.query-concat",
+   "title": "HQL/JPQL query built by concatenation",
+   "severity": "HIGH",
+   "cwe": [
+    89
+   ],
+   "category": "injection",
+   "why": "createQuery with concatenated values is injectable.",
+   "fix": "Use named parameters (:name) and setParameter.",
+   "match": {
+    "kind": "call",
+    "callee": "\\.createQuery$",
+    "where": [
+     {
+      "op": "argIsConcat",
+      "index": 0
+     }
+    ]
+   },
+   "families": [
+    "java"
+   ]
+  }
+ ]
+}

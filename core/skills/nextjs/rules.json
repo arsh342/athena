@@ -1,0 +1,48 @@
+{
+ "rules": [
+  {
+   "id": "nextjs.public-env-secret",
+   "title": "Secret exposed through a NEXT_PUBLIC_ variable",
+   "severity": "MEDIUM",
+   "cwe": [
+    200,
+    540
+   ],
+   "category": "config",
+   "why": "NEXT_PUBLIC_ values are inlined into client JavaScript, so anything secret in one is public.",
+   "fix": "Rename it without the NEXT_PUBLIC_ prefix and read it only on the server.",
+   "match": {
+    "kind": "line",
+    "line": "process\\.env\\.NEXT_PUBLIC_\\w*(?:SECRET|PRIVATE|PASSWORD|TOKEN|API_?KEY)",
+    "where": [
+     {
+      "op": "lineNotMatches",
+      "regex": "PUBLISHABLE|ANON"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  },
+  {
+   "id": "nextjs.dangerously-allow-svg",
+   "title": "SVG optimization enabled for untrusted images",
+   "severity": "LOW",
+   "cwe": [
+    79
+   ],
+   "category": "xss",
+   "why": "dangerouslyAllowSVG lets crafted SVG files run script when opened directly.",
+   "fix": "Keep it off, or set a strict contentSecurityPolicy for images.",
+   "match": {
+    "kind": "line",
+    "line": "dangerouslyAllowSVG\\s*:\\s*true"
+   },
+   "families": [
+    "js"
+   ],
+   "confidence": "medium"
+  }
+ ]
+}

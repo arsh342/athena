@@ -1,0 +1,62 @@
+{
+ "rules": [
+  {
+   "id": "laravel.guarded-empty",
+   "title": "Eloquent model with no mass-assignment protection",
+   "severity": "HIGH",
+   "cwe": [
+    915
+   ],
+   "category": "authz",
+   "why": "$guarded = [] allows every attribute (role, is_admin) to be set from request data.",
+   "fix": "Use an explicit $fillable list.",
+   "match": {
+    "kind": "line",
+    "line": "\\$guarded\\s*=\\s*\\[\\s*\\]"
+   },
+   "families": [
+    "php"
+   ]
+  },
+  {
+   "id": "laravel.csrf-except-wildcard",
+   "title": "CSRF verification disabled for every route",
+   "severity": "MEDIUM",
+   "cwe": [
+    352
+   ],
+   "category": "session",
+   "why": "$except = [\"*\"] turns CSRF protection off.",
+   "fix": "List only the webhook routes that need it.",
+   "match": {
+    "kind": "line",
+    "line": "\\$except\\s*=\\s*\\[\\s*[\\'\"]\\*[\\'\"]"
+   },
+   "families": [
+    "php"
+   ]
+  },
+  {
+   "id": "laravel.blade-unescaped-output",
+   "title": "Unescaped Blade output",
+   "severity": "MEDIUM",
+   "cwe": [
+    79
+   ],
+   "category": "xss",
+   "why": "{!! $x !!} prints raw HTML; user data in it is an XSS hole.",
+   "fix": "Use {{ $x }} or sanitize first.",
+   "match": {
+    "kind": "file",
+    "files": "\\.blade\\.php$",
+    "line": "\\{!!\\s*\\$",
+    "where": [
+     {
+      "op": "lineNotMatches",
+      "regex": "e\\(|htmlspecialchars|Purifier"
+     }
+    ]
+   }
+  }
+ ]
+}

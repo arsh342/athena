@@ -65,6 +65,7 @@ export async function runScan(args: RunArgs): Promise<number> {
     }
   });
   await attachScanDelta(report, `${mode}:${root}`, root);
+  for (const w of report.summary.skillWarnings ?? []) writeInfo(`warning: ${w}`);
 
   if (options.verbose) {
     for (const message of messages) writeInfo(`note: ${message.text}`);

@@ -1,0 +1,54 @@
+{
+ "rules": [
+  {
+   "id": "ai-generated-code.cors-allow-all-default",
+   "title": "CORS left open to every origin",
+   "severity": "LOW",
+   "cwe": [
+    942
+   ],
+   "category": "cors",
+   "why": "Starter code often calls cors() with no options, which allows every origin.",
+   "fix": "List the allowed origins.",
+   "match": {
+    "kind": "line",
+    "line": "\\bapp\\.use\\(\\s*cors\\(\\s*\\)\\s*\\)|allow_origins\\s*=\\s*\\[\\s*[\\'\"]\\*[\\'\"]\\s*\\]|origin\\s*:\\s*[\\'\"]\\*[\\'\"]"
+   },
+   "families": [
+    "js",
+    "python"
+   ],
+   "confidence": "low"
+  },
+  {
+   "id": "ai-generated-code.logs-credentials",
+   "title": "Credential printed to the log",
+   "severity": "MEDIUM",
+   "cwe": [
+    532
+   ],
+   "category": "info-leak",
+   "why": "Debug statements that print passwords, tokens or keys leave them in log files and monitoring systems.",
+   "fix": "Remove the log or log only that the value exists.",
+   "match": {
+    "kind": "line",
+    "line": "(?:console\\.(?:log|info|debug)|\\bprint|logger\\.(?:info|debug)|log\\.(?:info|debug|Printf|Println)|fmt\\.Print\\w*)\\(",
+    "where": [
+     {
+      "op": "lineMatches",
+      "regex": "(?:[,(]\\s*[\\w.]*(?:password|passwd|secret|token|api_?key)\\w*\\s*(?:[,)]|$)|\\$\\{\\s*[\\w.]*(?:password|passwd|secret|token|api_?key)\\w*\\s*\\}|\\{[\\w.]*(?:password|passwd|secret|token|api_?key)\\w*\\})"
+     },
+     {
+      "op": "lineNotMatches",
+      "regex": "redact|mask|\\*{3}"
+     }
+    ]
+   },
+   "families": [
+    "js",
+    "python",
+    "go"
+   ]
+  }
+ ]
+}

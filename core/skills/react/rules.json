@@ -1,0 +1,47 @@
+{
+ "rules": [
+  {
+   "id": "react.target-blank-no-rel",
+   "title": "Link opens a new tab without rel=\"noopener\"",
+   "severity": "LOW",
+   "cwe": [
+    1022
+   ],
+   "category": "xss",
+   "why": "A page opened with target=\"_blank\" can navigate the opener through window.opener (reverse tab-nabbing).",
+   "fix": "Add rel=\"noopener noreferrer\".",
+   "match": {
+    "kind": "line",
+    "line": "target\\s*=\\s*[\"\\']_blank[\"\\']",
+    "where": [
+     {
+      "op": "lineNotMatches",
+      "regex": "rel\\s*=\\s*[\"\\'{][^\"\\']*noopener"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ],
+   "confidence": "medium"
+  },
+  {
+   "id": "react.javascript-url",
+   "title": "javascript: URL in a link",
+   "severity": "MEDIUM",
+   "cwe": [
+    79
+   ],
+   "category": "xss",
+   "why": "A javascript: URL runs script when clicked.",
+   "fix": "Use an onClick handler, or validate URL schemes.",
+   "match": {
+    "kind": "line",
+    "line": "(?:href|src|action)\\s*=\\s*\\{?[\"\\'`]javascript:"
+   },
+   "families": [
+    "js"
+   ]
+  }
+ ]
+}

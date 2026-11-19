@@ -50,6 +50,7 @@ export { getParser, ParserUnavailableError, type TreeSitterParser } from './lang
 export { loadFastModel, classifyUnit, probabilitiesFromFeatures } from './provenance/fast-model.js';
 export type { FastModel, FastModelMeta } from './provenance/fast-model.js';
 export { isConfigTextFile } from './util/text-files.js';
-export { analyzeProject, loadProjectFiles } from './analysis/project.js';
+export { analyzeProject, loadProjectFiles, type ProjectFile } from './analysis/project.js';
 export { scanTextForSecrets } from './secrets/scan.js';
 export { allRuleMeta, ruleMeta } from './rules/registry.js';
+export * from './skills/index.js';

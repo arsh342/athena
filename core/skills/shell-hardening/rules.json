@@ -1,0 +1,29 @@
+{
+ "rules": [
+  {
+   "id": "shell-hardening.missing-strict-mode",
+   "title": "Script without strict mode",
+   "severity": "LOW",
+   "cwe": [
+    754
+   ],
+   "category": "config",
+   "why": "Without set -e/-u a failed command is ignored and an unset variable expands to an empty string (rm -rf \"$DIR/\").",
+   "fix": "Add set -euo pipefail.",
+   "match": {
+    "kind": "line",
+    "line": "^#!\\s*/(?:usr/)?bin/(?:env\\s+)?(?:ba|z)?sh\\b",
+    "where": [
+     {
+      "op": "fileTextNotMatches",
+      "regex": "^\\s*set\\s+-[a-z]*e[a-z]*u|^\\s*set\\s+-euo|^\\s*set\\s+-o\\s+errexit"
+     }
+    ]
+   },
+   "families": [
+    "shell"
+   ],
+   "confidence": "low"
+  }
+ ]
+}

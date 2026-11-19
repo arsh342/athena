@@ -1,0 +1,46 @@
+{
+ "rules": [
+  {
+   "id": "aspnet.cors-any-origin-credentials",
+   "title": "CORS policy allows any origin and credentials",
+   "severity": "MEDIUM",
+   "cwe": [
+    942
+   ],
+   "category": "cors",
+   "why": "AllowAnyOrigin combined with credentials lets other sites make authenticated calls.",
+   "fix": "Use WithOrigins(...).",
+   "match": {
+    "kind": "line",
+    "line": "AllowAnyOrigin\\(\\)",
+    "where": [
+     {
+      "op": "fileTextMatches",
+      "regex": "AllowCredentials\\(\\)"
+     }
+    ]
+   },
+   "families": [
+    "csharp"
+   ]
+  },
+  {
+   "id": "aspnet.cookie-secure-none",
+   "title": "Cookie policy allows plain HTTP",
+   "severity": "MEDIUM",
+   "cwe": [
+    614
+   ],
+   "category": "session",
+   "why": "CookieSecurePolicy.None sends the cookie over HTTP.",
+   "fix": "Use Always (or SameAsRequest behind TLS-terminating proxies with care).",
+   "match": {
+    "kind": "line",
+    "line": "SecurePolicy\\s*=\\s*CookieSecurePolicy\\.None"
+   },
+   "families": [
+    "csharp"
+   ]
+  }
+ ]
+}

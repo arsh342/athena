@@ -1,0 +1,47 @@
+{
+ "rules": [
+  {
+   "id": "nestjs.validation-pipe-missing",
+   "title": "NestJS app without a global ValidationPipe",
+   "severity": "LOW",
+   "cwe": [
+    20
+   ],
+   "category": "validation",
+   "why": "Without ValidationPipe, DTO decorators are not enforced and request bodies are used as sent.",
+   "fix": "app.useGlobalPipes(new ValidationPipe({ whitelist: true })).",
+   "match": {
+    "kind": "line",
+    "line": "NestFactory\\.create\\(",
+    "where": [
+     {
+      "op": "fileTextNotMatches",
+      "regex": "ValidationPipe"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ],
+   "confidence": "low"
+  },
+  {
+   "id": "nestjs.cors-open",
+   "title": "enableCors() with no origin list",
+   "severity": "MEDIUM",
+   "cwe": [
+    942
+   ],
+   "category": "cors",
+   "why": "enableCors() without options allows every origin.",
+   "fix": "Pass an explicit origin list.",
+   "match": {
+    "kind": "line",
+    "line": "\\.enableCors\\(\\s*\\)"
+   },
+   "families": [
+    "js"
+   ]
+  }
+ ]
+}

@@ -4,11 +4,13 @@ import { relative } from 'node:path';
 import { detectLanguage, LANGUAGE_FAMILY, type LanguageId } from '../lang/languages.js';
 import { getParser, type TSNode } from '../lang/parser-pool.js';
 import { packFor } from '../rules/registry.js';
+import { extendPack, type CompiledSkills } from '../skills/compile.js';
 import type { FileContext, RawFinding } from '../rules/types.js';
 import { analyzeFileTaint, AnalysisTimeout, NO_IMPORTS, type FnSummary } from '../taint/engine.js';
 import { parseImports, tailIndex } from '../taint/imports.js';
 import { runPatternRules } from './pattern.js';
 import { isFunctionNode } from './lang.js';
+import { isSkillFixturePath } from '../skills/activate.js';
 import { mineConventions } from '../investigate/conventions.js';
 import { collectFacts, allNodes } from '../investigate/facts.js';
 import { analyzeIntent } from '../investigate/intent.js';
@@ -42,6 +44,8 @@ export interface ProjectAnalysis {
 export interface AnalyzeOptions {
   /** Routes that are public on purpose (athena.config.json `publicRoutes`). */
   publicRoutes?: string[];
+  /** Active, compiled skills whose rules extend the built-in packs. */
+  skills?: CompiledSkills;
   /** Scan root; test-path rules are evaluated relative to it. Defaults to the current directory. */
   root?: string;
 }
@@ -55,7 +59,7 @@ const GENERATED_HEADER = /(?:@generated|auto-?generated|code generated|generated
 
 /** Third-party, generated or minified code is not the project's own: listed as excluded, not analysed. */
 export function isVendoredOrGenerated(relPath: string, source: string): boolean {
-  if (VENDORED_PATH.test(relPath)) return true;
+  if (VENDORED_PATH.test(relPath) || isSkillFixturePath(relPath)) return true;
   const head = source.slice(0, 600).split('\n', 6).join('\n');
   return GENERATED_HEADER.test(head);
 }
@@ -128,8 +132,9 @@ export async function analyzeProject(allFiles: ProjectFile[], options: AnalyzeOp
 
   // Round 1: pattern rules, local taint summaries.
   for (const file of files) {
-    const pack = packFor(LANGUAGE_FAMILY[file.lang]);
-    if (!pack) continue;
+    const basePack = packFor(LANGUAGE_FAMILY[file.lang]);
+    if (!basePack) continue;
+    const pack = extendPack(basePack, options.skills?.extras.get(basePack.family));
     families.add(pack.family);
     const parsed = await parseContext(file, root);
     if (!parsed) continue;
@@ -184,7 +189,7 @@ export async function analyzeProject(allFiles: ProjectFile[], options: AnalyzeOp
   });
   for (let round = 0; round < 2 && withImports.length > 0; round += 1) {
     for (const file of withImports) {
-      const pack = packFor(LANGUAGE_FAMILY[file.lang])!;
+      const pack = extendPack(packFor(LANGUAGE_FAMILY[file.lang])!, options.skills?.extras.get(LANGUAGE_FAMILY[file.lang]));
       const parsed = await parseContext(file, root);
       if (!parsed) continue;
       try {
@@ -221,7 +226,7 @@ export async function analyzeProject(allFiles: ProjectFile[], options: AnalyzeOp
       seen.add(key);
       return true;
     });
-    findings.set(path, unique.map((raw) => ({ ...raw, ...verifyFinding(path, raw, map, factsByFile.get(path)) })));
+    findings.set(path, unique.map((raw) => ({ ...raw, ...verifyFinding(path, raw, map, factsByFile.get(path), options.skills?.metaById) })));
   }
   return { findings, timedOut: [...new Set(timedOut)], failed, families, skippedMinified, map, facts: factsByFile };
 }

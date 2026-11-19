@@ -136,6 +136,12 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     out.push('');
   }
 
+  if (summary.skills && summary.skills.length > 0) {
+    const names = summary.skills.map((s) => s.name);
+    out.push(dim(`Skills: ${names.slice(0, 6).join(', ')}${names.length > 6 ? ` (+${names.length - 6})` : ''}`));
+    out.push('');
+  }
+
   // ── AI provenance ──
   const provenance = summary.aiProvenance;
   if (provenance) {
