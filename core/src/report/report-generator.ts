@@ -27,7 +27,8 @@ export function generateReport(
   };
   const flaggedUnits = units.filter((unit) => unit.flagged).length;
   const aiScore = Math.round(units.reduce((sum, unit) => sum + unit.score, 0) / Math.max(1, units.length));
-  const blocked = findings.some((finding) => config.blockOn.includes(finding.severity));
+  const blockKev = config.updates?.blockKnownExploited !== false;
+  const blocked = findings.some((finding) => config.blockOn.includes(finding.severity) || (blockKev && finding.kev === true));
   const riskDensity = {
     criticalPer1kLoc: roundPerK(severityCounts.CRITICAL, totalLoc),
     findingsPer1kLoc: roundPerK(findings.length, totalLoc),

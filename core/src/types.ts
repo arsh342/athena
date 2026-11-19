@@ -25,6 +25,14 @@ export interface DependenciesConfig {
   registryChecks: boolean;
 }
 
+export interface UpdatesConfig {
+  /** Refresh advisory data in the background when it is older than `intervalHours` (only for ecosystems already synced). */
+  auto: boolean;
+  intervalHours: number;
+  /** Block on known-exploited (CISA KEV) vulnerabilities at any severity. */
+  blockKnownExploited: boolean;
+}
+
 export interface NpmAuditConfig {
   enabled: boolean;
   timeoutMs: number;
@@ -170,6 +178,10 @@ export interface ClassifiedFinding {
   trace?: Array<{ file: string; line: number; note: string }>;
   /** The package a dependency finding is about (additive). */
   dependency?: { ecosystem: string; name: string; version: string; manifest: string };
+  /** Listed in CISA's Known Exploited Vulnerabilities catalogue. */
+  kev?: boolean;
+  /** FIRST EPSS probability of exploitation in the next 30 days. */
+  epss?: { score: number; percentile: number };
 }
 
 export interface FileReport {
@@ -180,6 +192,8 @@ export interface FileReport {
 
 export interface ScanReport {
   timestamp: string;
+  /** Dependencies found in this scan (lockfiles and manifests); exported as an SBOM and re-checked by `athena alerts`. */
+  inventory?: Array<{ ecosystem: string; name: string; version: string; direct: boolean; manifest: string }>;
   duration: number;
   summary: {
     filesScanned: number;
@@ -280,6 +294,7 @@ export interface AthenaConfig {
   /** Deprecated and ignored: `npm audit` was replaced by dependency intelligence (`dependencies`). */
   npmAudit?: NpmAuditConfig;
   dependencies?: DependenciesConfig;
+  updates?: UpdatesConfig;
   nodejsscan?: NodejsscanConfig;
   bearer?: BearerConfig;
   maxFileSize: number;

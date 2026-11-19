@@ -1,6 +1,7 @@
 import type { Severity } from '../types.js';
 import type { DepsClient } from './net.js';
 import type { Dependency } from './types.js';
+import { hasLocal, queryLocal } from '../updates/vulndb.js';
 
 export interface Advisory {
   id: string;
@@ -80,11 +81,19 @@ const key = (d: Pick<Dependency, 'ecosystem' | 'name' | 'version'>): string => `
 export const depKey = key;
 
 /** Query OSV for every unique package version (batches of 1,000), then fetch each distinct advisory once. */
-export async function queryVulnerabilities(client: DepsClient, queries: Array<Pick<Dependency, 'ecosystem' | 'name' | 'version'>>): Promise<VulnResult> {
+export async function queryVulnerabilities(client: DepsClient, queries: Array<Pick<Dependency, 'ecosystem' | 'name' | 'version'>>, local: { enabled: boolean; home?: string } = { enabled: false }): Promise<VulnResult> {
   const advisories = new Map<string, Advisory[]>();
   let unavailable = 0;
   const idsFor = new Map<string, string[]>();
-  const supported = queries.filter((q) => OSV_ECOSYSTEM[q.ecosystem]);
+  const usable = queries.filter((q) => OSV_ECOSYSTEM[q.ecosystem]);
+  // Ecosystems with a local database are answered from it (no network); the rest fall back to the OSV API.
+  const supported: typeof usable = [];
+  for (const q of usable) {
+    if (local.enabled && hasLocal(q.ecosystem, local.home)) {
+      const list = queryLocal(q.ecosystem, q.name, q.version, local.home);
+      if (list.length > 0) advisories.set(key(q), list);
+    } else supported.push(q);
+  }
   for (let i = 0; i < supported.length; i += 1000) {
     const chunk = supported.slice(i, i + 1000);
     const body = { queries: chunk.map((q) => ({ package: { name: q.name, ecosystem: OSV_ECOSYSTEM[q.ecosystem] }, version: q.version.replace(/^v(?=\d)/, '') })) };

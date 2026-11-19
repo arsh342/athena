@@ -1,0 +1,26 @@
+# Turns new reviewed HIGH/CRITICAL advisories (with a linked fix commit) into proposed detection rules, as a pull request
+# for human review. DISABLED until the repository variable ADVISORY_WATCH_ENABLED is set to "true".
+# Needs no secrets beyond the built-in GITHUB_TOKEN (the PR is opened with it). Signing packs is a separate, manual step.
+name: advisory-watch
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * *'
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  watch:
+    if: ${{ vars.ADVISORY_WATCH_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: git config user.name "athena-advisory-watch" && git config user.email "advisory-watch@users.noreply.github.com"
+      - run: node --import tsx scripts/advisory-watch/run.ts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -153,6 +153,41 @@ export async function ensureAuthSchema(): Promise<void> {
     ON scan_reports(user_id, created_at DESC);
   `);
 
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS scan_inventories (
+      scan_id TEXT PRIMARY KEY REFERENCES scans(scan_id) ON DELETE CASCADE,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      inventory JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS scan_alerts (
+      id BIGSERIAL PRIMARY KEY,
+      scan_id TEXT NOT NULL REFERENCES scans(scan_id) ON DELETE CASCADE,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      advisory_id TEXT NOT NULL,
+      ecosystem TEXT NOT NULL,
+      package_name TEXT NOT NULL,
+      package_version TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      fixed_in TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (scan_id, advisory_id, package_name, package_version)
+    );
+  `);
+
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_scan_alerts_user ON scan_alerts(user_id, created_at DESC);`);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS job_locks (
+      name TEXT PRIMARY KEY,
+      locked_until TIMESTAMPTZ NOT NULL
+    );
+  `);
+
   // Enable Row Level Security (RLS) on all tables for Supabase security compliance.
   // Then create a permissive policy for the 'postgres' role so our backend
   // (which connects as postgres) can still read/write data.
@@ -163,7 +198,10 @@ export async function ensureAuthSchema(): Promise<void> {
     'scans',
     'scan_findings',
     'scan_terminal_lines',
-    'scan_reports'
+    'scan_reports',
+    'scan_inventories',
+    'scan_alerts',
+    'job_locks'
   ];
   for (const table of tables) {
     await db.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`);

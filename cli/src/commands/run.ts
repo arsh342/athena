@@ -1,6 +1,8 @@
+import { formatCycloneDx } from '@athena/core';
+import { startBackgroundUpdate } from './update.js';
 import { readFileSync } from 'node:fs';
 import { realpath, writeFile } from 'node:fs/promises';
-import { relative, sep } from 'node:path';
+import { basename, relative, sep } from 'node:path';
 import {
   formatJsonl, formatSarif, formatTerminalReport, mergeConfig, scanFiles,
   type AthenaConfig, type ScanReport,
@@ -65,6 +67,7 @@ export async function runScan(args: RunArgs): Promise<number> {
     }
   });
   await attachScanDelta(report, `${mode}:${root}`, root);
+  if (config.updates?.auto !== false && !options.deps.offline && options.deps.enabled) startBackgroundUpdate(config.updates?.intervalHours ?? 24);
   for (const w of report.summary.skillWarnings ?? []) writeInfo(`warning: ${w}`);
 
   if (options.verbose) {
@@ -111,6 +114,8 @@ function render(report: ScanReport, args: RunArgs, uriPrefix: string): string {
       return JSON.stringify(report, null, 2);
     case 'jsonl':
       return formatJsonl(report);
+    case 'cyclonedx':
+      return formatCycloneDx(report, { toolVersion: CLI_VERSION, projectName: basename(args.root) });
     case 'sarif':
       return formatSarif(report, { toolVersion: CLI_VERSION, root: args.root, uriPrefix });
     default: {
