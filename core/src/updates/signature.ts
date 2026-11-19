@@ -2,10 +2,13 @@ import { createHash, createPublicKey, sign, verify, type KeyObject } from 'node:
 
 /**
  * Ed25519 public key (PEM) that official rule/skill packs are signed with. It is provisioned by the maintainer
- * (scripts/gen-pack-key.ts creates the pair; the private key never enters the repository). Empty until provisioned:
- * the CLI then refuses official packs instead of trusting an unknown signer.
+ * (scripts/gen-pack-key.ts creates the pair; the private key never enters the repository). Generated 2026-11-20; the
+ * private key lives outside the repository and in the PACK_SIGNING_KEY repository secret.
  */
-export const PACK_PUBLIC_KEY = '';
+export const PACK_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEASGAzgcNqEADydQ6eKisLWLGwXqAf3qJ2NsYov/2kmMs=
+-----END PUBLIC KEY-----
+`;
 
 export const sha256 = (data: Buffer): string => createHash('sha256').update(data).digest('hex');
 
