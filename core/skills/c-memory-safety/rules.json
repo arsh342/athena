@@ -1,0 +1,54 @@
+{
+ "rules": [
+  {
+   "id": "c-memory-safety.strncpy-source-length",
+   "title": "strncpy bounded by the source length",
+   "severity": "MEDIUM",
+   "cwe": [
+    120,
+    806
+   ],
+   "category": "memory-safety",
+   "why": "strncpy(dst, src, strlen(src)) copies without room for the terminator and ignores the destination size.",
+   "fix": "Bound by sizeof(dst) - 1 and terminate explicitly.",
+   "match": {
+    "kind": "call",
+    "callee": "^strncpy$",
+    "where": [
+     {
+      "op": "argMatches",
+      "index": 2,
+      "regex": "strlen\\s*\\("
+     }
+    ]
+   },
+   "families": [
+    "c"
+   ]
+  },
+  {
+   "id": "c-memory-safety.alloca-variable-size",
+   "title": "alloca with a variable size",
+   "severity": "MEDIUM",
+   "cwe": [
+    770
+   ],
+   "category": "memory-safety",
+   "why": "alloca with an attacker-influenced size can overflow the stack.",
+   "fix": "Use heap allocation with a checked upper bound.",
+   "match": {
+    "kind": "call",
+    "callee": "^alloca$",
+    "where": [
+     {
+      "op": "argIsNonLiteral",
+      "index": 0
+     }
+    ]
+   },
+   "families": [
+    "c"
+   ]
+  }
+ ]
+}

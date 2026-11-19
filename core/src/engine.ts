@@ -9,10 +9,14 @@ import { scoreUnit } from './scorer/heuristic-scorer.js';
 import { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
 import { recordedAiLines, type RecordedRepo } from './provenance/git-recorded.js';
 import { classifyUnit, loadFastModel, type FastModel } from './provenance/fast-model.js';
-import { analyzeProject, loadProjectFiles } from './analysis/project.js';
+import { analyzeProject, isVendoredOrGenerated, loadProjectFiles } from './analysis/project.js';
 import { ruleMeta } from './rules/registry.js';
 import type { RawFinding } from './rules/types.js';
 import { scanTextForSecrets } from './secrets/scan.js';
+import { relative } from 'node:path';
+import { activationReason, buildProfile, isSkillFixturePath } from './skills/activate.js';
+import { compileSkills, runFileRules, type CompiledSkills } from './skills/compile.js';
+import { clean, learnedAsSkill, loadSkills } from './skills/loader.js';
 import { redactKnownSecrets } from './report/redact.js';
 import { createHash } from 'node:crypto';
 import { scannerRegistry, type ScannerRegistry } from './scanner-registry.js';
@@ -49,6 +53,8 @@ export interface ScanFilesOptions {
   fastModel?: FastModel | null;
   /** Config-style text files (.env, YAML, JSON, ...) searched for secrets only. */
   textFiles?: string[];
+  /** `false` disables skills; a compiled set overrides discovery (tests). Default: built-in, user and repo skills that apply to the project. */
+  skills?: false | CompiledSkills;
   /** Run Athena's own rule packs and taint analysis (default true). */
   analysis?: boolean;
 }
@@ -185,7 +191,7 @@ export async function scanFiles(
   let skippedMinified = 0;
   const reportsByPath = new Map(files.map((f) => [f.path, f]));
   const addRaw = (path: string, raw: RawFinding): void => {
-    const meta = ruleMeta(raw.ruleId);
+    const meta = ruleMeta(raw.ruleId) ?? compiledSkills?.metaById.get(raw.ruleId);
     if (!meta) return;
     let report = reportsByPath.get(path);
     if (!report) {
@@ -206,13 +212,33 @@ export async function scanFiles(
       ...(raw.evidence && raw.evidence.length > 0 ? { evidence: raw.evidence.map(scrub) } : {}),
       ...(raw.exposure ? { exposure: raw.exposure } : {}),
       ...(raw.priority !== undefined ? { priority: raw.priority } : {}),
+      ...(compiledSkills?.ruleSkill.get(raw.ruleId) ? { skill: compiledSkills.ruleSkill.get(raw.ruleId)! } : {}),
       ...(raw.trace ? { trace: raw.trace.map((t) => ({ file: t.file ?? path, line: t.line, note: scrub(t.note) })) } : {}),
     });
   };
 
+  let compiledSkills: CompiledSkills | undefined;
+  const skillWarnings: string[] = [];
+  const skillNotes: Array<{ name: string; source: string; reason: string; rules: number }> = [];
   const analyzedPaths = fileCoverage.filter((f) => f.status === 'analyzed' || f.status === 'parse-failed').map((f) => f.path);
   if (options.analysis !== false) {
-    const project = await analyzeProject(await loadProjectFiles(analyzedPaths), { publicRoutes: config.publicRoutes ?? [], root: options.root ?? process.cwd() });
+    const projectFiles = await loadProjectFiles(analyzedPaths);
+    const root = options.root ?? process.cwd();
+    if (options.skills && typeof options.skills === 'object') compiledSkills = options.skills;
+    else if (options.skills !== false) {
+      const loaded = loadSkills(root);
+      const own = projectFiles.filter((f) => !isSkillFixturePath(relative(root, f.path)) && !isVendoredOrGenerated(relative(root, f.path), f.source));
+      const profile = buildProfile(root, own, (options.textFiles ?? []).filter((p) => !isSkillFixturePath(relative(root, p))));
+      const learned = learnedAsSkill(loaded.learned);
+      const active = [...loaded.skills, ...(learned ? [learned] : [])].filter((skill) => {
+        const reason = activationReason(skill, profile);
+        if (reason) skillNotes.push({ name: skill.meta.name, source: skill.source, reason, rules: skill.rules.length });
+        return reason !== null;
+      });
+      compiledSkills = compileSkills(active);
+      for (const w of [...loaded.warnings, ...compiledSkills.warnings]) skillWarnings.push(w);
+    }
+    const project = await analyzeProject(projectFiles, { publicRoutes: config.publicRoutes ?? [], root, ...(compiledSkills ? { skills: compiledSkills } : {}) });
     for (const family of project.families) analysisFamilies.set(family, 0);
     for (const path of project.failed) {
       const lang = detectLanguage(path);
@@ -258,6 +284,19 @@ export async function scanFiles(
         continue;
       }
       for (const raw of scanTextForSecrets(path, text)) addRaw(path, raw);
+    }
+  }
+
+  if (compiledSkills && compiledSkills.fileRules.length > 0) {
+    for (const path of [...analyzedPaths, ...(options.textFiles ?? [])]) {
+      if (isSkillFixturePath(relative(options.root ?? process.cwd(), path))) continue;
+      let text: string;
+      try {
+        text = await readFile(path, 'utf8');
+      } catch {
+        continue;
+      }
+      for (const hit of runFileRules(relative(options.root ?? process.cwd(), path).split('\\').join('/'), text, compiledSkills.fileRules)) addRaw(path, { ruleId: hit.ruleId, line: hit.line, code: hit.code, source: 'athena-rules' });
     }
   }
 
@@ -356,6 +395,9 @@ export async function scanFiles(
 
   const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded, method));
   if (Object.keys(languages).length > 0) report.summary.languages = languages;
+  if (skillNotes.length > 0) report.summary.skills = skillNotes.sort((a, b) => b.rules - a.rules || a.name.localeCompare(b.name)).map(({ rules: _rules, ...rest }) => rest);
+  if (compiledSkills?.budgets) for (const [name, b] of compiledSkills.budgets) if (b.spent > b.limit) skillWarnings.push(`skill ${clean(name)} was switched off part-way: its rules used more than ${b.limit} ms`);
+  if (skillWarnings.length > 0) report.summary.skillWarnings = skillWarnings.map(clean).slice(0, 20);
   return report;
 }
 

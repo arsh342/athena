@@ -1,0 +1,3 @@
+ALLOWED_HOSTS = ['app.example.org']
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True

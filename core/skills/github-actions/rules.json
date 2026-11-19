@@ -1,0 +1,85 @@
+{
+ "rules": [
+  {
+   "id": "github-actions.script-injection",
+   "title": "Untrusted input interpolated into a script",
+   "severity": "HIGH",
+   "cwe": [
+    94,
+    77
+   ],
+   "category": "ci",
+   "why": "${{ github.event.issue.title }} (and similar) is pasted into the shell script before it runs, so a crafted title runs commands.",
+   "fix": "Assign it to an env variable and use \"$VAR\" in the script.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)\\.github/workflows/[^/]+\\.ya?ml$",
+    "line": "\\$\\{\\{\\s*github\\.(?:event\\.(?:issue|pull_request|comment|review|head_commit|discussion)\\.[\\w.]*(?:title|body|name|message|ref|label)|head_ref)",
+    "where": [
+     {
+      "op": "inRunBlock"
+     },
+     {
+      "op": "lineNotMatches",
+      "regex": "^\\s*[\\w.-]+:\\s*[\\'\"]?\\$\\{\\{"
+     }
+    ]
+   }
+  },
+  {
+   "id": "github-actions.pr-target-checkout-head",
+   "title": "Privileged workflow checks out pull request code",
+   "severity": "HIGH",
+   "cwe": [
+    829
+   ],
+   "category": "ci",
+   "why": "pull_request_target runs with secrets and write access; checking out the PR head runs untrusted code with them.",
+   "fix": "Use pull_request, or do not run PR code in this workflow.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)\\.github/workflows/[^/]+\\.ya?ml$",
+    "line": "ref:\\s*\\$\\{\\{\\s*github\\.event\\.pull_request\\.head\\.(?:sha|ref)",
+    "where": [
+     {
+      "op": "fileTextMatches",
+      "regex": "pull_request_target"
+     }
+    ]
+   }
+  },
+  {
+   "id": "github-actions.write-all-permissions",
+   "title": "Workflow grants write-all permissions",
+   "severity": "MEDIUM",
+   "cwe": [
+    250
+   ],
+   "category": "ci",
+   "why": "write-all gives the job token every write scope.",
+   "fix": "List only the permissions the job needs.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)\\.github/workflows/[^/]+\\.ya?ml$",
+    "line": "permissions:\\s*write-all"
+   }
+  },
+  {
+   "id": "github-actions.unpinned-third-party-action",
+   "title": "Third-party action not pinned to a commit",
+   "severity": "LOW",
+   "cwe": [
+    829
+   ],
+   "category": "supply-chain",
+   "why": "A tag can be moved to malicious code; only a commit SHA is immutable.",
+   "fix": "Pin to a full commit SHA and let Dependabot update it.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)\\.github/workflows/[^/]+\\.ya?ml$",
+    "line": "uses:\\s*(?!actions/|github/|\\./)[\\w.-]+/[\\w./-]+@(?![0-9a-f]{40}\\b)\\S+"
+   },
+   "confidence": "low"
+  }
+ ]
+}

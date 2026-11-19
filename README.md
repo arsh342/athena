@@ -58,6 +58,26 @@ No external scanner is needed for these; they run offline on every supported lan
 
 Benchmarks against known-vulnerable apps: [`docs/athena-bench/SAST.md`](docs/athena-bench/SAST.md) (recall against a hand-verified, partial answer key; precision is not yet measured).
 
+## Skills
+
+A skill is packaged expertise for a framework, language or bug class, in the open Agent Skills format (a `SKILL.md` with YAML frontmatter) plus declarative data. Athena loads only each skill's name and description, switches a skill on when the project actually uses it (a dependency in a manifest or an import — never free text in a README), and then adds its rules, sources, sinks and file checks to the scan. Findings name the skill that produced them (`skill: "express"`), and the terminal prints `Skills: express, auth-sessions, …`.
+
+**Built in (39, MIT):** methodology (audit context, variant analysis, false-positive check, insecure defaults, sharp edges, differential review, spec vs code, lifecycles and races), frameworks (Express, Next.js, React, NestJS, Flask, Django, FastAPI, Spring, ASP.NET Core, Go web, Rust web, Laravel), ORMs (Prisma, SQLAlchemy, TypeORM, Hibernate, EF Core, GORM), languages (C/C++ memory safety, Rust unsafe/FFI, PHP, shell), and domains (authentication and sessions, file uploads, payment webhooks, GitHub Actions, Dockerfiles, LLM-app security, common AI-generated-code flaws, fail-open defaults).
+
+```
+athena skills list [path]            what is active for this project, and what is available
+athena skills show <name> [--section "Verification checklist"]
+athena skills new <name>             scaffold a skill with rules and fixtures (repo: .athena/skills/)
+athena skills test [path]            validate a skill and run its vulnerable/safe fixtures
+athena skills add <git-url>[#subdir][@commit] [--yes] [--repo]
+athena skills remove <name>
+athena variants <finding-id> [--save]  turn one confirmed finding into a rule and find its siblings
+```
+
+Skills are **data only**: rules (`rules.json`: a call, line or file pattern plus a fixed vocabulary of conditions such as `argIsConcat` or `fileTextNotMatches`), taint sources/sinks (`taint.json`) and guidance text. They contain no code. Every regular expression is checked before a skill loads (third-party patterns are limited to a few quantifiers and run under a time budget, and are switched off if they are slow); every built-in rule has a vulnerable and a safe fixture, and `athena skills test` runs them for yours. A skill cannot reuse a built-in rule id or take a built-in name (`taint`, `crypto`, `express`, …), cannot replace a built-in skill, and cannot declare sanitizers, so it cannot hide or re-grade built-in findings. Skills from `athena skills add` are pinned to a full commit SHA, show their licence and every file before installing, ask before replacing an installed skill, and are fetched into a temporary folder that is always removed. Precedence is repo (`.athena/skills`) over user (`~/.athena/skills`); built-in skills are always kept. Detection reads dependency names from manifests (package.json, requirements, pyproject, pom, go.mod, Cargo, …) and imports, never prose. Third-party skills such as Trail of Bits' (CC BY-SA 4.0) are not bundled; install them yourself and mind their licence.
+
+**Variant analysis:** `athena variants <id>` generalises a confirmed finding (the sink call and the shape of its unsafe argument) into a rule, previews the other places that match, and with `--save` stores it in `.athena/learned-rules.json`, so every later scan finds those cousins for free. A rule that matches more than 50 places is refused without `--force`.
+
 ---
 
 ## Features

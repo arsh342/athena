@@ -1,0 +1,95 @@
+{
+ "rules": [
+  {
+   "id": "auth-sessions.jwt-in-localstorage",
+   "title": "Auth token stored in localStorage",
+   "severity": "MEDIUM",
+   "cwe": [
+    922
+   ],
+   "category": "session",
+   "why": "Any script on the page (including a compromised dependency) can read localStorage and steal the token.",
+   "fix": "Keep tokens in httpOnly, Secure, SameSite cookies.",
+   "match": {
+    "kind": "line",
+    "line": "localStorage\\.setItem\\(\\s*[\\'\"][^\\'\"]*(?:token|jwt)[^\\'\"]*[\\'\"]"
+   },
+   "families": [
+    "js"
+   ]
+  },
+  {
+   "id": "auth-sessions.bcrypt-low-cost",
+   "title": "bcrypt cost below 10",
+   "severity": "MEDIUM",
+   "cwe": [
+    916
+   ],
+   "category": "crypto",
+   "why": "Low bcrypt work factors make stolen hashes cheap to crack.",
+   "fix": "Use 12 or higher.",
+   "match": {
+    "kind": "call",
+    "callee": "^bcrypt\\.(?:hash|hashSync|genSalt|genSaltSync)$",
+    "where": [
+     {
+      "op": "argMatches",
+      "index": 1,
+      "regex": "^[1-9]$"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  },
+  {
+   "id": "auth-sessions.jwt-without-expiry",
+   "title": "JWT signed without an expiry",
+   "severity": "MEDIUM",
+   "cwe": [
+    613
+   ],
+   "category": "session",
+   "why": "A token that never expires stays valid forever if it leaks.",
+   "fix": "Set expiresIn (minutes for access tokens).",
+   "match": {
+    "kind": "call",
+    "callee": "^(?:jwt|jsonwebtoken)\\.sign$",
+    "where": [
+     {
+      "op": "callTextNotMatches",
+      "regex": "expiresIn|exp\\s*:"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  },
+  {
+   "id": "auth-sessions.bcrypt-low-rounds-py",
+   "title": "bcrypt rounds below 10",
+   "severity": "MEDIUM",
+   "cwe": [
+    916
+   ],
+   "category": "crypto",
+   "why": "Low bcrypt work factors make stolen hashes cheap to crack.",
+   "fix": "Use rounds=12 or higher.",
+   "match": {
+    "kind": "call",
+    "callee": "^bcrypt\\.gensalt$",
+    "where": [
+     {
+      "op": "callTextMatches",
+      "regex": "rounds\\s*=\\s*[1-9]\\b"
+     }
+    ]
+   },
+   "families": [
+    "python"
+   ]
+  }
+ ]
+}

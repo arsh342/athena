@@ -7,6 +7,8 @@ import { provenanceCommand } from './commands/provenance.js';
 import { initCommand } from './commands/init.js';
 import { menuCommand } from './commands/menu.js';
 import { scanCommand } from './commands/scan.js';
+import { skillsAdd, skillsList, skillsNew, skillsRemove, skillsShow, skillsTest } from './commands/skills.js';
+import { variantsCommand } from './commands/variants.js';
 import { setupAllCommand, setupSemgrepCommand } from './commands/setup.js';
 import { uninstallCommand } from './commands/uninstall.js';
 import { EXIT } from './utils/exit-codes.js';
@@ -75,6 +77,30 @@ program
   .action(async (path: string, opts: { sort?: string; about?: boolean; format?: string; color?: boolean }) => {
     process.exitCode = await provenanceCommand(path, opts);
   });
+
+const skills = program.command('skills').description('list, inspect, add, write and test skills (packaged expertise for frameworks and bug classes)');
+skills.command('list').argument('[path]', 'project directory', '.').option('--json', 'machine-readable output').description('skills active for this project and available ones')
+  .action(async (path: string, opts: { json?: boolean }) => { process.exitCode = await skillsList({ path, ...opts }); });
+skills.command('show').argument('<name>').option('-p, --path <dir>', 'project directory', '.').option('--section <name>', 'print only one guidance section').description('show one skill')
+  .action(async (name: string, opts: { path?: string; section?: string }) => { process.exitCode = await skillsShow(name, opts); });
+skills.command('add').argument('<source>', 'git URL, optionally #subdir and @commit').option('--yes', 'install without asking').option('--allow-unlicensed', 'install a skill that states no licence').option('--repo', 'install into this repository (.athena/skills) instead of your user directory').option('-p, --path <dir>', 'project directory', '.')
+  .description('install a third-party skill (pinned to a commit; contains rules and text only)')
+  .action(async (source: string, opts: { yes?: boolean; allowUnlicensed?: boolean; repo?: boolean; path?: string }) => { process.exitCode = await skillsAdd(source, opts); });
+skills.command('remove').argument('<name>').option('--repo', 'remove from this repository').option('-p, --path <dir>', 'project directory', '.').description('remove an installed skill')
+  .action(async (name: string, opts: { repo?: boolean; path?: string }) => { process.exitCode = await skillsRemove(name, opts); });
+skills.command('new').argument('<name>').option('--user', 'create in your user skills directory instead of this repository').option('-p, --path <dir>', 'project directory', '.').description('scaffold a skill with rules and fixtures')
+  .action(async (name: string, opts: { user?: boolean; path?: string }) => { process.exitCode = await skillsNew(name, opts); });
+skills.command('test').argument('[path]', 'a skill folder, or a folder of skills', '.').description('validate a skill and run its fixtures')
+  .action(async (path: string) => { process.exitCode = await skillsTest(path); });
+
+program
+  .command('variants')
+  .argument('<finding-id>', 'id from the last scan (see athena explain)')
+  .option('-p, --path <dir>', 'directory that was scanned', '.')
+  .option('--save', 'keep the derived rule in .athena/learned-rules.json')
+  .option('--force', 'save even when the rule matches more than 50 places')
+  .description('turn one confirmed finding into a rule and find its siblings in the code')
+  .action(async (id: string, opts: { path?: string; save?: boolean; force?: boolean }) => { process.exitCode = await variantsCommand(id, opts); });
 
 program.command('init').description('install Athena pre-commit hook').action(initCommand);
 program.command('uninstall').description('remove Athena pre-commit hook').action(uninstallCommand);

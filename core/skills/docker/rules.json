@@ -1,0 +1,82 @@
+{
+ "rules": [
+  {
+   "id": "docker.runs-as-root",
+   "title": "Container runs as root",
+   "severity": "MEDIUM",
+   "cwe": [
+    250
+   ],
+   "category": "container",
+   "why": "Without a USER instruction the process runs as root; a container escape or a file write bug is then much worse.",
+   "fix": "Create a user and switch to it with USER.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)(?:Dockerfile[\\w.-]*|[\\w.-]+\\.dockerfile)$",
+    "line": "^\\s*FROM\\s",
+    "where": [
+     {
+      "op": "isLastMatch"
+     },
+     {
+      "op": "textAfterNotMatches",
+      "regex": "^\\s*USER\\s+(?!root\\b)\\S+"
+     },
+     {
+      "op": "lineNotMatches",
+      "regex": "nonroot|distroless"
+     }
+    ]
+   }
+  },
+  {
+   "id": "docker.add-remote-url",
+   "title": "ADD downloads from a URL",
+   "severity": "MEDIUM",
+   "cwe": [
+    494
+   ],
+   "category": "supply-chain",
+   "why": "ADD of a remote URL fetches content with no checksum verification.",
+   "fix": "Use curl/wget with a checksum check in a RUN step.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)(?:Dockerfile[\\w.-]*|[\\w.-]+\\.dockerfile)$",
+    "line": "^\\s*ADD\\s+https?://"
+   }
+  },
+  {
+   "id": "docker.floating-base-tag",
+   "title": "Base image without a version",
+   "severity": "LOW",
+   "cwe": [
+    1104
+   ],
+   "category": "supply-chain",
+   "why": "FROM image or :latest changes under you and can break or compromise builds.",
+   "fix": "Pin a version (and ideally a digest).",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)(?:Dockerfile[\\w.-]*|[\\w.-]+\\.dockerfile)$",
+    "line": "^\\s*FROM\\s+(?!scratch\\b)(?:[\\w.-]+/[\\w./-]+|(?:node|python|ubuntu|debian|alpine|nginx|golang|openjdk|ruby|php|rust|mysql|postgres|redis|httpd|busybox|centos|fedora|maven|gradle|dotnet))(?::latest)?(?:\\s+AS\\s+\\S+)?\\s*(?:#.*)?$"
+   },
+   "confidence": "low"
+  },
+  {
+   "id": "docker.curl-pipe-shell",
+   "title": "Downloaded script piped to a shell",
+   "severity": "HIGH",
+   "cwe": [
+    494
+   ],
+   "category": "supply-chain",
+   "why": "Running a script straight from the network executes whatever the server returns.",
+   "fix": "Download, verify a checksum or signature, then run.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)(?:Dockerfile[\\w.-]*|[\\w.-]+\\.dockerfile)$",
+    "line": "^\\s*RUN\\s.*(?:curl|wget)[^|]*\\|\\s*(?:sudo\\s+)?(?:ba)?sh\\b"
+   }
+  }
+ ]
+}

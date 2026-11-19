@@ -1,0 +1,42 @@
+{
+ "rules": [
+  {
+   "id": "php-hardening.preg-replace-eval",
+   "title": "preg_replace with the /e modifier",
+   "severity": "HIGH",
+   "cwe": [
+    95
+   ],
+   "category": "injection",
+   "why": "The /e modifier evaluates the replacement as PHP code.",
+   "fix": "Use preg_replace_callback.",
+   "match": {
+    "kind": "line",
+    "line": "preg_replace\\(\\s*[\\'\"][^\\'\"]*/[a-z]*e[a-z]*[\\'\"]"
+   },
+   "families": [
+    "php"
+   ]
+  },
+  {
+   "id": "php-hardening.loose-hash-compare",
+   "title": "Hash compared with ==",
+   "severity": "MEDIUM",
+   "cwe": [
+    697,
+    208
+   ],
+   "category": "crypto",
+   "why": "\"0e123\" == \"0e456\" is true in PHP (magic hashes), and == leaks timing.",
+   "fix": "Use hash_equals().",
+   "match": {
+    "kind": "line",
+    "line": "(?:md5|sha1|hash)\\(.*\\)\\s*(?:==|!=)\\s*[^=]"
+   },
+   "families": [
+    "php"
+   ],
+   "confidence": "medium"
+  }
+ ]
+}

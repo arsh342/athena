@@ -1,0 +1,23 @@
+{
+ "rules": [
+  {
+   "id": "sharp-edges-code.assert-for-security",
+   "title": "assert used for a security decision",
+   "severity": "MEDIUM",
+   "cwe": [
+    617,
+    617
+   ],
+   "category": "api-misuse",
+   "why": "assert is removed when Python runs with -O, so the check disappears in optimized deployments.",
+   "fix": "Raise PermissionError/ValueError explicitly.",
+   "match": {
+    "kind": "line",
+    "line": "^\\s*assert\\s+.*(?:user|admin|auth|permission|is_authenticated|is_staff|role)"
+   },
+   "families": [
+    "python"
+   ]
+  }
+ ]
+}

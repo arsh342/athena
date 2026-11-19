@@ -1,0 +1,41 @@
+{
+ "rules": [
+  {
+   "id": "rust-unsafe-ffi.from-raw-parts",
+   "title": "Slice built from a raw pointer and length",
+   "severity": "MEDIUM",
+   "cwe": [
+    119
+   ],
+   "category": "memory-safety",
+   "why": "from_raw_parts requires a valid, aligned pointer and a length within the allocation; mistakes are memory corruption.",
+   "fix": "Prefer safe slices; if unavoidable, check the pointer and length first and document why they hold.",
+   "match": {
+    "kind": "call",
+    "callee": "(?:^|::)from_raw_parts(?:_mut)?$"
+   },
+   "families": [
+    "rust"
+   ]
+  },
+  {
+   "id": "rust-unsafe-ffi.uninitialized-memory",
+   "title": "Uninitialized memory",
+   "severity": "LOW",
+   "cwe": [
+    908
+   ],
+   "category": "memory-safety",
+   "why": "mem::uninitialized / zeroed / MaybeUninit::uninit can expose invalid values if read before initialization.",
+   "fix": "Use MaybeUninit and write every field before assume_init, or use a default value.",
+   "match": {
+    "kind": "call",
+    "callee": "(?:^|::)(?:uninitialized|zeroed)$|MaybeUninit::uninit$"
+   },
+   "families": [
+    "rust"
+   ],
+   "confidence": "low"
+  }
+ ]
+}

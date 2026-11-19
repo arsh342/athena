@@ -1,0 +1,32 @@
+{
+ "rules": [
+  {
+   "id": "typeorm.query-concat",
+   "title": "TypeORM query() built by concatenation",
+   "severity": "HIGH",
+   "cwe": [
+    89
+   ],
+   "category": "injection",
+   "why": "query() runs raw SQL; concatenated values are injectable.",
+   "fix": "Pass parameters: query(\"... WHERE id = $1\", [id]).",
+   "match": {
+    "kind": "call",
+    "callee": "\\.query$",
+    "where": [
+     {
+      "op": "argIsConcat",
+      "index": 0
+     },
+     {
+      "op": "fileTextMatches",
+      "regex": "typeorm"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  }
+ ]
+}

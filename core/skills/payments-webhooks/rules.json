@@ -1,0 +1,33 @@
+{
+ "rules": [
+  {
+   "id": "payments-webhooks.webhook-unauthenticated",
+   "title": "Webhook route that never verifies a signature",
+   "severity": "HIGH",
+   "cwe": [
+    345
+   ],
+   "category": "authn",
+   "why": "Without signature verification anyone can post fake payment events to the route.",
+   "fix": "Call stripe.webhooks.constructEvent (or the provider equivalent) on the raw body.",
+   "match": {
+    "kind": "call",
+    "callee": "^(?:app|router)\\.post$",
+    "where": [
+     {
+      "op": "argMatches",
+      "index": 0,
+      "regex": "webhook"
+     },
+     {
+      "op": "callTextNotMatches",
+      "regex": "constructEvent|verifyHeader|signature|hmac"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  }
+ ]
+}

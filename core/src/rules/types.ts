@@ -39,6 +39,8 @@ export interface RawFinding {
   evidence?: string[];
   exposure?: 'public' | 'authenticated' | 'internal';
   priority?: number;
+  /** Skill that defined the rule, when it did not come from the built-in packs. */
+  skill?: string;
   source: FindingSource;
 }
 

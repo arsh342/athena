@@ -1,0 +1,75 @@
+{
+ "rules": [
+  {
+   "id": "spring.csrf-disabled",
+   "title": "CSRF protection disabled",
+   "severity": "MEDIUM",
+   "cwe": [
+    352
+   ],
+   "category": "session",
+   "why": "Disabling CSRF is safe only for stateless token APIs; for cookie sessions it allows cross-site requests.",
+   "fix": "Keep CSRF enabled for session-based apps.",
+   "match": {
+    "kind": "line",
+    "line": "csrf\\(\\)\\.disable\\(\\)|csrf\\(\\s*(?:\\w+\\s*->\\s*\\w+\\.disable\\(\\)|AbstractHttpConfigurer::disable)"
+   },
+   "families": [
+    "java"
+   ],
+   "confidence": "medium"
+  },
+  {
+   "id": "spring.permit-all-any-request",
+   "title": "Every request is permitted without authentication",
+   "severity": "HIGH",
+   "cwe": [
+    862
+   ],
+   "category": "authn",
+   "why": "anyRequest().permitAll() leaves everything not matched earlier public.",
+   "fix": "Use anyRequest().authenticated().",
+   "match": {
+    "kind": "line",
+    "line": "anyRequest\\(\\)\\.permitAll\\(\\)"
+   },
+   "families": [
+    "java"
+   ]
+  },
+  {
+   "id": "spring.cross-origin-wildcard",
+   "title": "@CrossOrigin allows every origin",
+   "severity": "MEDIUM",
+   "cwe": [
+    942
+   ],
+   "category": "cors",
+   "why": "A wildcard origin lets any website call the endpoint from a browser.",
+   "fix": "List the origins.",
+   "match": {
+    "kind": "line",
+    "line": "@CrossOrigin\\(\\s*(?:origins\\s*=\\s*)?[\"\\']\\*[\"\\']"
+   },
+   "families": [
+    "java"
+   ]
+  },
+  {
+   "id": "spring.actuator-exposed",
+   "title": "All actuator endpoints exposed",
+   "severity": "MEDIUM",
+   "cwe": [
+    200
+   ],
+   "category": "config",
+   "why": "Actuator endpoints such as env, heapdump and mappings leak configuration and memory.",
+   "fix": "Expose only health and info.",
+   "match": {
+    "kind": "file",
+    "files": "(?:^|/)application[\\w-]*\\.(?:properties|ya?ml)$",
+    "line": "management\\.endpoints\\.web\\.exposure\\.include\\s*[=:]\\s*[\\'\"]?\\*"
+   }
+  }
+ ]
+}

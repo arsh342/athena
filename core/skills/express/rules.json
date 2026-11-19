@@ -1,0 +1,102 @@
+{
+ "rules": [
+  {
+   "id": "express.session-cookie-insecure",
+   "title": "Express session cookie without the secure flag",
+   "severity": "MEDIUM",
+   "cwe": [
+    614
+   ],
+   "category": "session",
+   "why": "session({ cookie: { secure: false } }) sends the session cookie over plain HTTP.",
+   "fix": "Set cookie.secure to true in production (behind a proxy, also set trust proxy).",
+   "match": {
+    "kind": "call",
+    "callee": "^(?:\\w+\\.)?session$",
+    "where": [
+     {
+      "op": "callTextMatches",
+      "regex": "cookie\\s*:\\s*\\{[^}]*secure\\s*:\\s*false"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  },
+  {
+   "id": "express.static-dotfiles-allowed",
+   "title": "express.static serves dotfiles",
+   "severity": "MEDIUM",
+   "cwe": [
+    538
+   ],
+   "category": "config",
+   "why": "dotfiles: \"allow\" exposes .env, .git and similar files.",
+   "fix": "Use dotfiles: \"ignore\" or \"deny\".",
+   "match": {
+    "kind": "call",
+    "callee": "^express\\.static$",
+    "where": [
+     {
+      "op": "callTextMatches",
+      "regex": "dotfiles\\s*:\\s*[\\'\"]allow[\\'\"]"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  },
+  {
+   "id": "express.fingerprint-header-enabled",
+   "title": "Express fingerprint header not disabled",
+   "severity": "LOW",
+   "cwe": [
+    200
+   ],
+   "category": "config",
+   "why": "The X-Powered-By header tells attackers which framework to target.",
+   "fix": "Use helmet() or app.disable(\"x-powered-by\").",
+   "match": {
+    "kind": "line",
+    "line": "^\\s*(?:const|let|var)\\s+app\\s*=\\s*express\\(\\)",
+    "where": [
+     {
+      "op": "fileTextNotMatches",
+      "regex": "helmet|x-powered-by"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ],
+   "confidence": "low"
+  },
+  {
+   "id": "express.body-limit-huge",
+   "title": "Very large request body limit",
+   "severity": "LOW",
+   "cwe": [
+    770
+   ],
+   "category": "dos",
+   "why": "A large JSON/urlencoded limit lets one request exhaust memory.",
+   "fix": "Keep limits small (the default 100kb) and raise only for routes that need it.",
+   "match": {
+    "kind": "call",
+    "callee": "^express\\.(?:json|urlencoded)$",
+    "where": [
+     {
+      "op": "callTextMatches",
+      "regex": "limit\\s*:\\s*[\\'\"]?(?:\\d+\\s*gb|\\d{3,}\\s*mb)"
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ],
+   "confidence": "medium"
+  }
+ ]
+}

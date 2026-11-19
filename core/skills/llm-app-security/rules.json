@@ -1,0 +1,51 @@
+{
+ "rules": [
+  {
+   "id": "llm-app-security.model-output-executed",
+   "title": "Model output passed to eval or a shell",
+   "severity": "HIGH",
+   "cwe": [
+    94,
+    78
+   ],
+   "category": "llm",
+   "why": "An LLM can be steered by prompt injection to return code or commands; executing its output hands that control to whoever can influence the prompt.",
+   "fix": "Never execute model output. Parse a constrained format and map it to allow-listed actions.",
+   "match": {
+    "kind": "call",
+    "callee": "^(?:eval|exec|execSync|child_process\\.exec|os\\.system|subprocess\\.run)$",
+    "where": [
+     {
+      "op": "argMatches",
+      "index": 0,
+      "regex": "(?:completion|response|message|output|reply|answer)\\w*(?:\\.choices|\\.content|\\.text|\\[0\\])"
+     }
+    ]
+   },
+   "families": [
+    "js",
+    "python"
+   ]
+  },
+  {
+   "id": "llm-app-security.user-text-in-system-prompt",
+   "title": "User text interpolated into a system prompt",
+   "severity": "MEDIUM",
+   "cwe": [
+    77
+   ],
+   "category": "llm",
+   "why": "Putting user text in the system role lets it override your instructions (prompt injection).",
+   "fix": "Keep the system prompt constant and pass user text as a user message.",
+   "match": {
+    "kind": "line",
+    "line": "role[\\'\"]?\\s*[:=]\\s*[\\'\"]system[\\'\"]\\s*,\\s*[\\'\"]?content[\\'\"]?\\s*[:=]\\s*(?:f[\\'\"]|[`\\'\"][^`\\'\"]*\\$\\{|[^`\\'\"\\n,]*\\+)"
+   },
+   "families": [
+    "js",
+    "python"
+   ],
+   "confidence": "low"
+  }
+ ]
+}

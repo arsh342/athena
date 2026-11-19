@@ -1,0 +1,46 @@
+{
+ "rules": [
+  {
+   "id": "flask.cors-wildcard",
+   "title": "flask-cors allows every origin",
+   "severity": "MEDIUM",
+   "cwe": [
+    942
+   ],
+   "category": "cors",
+   "why": "CORS(app, origins=\"*\") lets any website call the API from the browser.",
+   "fix": "List the exact origins.",
+   "match": {
+    "kind": "call",
+    "callee": "^CORS$",
+    "where": [
+     {
+      "op": "callTextMatches",
+      "regex": "origins\\s*=\\s*[\\'\"]\\*[\\'\"]"
+     }
+    ]
+   },
+   "families": [
+    "python"
+   ]
+  },
+  {
+   "id": "flask.session-cookie-insecure",
+   "title": "Session cookie not Secure",
+   "severity": "MEDIUM",
+   "cwe": [
+    614
+   ],
+   "category": "session",
+   "why": "SESSION_COOKIE_SECURE = False sends the session cookie over HTTP.",
+   "fix": "Set it to True in production.",
+   "match": {
+    "kind": "line",
+    "line": "SESSION_COOKIE_SECURE[\\'\"\\]]*\\s*[=:]\\s*False"
+   },
+   "families": [
+    "python"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+{
+ "rules": [
+  {
+   "id": "sqlalchemy.text-concat",
+   "title": "SQLAlchemy text() built by string formatting",
+   "severity": "HIGH",
+   "cwe": [
+    89
+   ],
+   "category": "injection",
+   "why": "text() with a formatted string is raw SQL with values pasted in.",
+   "fix": "Use text(\"... :id\") and pass bind parameters.",
+   "match": {
+    "kind": "call",
+    "callee": "^(?:sqlalchemy\\.)?text$",
+    "where": [
+     {
+      "op": "argIsConcat",
+      "index": 0
+     }
+    ]
+   },
+   "families": [
+    "python"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+name: ci
+on: [pull_request_target]
+permissions: write-all # EXPECT github-actions.write-all-permissions
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }} # EXPECT github-actions.pr-target-checkout-head
+      - run: echo "${{ github.event.pull_request.title }}" # EXPECT github-actions.script-injection
+      - uses: someone/deploy@v1 # EXPECT github-actions.unpinned-third-party-action

@@ -109,6 +109,10 @@ The report header shows files per language, e.g. `12 files (js 3 · py 2 · go 1
 
 Athena's own offline engine covers all supported languages: rule packs, taint analysis with source-to-sink paths, 60+ secret formats (also in `.env`, YAML and JSON files), and an investigation engine that finds routes missing the authentication or owner filter their siblings use, validators that never fail, error paths that report success, read-then-write races and more. Each finding carries a confidence; `low` ones appear under **needs review** and never block. Mark routes that are public on purpose in `athena.config.json`: `{ "publicRoutes": ["/health"] }`. See the main README for details.
 
+## Skills and variants
+
+Skills add framework- and domain-specific rules and guidance (39 built in). `athena skills list` shows which ones apply to a project; `athena skills new/test/add/remove` write, prove and install them (data only, pinned to a commit, licence shown). `athena variants <finding-id> [--save]` turns one confirmed finding into a rule and finds its siblings. See the main README for the skill format.
+
 ## How AI-written code is estimated
 
 `recorded` comes from git history (a floor). `estimated` uses Athena's own detector where it meets the published release targets for that language, and a labelled style heuristic elsewhere. Run `athena provenance --about` to see which languages use which, with benchmark numbers.

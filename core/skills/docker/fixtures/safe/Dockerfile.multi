@@ -1,0 +1,6 @@
+FROM node:20 AS build
+RUN npm ci
+FROM build AS test
+RUN npm test
+FROM gcr.io/distroless/nodejs20:nonroot
+COPY --from=build /a /a

@@ -36,6 +36,7 @@ const rules: RuleInfo[] = [
 ];
 
 import { ruleMeta } from './registry.js';
+import { builtinRuleInfo } from '../skills/loader.js';
 
 const byId = new Map(rules.map((rule) => [rule.id, rule]));
 
@@ -44,5 +45,5 @@ export function getRuleInfo(ruleId: string): RuleInfo | null {
   const own = byId.get(ruleId);
   if (own) return own;
   const meta = ruleMeta(ruleId);
-  return meta ? { id: meta.id, title: meta.title, why: meta.why, fix: meta.fix, references: meta.references } : null;
+  return meta ? { id: meta.id, title: meta.title, why: meta.why, fix: meta.fix, references: meta.references } : builtinRuleInfo(ruleId);
 }

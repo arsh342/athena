@@ -1,0 +1,22 @@
+{
+ "rules": [
+  {
+   "id": "rust-web.permissive-cors",
+   "title": "Permissive CORS layer",
+   "severity": "MEDIUM",
+   "cwe": [
+    942
+   ],
+   "category": "cors",
+   "why": "permissive() allows any origin, method and header.",
+   "fix": "Configure allowed origins.",
+   "match": {
+    "kind": "line",
+    "line": "(?:Cors|CorsLayer)::permissive\\(\\)|allow_any_origin\\(\\)"
+   },
+   "families": [
+    "rust"
+   ]
+  }
+ ]
+}

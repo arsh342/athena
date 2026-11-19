@@ -1,0 +1,29 @@
+{
+ "rules": [
+  {
+   "id": "go-web.listen-without-timeouts",
+   "title": "http.ListenAndServe without server timeouts",
+   "severity": "LOW",
+   "cwe": [
+    400
+   ],
+   "category": "dos",
+   "why": "ListenAndServe uses a server with no timeouts, which allows slow-client (slowloris) exhaustion.",
+   "fix": "Create an http.Server with ReadHeaderTimeout/ReadTimeout and call ListenAndServe on it.",
+   "match": {
+    "kind": "line",
+    "line": "(?:^|[^.\\w])http\\.ListenAndServe\\(",
+    "where": [
+     {
+      "op": "fileTextNotMatches",
+      "regex": "ReadHeaderTimeout|ReadTimeout"
+     }
+    ]
+   },
+   "families": [
+    "go"
+   ],
+   "confidence": "low"
+  }
+ ]
+}

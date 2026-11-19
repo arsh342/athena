@@ -1,0 +1,28 @@
+{
+ "rules": [
+  {
+   "id": "efcore.raw-sql-concat",
+   "title": "EF Core raw SQL built by concatenation",
+   "severity": "HIGH",
+   "cwe": [
+    89
+   ],
+   "category": "injection",
+   "why": "FromSqlRaw/ExecuteSqlRaw with concatenated text is SQL injection.",
+   "fix": "Use FromSqlInterpolated or pass SqlParameter values.",
+   "match": {
+    "kind": "call",
+    "callee": "\\.(?:FromSqlRaw|ExecuteSqlRaw)$",
+    "where": [
+     {
+      "op": "argIsConcat",
+      "index": 0
+     }
+    ]
+   },
+   "families": [
+    "csharp"
+   ]
+  }
+ ]
+}

@@ -28,6 +28,7 @@ export default defineConfig({
   // The fast detector's weights ship next to the bundle (dist/models/fast).
   onSuccess: async () => {
     cpSync('../core/models', 'dist/models', { recursive: true });
+    cpSync('../core/skills', 'dist/skills', { recursive: true });
   },
   outExtension() {
     return {

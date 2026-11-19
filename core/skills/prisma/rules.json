@@ -1,0 +1,28 @@
+{
+ "rules": [
+  {
+   "id": "prisma.unsafe-raw-concat",
+   "title": "Prisma raw query built by concatenation",
+   "severity": "HIGH",
+   "cwe": [
+    89
+   ],
+   "category": "injection",
+   "why": "$queryRawUnsafe/$executeRawUnsafe run the string as SQL; concatenating values into it is SQL injection.",
+   "fix": "Use the tagged template $queryRaw`...${value}` which binds values.",
+   "match": {
+    "kind": "call",
+    "callee": "\\.\\$(?:queryRawUnsafe|executeRawUnsafe)$",
+    "where": [
+     {
+      "op": "argIsConcat",
+      "index": 0
+     }
+    ]
+   },
+   "families": [
+    "js"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,59 @@
+{
+ "rules": [
+  {
+   "id": "django.allowed-hosts-wildcard",
+   "title": "ALLOWED_HOSTS allows every host",
+   "severity": "MEDIUM",
+   "cwe": [
+    183
+   ],
+   "category": "config",
+   "why": "A wildcard ALLOWED_HOSTS disables host header validation (cache poisoning, password reset poisoning).",
+   "fix": "List the real hostnames.",
+   "match": {
+    "kind": "line",
+    "line": "ALLOWED_HOSTS\\s*=\\s*\\[\\s*[\\'\"]\\*[\\'\"]"
+   },
+   "families": [
+    "python"
+   ]
+  },
+  {
+   "id": "django.csrf-exempt",
+   "title": "View exempt from CSRF protection",
+   "severity": "LOW",
+   "cwe": [
+    352
+   ],
+   "category": "session",
+   "why": "csrf_exempt disables CSRF checks for the view.",
+   "fix": "Remove it, or authenticate the caller by token instead of cookie.",
+   "match": {
+    "kind": "line",
+    "line": "^\\s*@csrf_exempt\\b"
+   },
+   "families": [
+    "python"
+   ],
+   "confidence": "low"
+  },
+  {
+   "id": "django.cookie-not-secure",
+   "title": "Session or CSRF cookie not Secure",
+   "severity": "MEDIUM",
+   "cwe": [
+    614
+   ],
+   "category": "session",
+   "why": "*_COOKIE_SECURE = False sends the cookie over HTTP.",
+   "fix": "Set it to True in production.",
+   "match": {
+    "kind": "line",
+    "line": "(?:SESSION|CSRF)_COOKIE_SECURE\\s*=\\s*False"
+   },
+   "families": [
+    "python"
+   ]
+  }
+ ]
+}

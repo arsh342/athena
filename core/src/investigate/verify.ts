@@ -1,4 +1,4 @@
-import type { Confidence, RawFinding } from '../rules/types.js';
+import type { Confidence, RawFinding, RuleMeta } from '../rules/types.js';
 import { ruleMeta } from '../rules/registry.js';
 import { entryAt, isReachable, type MapIndex } from './map.js';
 import { type Exposure, type FileFacts } from './types.js';
@@ -27,8 +27,8 @@ export function priorityOf(severity: string, exposure: Exposure | undefined, con
  * defenses (sanitizers are already honoured by taint; guards on the route), impact (exposure, sink class, data).
  * Low confidence findings are shown as "needs review" and never block.
  */
-export function verifyFinding(file: string, raw: RawFinding, map: MapIndex, facts: FileFacts | undefined): VerifiedFields {
-  const meta = ruleMeta(raw.ruleId);
+export function verifyFinding(file: string, raw: RawFinding, map: MapIndex, facts: FileFacts | undefined, metaOverride?: Map<string, RuleMeta>): VerifiedFields {
+  const meta = ruleMeta(raw.ruleId) ?? metaOverride?.get(raw.ruleId) ?? null;
   let confidence: Confidence = raw.confidence ?? meta?.confidence ?? 'medium';
   const evidence: string[] = [...(raw.evidence ?? [])];
   const isSecret = raw.source === 'athena-secrets';
