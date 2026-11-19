@@ -147,7 +147,7 @@ function reservedNames(): Set<string> {
 const MAX_FIXTURE_BYTES = 256 * 1024;
 
 export function validateSkill(dir: string, source: SkillSource = 'builtin'): { skill: Skill | null; issues: ValidationIssue[] } {
-  strictMode = source !== 'builtin';
+  strictMode = source !== 'builtin' && source !== 'pack';
   const issues: ValidationIssue[] = [];
   const fail = (message: string, path = dir) => {
     issues.push({ path, message });

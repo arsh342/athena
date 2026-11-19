@@ -32,6 +32,7 @@ export const defaultConfig: AthenaConfig = {
     timeoutMs: 30000,
   },
   dependencies: { enabled: false, offline: false, registryChecks: true },
+  updates: { auto: true, intervalHours: 24, blockKnownExploited: true },
   nodejsscan: {
     enabled: true,
     timeoutMs: 120000,
@@ -62,6 +63,11 @@ export function mergeConfig(config: Partial<AthenaConfig> = {}): AthenaConfig {
       ...config.semgrep,
     },
     eslint: mergedEslint,
+    updates: {
+      auto: config.updates?.auto ?? defaultConfig.updates!.auto,
+      intervalHours: config.updates?.intervalHours ?? defaultConfig.updates!.intervalHours,
+      blockKnownExploited: config.updates?.blockKnownExploited ?? defaultConfig.updates!.blockKnownExploited,
+    },
     dependencies: {
       enabled: config.dependencies?.enabled ?? defaultConfig.dependencies!.enabled,
       offline: config.dependencies?.offline ?? defaultConfig.dependencies!.offline,

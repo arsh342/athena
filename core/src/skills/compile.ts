@@ -146,7 +146,7 @@ export function compileSkills(skills: Skill[]): CompiledSkills {
   const out: CompiledSkills = { skills: [], extras: new Map(), fileRules: [], ruleSkill: new Map(), metas: [], metaById: new Map(), warnings: [], disabled: new Set() };
   for (const skill of skills) {
     try {
-      const strict = skill.source !== 'builtin';
+      const strict = skill.source !== 'builtin' && skill.source !== 'pack';
       const budget: Budget = { spent: 0, limit: 1500, trusted: !strict };
       const staged = { calls: [] as Array<[LanguageFamily, CallRule]>, lines: [] as Array<[LanguageFamily, LineRule]>, files: [] as FileRule[], sinks: [] as Array<[LanguageFamily, SinkSpec]>, sources: [] as Array<[LanguageFamily, RegExp]>, sanitizers: [] as Array<[LanguageFamily, RegExp]>, metas: [] as RuleMeta[], ids: [] as string[] };
       for (const def of skill.rules) {
@@ -168,7 +168,7 @@ export function compileSkills(skills: Skill[]): CompiledSkills {
       }
       if (skill.taint) {
         // Sanitizers make findings disappear; only vetted built-in skills may declare them.
-        const allowSanitizers = skill.source === 'builtin';
+        const allowSanitizers = skill.source === 'builtin' || skill.source === 'pack';
         if (!allowSanitizers && (skill.taint.sanitizers?.length ?? 0) > 0) out.warnings.push(`skill ${skill.meta.name}: sanitizers are ignored for non-built-in skills`);
         for (const f of skill.taint.families) {
           for (const s of skill.taint.sources ?? []) staged.sources.push([f, re(s)]);

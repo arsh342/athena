@@ -141,12 +141,12 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
   }
 
   if (depFindings.length > 0) {
-    depFindings.sort((a, b) => ORDER.indexOf(a.severity) - ORDER.indexOf(b.severity) || a.file.localeCompare(b.file) || a.line - b.line);
+    depFindings.sort((a, b) => Number(!!b.kev) - Number(!!a.kev) || ORDER.indexOf(a.severity) - ORDER.indexOf(b.severity) || a.file.localeCompare(b.file) || a.line - b.line);
     const depVisible = options.showLow ? depFindings : depFindings.filter((f) => f.severity !== 'LOW');
     out.push(bold('Dependencies'));
     for (const f of depVisible.slice(0, limit)) {
       const label = paint(SEVERITY_COLOR[f.severity], f.severity.padEnd(9));
-      out.push(` ${label} ${f.type}  ${bold(f.code)}${' '.repeat(2)}${dim(`${rel(f.file)}:${f.line}`)}`);
+      out.push(` ${label} ${f.kev ? paint('\x1b[1;91m', 'KNOWN EXPLOITED ') : ''}${f.type}  ${bold(f.code)}${' '.repeat(2)}${dim(`${rel(f.file)}:${f.line}`)}`);
       out.push(`           ${f.message}`);
       for (const note of (f.evidence ?? []).slice(0, 2)) out.push(`           ${dim(`· ${note}`)}`);
     }

@@ -290,6 +290,12 @@ async function scanFromPath(input: {
     const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
     if (typeof parsedUserId === 'number' && !isNaN(parsedUserId)) {
       try {
+        const { saveScanInventory } = await import('./alerts.ts');
+        await saveScanInventory(parsedUserId, scanSummary.scanId, report.inventory);
+      } catch (inventoryError) {
+        lines.push(`Warning: dependency inventory not saved (${inventoryError instanceof Error ? inventoryError.message : String(inventoryError)})`);
+      }
+      try {
         const { generateReportMarkdown } = await import('./report-markdown.ts');
         const { addScanReport } = await import('./data.ts');
         const markdown = generateReportMarkdown(scanSummary, allFindings);
@@ -317,7 +323,7 @@ async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: strin
   processWithMutableCwd.cwd = () => projectRoot;
 
   try {
-    return await scanFiles(sourceFiles, {}, {}, { root: projectRoot, textFiles });
+    return await scanFiles(sourceFiles, { dependencies: { enabled: true, offline: false, registryChecks: true } }, {}, { root: projectRoot, textFiles });
   } finally {
     processWithMutableCwd.cwd = originalCwd;
   }

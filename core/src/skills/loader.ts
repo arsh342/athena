@@ -1,3 +1,4 @@
+import { activePackSkillsDir } from '../updates/packs.js';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,12 +43,13 @@ function loadDir(dir: string, source: SkillSource, warnings: string[]): Skill[] 
   return out;
 }
 
-/** Skills from built-in < user (~/.athena/skills) < repo (.athena/skills); a higher source replaces a lower one of the same name. */
-export function loadSkills(root: string, options: { builtinDir?: string | null; userDir?: string; repoDir?: string } = {}): LoadedSkills {
+/** Skills from built-in < signed pack (updates built-in skills of the same name) < user (~/.athena/skills) < repo (.athena/skills); a higher source replaces a lower one of the same name. */
+export function loadSkills(root: string, options: { builtinDir?: string | null; packDir?: string | null; userDir?: string; repoDir?: string } = {}): LoadedSkills {
   const warnings: string[] = [];
   const byName = new Map<string, Skill>();
   const layers: Array<[SkillSource, string | null]> = [
     ['builtin', options.builtinDir === undefined ? builtinSkillsDir() : options.builtinDir],
+    ['pack', options.packDir === undefined ? activePackSkillsDir() : options.packDir],
     ['user', options.userDir ?? join(athenaHome(), 'skills')],
     ['repo', options.repoDir ?? join(root, '.athena', 'skills')],
   ];
@@ -55,7 +57,7 @@ export function loadSkills(root: string, options: { builtinDir?: string | null; 
     if (!dir) continue;
     for (const skill of loadDir(dir, source, warnings)) {
       const existing = byName.get(skill.meta.name);
-      if (existing?.source === 'builtin' && source !== 'builtin') {
+      if (existing?.source === 'builtin' && source !== 'builtin' && source !== 'pack') {
         warnings.push(`${source} skill "${skill.meta.name}" cannot replace the built-in skill "${skill.meta.name}" (rename it)`);
         continue;
       }

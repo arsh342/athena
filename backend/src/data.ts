@@ -8,6 +8,7 @@ export type FindingSource =
   | 'athena-rules'
   | 'athena-taint'
   | 'athena-investigate'
+  | 'athena-deps'
   | 'hallucination-detector'
   | 'security-analyzer'
   | 'semgrep'

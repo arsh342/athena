@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AlertsBanner } from '../components/AlertsBanner';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { fetchScans } from '../services/api';
@@ -48,6 +49,8 @@ export function Dashboard() {
           <Link className="button button-primary" to="/scan">Run scan</Link>
         </div>
       </section>
+
+      <AlertsBanner />
 
       <section className="dashboard-grid">
         <div className="br-section-annotation">

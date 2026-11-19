@@ -1,3 +1,4 @@
+import { getAlertsForUser, startAlertsScheduler } from './alerts.ts';
 import 'dotenv/config';
 import { createServer as createHttpServer } from 'node:http';
 import cookieParser from 'cookie-parser';
@@ -60,6 +61,7 @@ export interface ServerDeps {
   };
   data: {
     getScans: typeof getScans;
+    getAlerts?: typeof getAlertsForUser;
     getScan: typeof getScan;
     getFindings: typeof getFindings;
     getFindingsByScanId: typeof getFindingsByScanId;
@@ -94,6 +96,7 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     },
     data: {
       getScans,
+      getAlerts: getAlertsForUser,
       getScan,
       getFindings,
       getFindingsByScanId,
@@ -196,6 +199,12 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     res.json({
       apiOrigin: process.env.API_ORIGIN?.trim() || '',
     });
+  });
+
+  app.get('/api/alerts', async (req: Request, res: Response) => {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+    res.json({ repos: await (deps.data.getAlerts ?? (async () => []))(user.id) });
   });
 
   app.get('/api/scans', async (req: Request, res: Response) => {
@@ -432,6 +441,7 @@ if (process.env.ATHENA_DISABLE_SERVER_BOOTSTRAP !== '1') {
       console.warn(`[athena-backend] auth schema init failed (DB may be offline): ${message}`);
     })
     .finally(() => {
+      if (process.env.ATHENA_ALERTS !== '0') startAlertsScheduler();
       httpServer.listen(port, () => {
         console.log(`[athena-backend] listening on http://localhost:${port}`);
         console.log(`[athena-backend] terminal WebSocket at ws://localhost:${port}/ws/terminal`);

@@ -9,6 +9,8 @@ import { menuCommand } from './commands/menu.js';
 import { scanCommand } from './commands/scan.js';
 import { skillsAdd, skillsList, skillsNew, skillsRemove, skillsShow, skillsTest } from './commands/skills.js';
 import { variantsCommand } from './commands/variants.js';
+import { updateCommand } from './commands/update.js';
+import { alertsCommand } from './commands/alerts.js';
 import { setupAllCommand, setupSemgrepCommand } from './commands/setup.js';
 import { uninstallCommand } from './commands/uninstall.js';
 import { EXIT } from './utils/exit-codes.js';
@@ -25,7 +27,7 @@ program
 /** Flags shared by scan and check. */
 function addRunFlags(command: Command): Command {
   return command
-    .option('-f, --format <format>', 'terminal | json | jsonl | sarif', 'terminal')
+    .option('-f, --format <format>', 'terminal | json | jsonl | sarif | cyclonedx (SBOM)', 'terminal')
     .option('-o, --output <file>', 'write the report to a file instead of stdout')
     .option('--fail-on <level>', 'block on findings at or above: critical | high | medium | low | none (default: high)')
     .option('--strict', 'exit 3 when the scan was incomplete (files or checks skipped)')
@@ -94,6 +96,22 @@ skills.command('new').argument('<name>').option('--user', 'create in your user s
   .action(async (name: string, opts: { user?: boolean; path?: string }) => { process.exitCode = await skillsNew(name, opts); });
 skills.command('test').argument('[path]', 'a skill folder, or a folder of skills', '.').description('validate a skill and run its fixtures')
   .action(async (path: string) => { process.exitCode = await skillsTest(path); });
+
+program
+  .command('alerts')
+  .argument('[dir]', 'project scanned before', '.')
+  .description('list new vulnerabilities that affect what your last scan found (uses local advisory data; run athena update first)')
+  .action(async (dir: string) => { process.exitCode = await alertsCommand(dir); });
+
+program
+  .command('update')
+  .description('refresh advisory data (OSV, known-exploited, EPSS) and the signed rule/skill pack')
+  .option('--ecosystem <list>', 'comma-separated ecosystems (npm,PyPI,Maven,NuGet,Go,crates.io,Packagist); default: those used here')
+  .option('--rollback', 'switch back to the previous rule pack')
+  .option('--no-packs', 'skip the rule/skill pack')
+  .option('-q, --quiet', 'less output')
+  .option('--path <dir>', 'project to detect ecosystems from')
+  .action(async (opts: { ecosystem?: string; rollback?: boolean; packs?: boolean; quiet?: boolean; path?: string }) => { process.exitCode = await updateCommand(opts); });
 
 program
   .command('variants')

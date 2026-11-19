@@ -67,6 +67,7 @@ athena setup semgrep --auto
 | `-m, --max-findings <n\|all>`, `--show-low` | Control how many findings are listed. |
 | `--no-eslint`, `--no-nodejsscan`, `--no-bearer`, `--no-semgrep` | Skip a scanner. |
 | `--no-deps` | Skip dependency checks. |
+| `--format cyclonedx` | Print the dependency inventory as a CycloneDX 1.6 SBOM. |
 | `--offline` | Dependency checks use only cached data (a cold cache is reported as a gap). |
 | `--no-npm-audit` | Deprecated, does nothing (replaced by dependency checks). |
 | `-t, --threshold <n>` | Deprecated: only affects the heuristic AI fallback. |
@@ -128,6 +129,16 @@ Athena reads every manifest and lockfile it finds (npm, Yarn, pnpm, pip/poetry/u
 | Hallucinated API call | You call a member that the installed package's type declarations do not contain (`axios.fetchData`). Only checked when the package is installed with types. | Use the real API. |
 
 Private packages (`file:`, `git+`, workspace and scoped-registry packages) are never looked up. A registry outage or rate limit is reported as a coverage gap, never as "does not exist". Answers are cached for 24 hours (advisories 6 hours) under `~/.athena/cache/deps`; `--offline` uses only that cache (and reports the cache date or a gap), and `--no-deps` skips the checks. Athena sends package names and versions to OSV.dev and the package registries, never your code. `npm audit` was replaced by these checks; `--no-npm-audit` is accepted for one release and does nothing.
+
+## Staying current
+
+- **Advisory data.** `athena update` keeps a local, incrementally updated copy of the OSV vulnerability database (which includes the GitHub Advisory Database) for the ecosystems you use, plus CISA's Known Exploited Vulnerabilities list and FIRST's EPSS scores. The first sync of an ecosystem downloads its full export once (npm is about 220 MB); later syncs fetch only changed records, and withdrawn advisories disappear. Checks then run offline and fast; ecosystems without local data fall back to the OSV API.
+- **Known exploited.** Findings for vulnerabilities that are being exploited in the wild are labelled, listed first, and block at any severity (`updates.blockKnownExploited`, default on). EPSS shows the probability of exploitation.
+- **Automatic, never in your way.** After a scan, if local data is older than 24 hours (`updates.intervalHours`), a background update starts for ecosystems you already synced; the scan never waits for it, and `--offline` disables it. Data older than 7 days is shown as a coverage gap: `advisory data 9 days old — run athena update`.
+- **Rule and skill packs.** `athena update` also fetches the newest signed pack from the project's GitHub releases. A pack is accepted only if its Ed25519 signature and SHA-256 verify, it contains data files only, and every rule passes its own fixtures; otherwise the previous pack stays active. `athena update --rollback` returns to the previous pack. Official packs need the maintainer's public key to be provisioned in the build (`PACK_PUBLIC_KEY`); until then every pack is refused.
+- **New CVEs become rules.** A daily advisory-watch workflow (`.github/workflows/advisory-watch.yml`, off until `ADVISORY_WATCH_ENABLED` is set) turns new reviewed HIGH/CRITICAL advisories that link a fix commit into proposed rules, proven against the code before and after the fix, and opens a pull request for human review.
+- **Alerts.** Each scan stores its dependency inventory. `athena alerts` re-checks the last scan against the current local data and lists vulnerabilities published since (exit 1 if any). `--format cyclonedx` exports the inventory as a CycloneDX 1.6 SBOM. The web dashboard shows "N new vulnerabilities affect <repo> since your last scan" with a re-scan button, from a daily backend job.
+- **Privacy.** Syncing downloads public data only; nothing about your code or dependencies is sent. Data sources: OSV.dev (CC-BY 4.0, including the GitHub Advisory Database, CC BY 4.0), CISA KEV, FIRST EPSS.
 
 ## Skills and variants
 

@@ -1,3 +1,4 @@
+import type { RepoAlerts } from '../utils/alerts';
 import type { AuthUser, Finding, LandingContent, PipelineStage, ScanSummary } from '../types';
 
 interface ScanListResponse {
@@ -58,6 +59,11 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`Request failed: ${response.status}`);
   }
   return response.json() as Promise<T>;
+}
+
+export async function fetchAlerts(): Promise<RepoAlerts[]> {
+  const data = await fetchJson<{ repos: RepoAlerts[] }>('/api/alerts');
+  return data.repos;
 }
 
 export async function fetchScans(): Promise<ScanSummary[]> {

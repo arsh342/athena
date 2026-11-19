@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { startUploadScan } from '../services/api';
 import { MAX_UPLOAD_BYTES, shouldSkipUploadPath } from '../utils/upload';
@@ -38,7 +39,8 @@ function getUploadDisplayName(files: File[], mode: UploadMode): string {
 
 export function ScanPage() {
   const [source, setSource] = useState<ScanSource>('repo');
-  const [repoUrl, setRepoUrl] = useState('');
+  const [searchParams] = useSearchParams();
+  const [repoUrl, setRepoUrl] = useState(searchParams.get('repo') ?? '');
   const [queuedCommand, setQueuedCommand] = useState<{ id: number; command: string } | null>(null);
   const [terminalSessionId, setTerminalSessionId] = useState('');
   const [uploadMode, setUploadMode] = useState<UploadMode>('folder');

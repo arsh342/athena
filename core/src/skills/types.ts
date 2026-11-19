@@ -1,7 +1,7 @@
 import type { LanguageFamily } from '../lang/languages.js';
 import type { Severity } from '../types.js';
 
-export type SkillSource = 'repo' | 'user' | 'builtin';
+export type SkillSource = 'repo' | 'user' | 'builtin' | 'pack';
 
 export type Predicate =
   | { op: 'argIsNonLiteral'; index: number }

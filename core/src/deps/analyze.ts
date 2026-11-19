@@ -8,6 +8,10 @@ import { discoverManifests, discoverSources, readManifest, relManifest } from '.
 import { declaredJsPackages, missingApis } from './api-exists.js';
 import { collectUsage, reachabilityOf } from './reachability.js';
 import { NODE_BUILTINS } from './usage.js';
+import { loadEpss } from '../updates/epss.js';
+import { loadKev } from '../updates/kev.js';
+import { STALE_GAP_DAYS } from '../updates/scheduler.js';
+import { dbStatus } from '../updates/store.js';
 import { DepsClient, type DepsClientOptions } from './net.js';
 import { depKey, queryVulnerabilities, type Advisory } from './osv.js';
 import { parseManifests, uniqueQueries } from './parsers/index.js';
@@ -22,6 +26,10 @@ export interface DepsOptions extends DepsClientOptions {
   popular?: Partial<Record<Dependency['ecosystem'], string[]>>;
   /** Fresh-release cooldown (default 72 h). */
   cooldownMs?: number;
+  /** Use the local advisory database for ecosystems that have one (default true). */
+  localDb?: boolean;
+  /** Data directory override (tests); defaults to Athena's home. */
+  home?: string;
   /** Extra analysis hook: advisories get a reachability verdict from the project's imports. */
   reachability?: (dep: Dependency, advisory: Advisory) => 'reached' | 'not-reached' | 'unknown';
 }
@@ -85,7 +93,12 @@ export async function analyzeDependencies(root: string, options: DepsOptions = {
   const usage = await collectUsage(sources);
   const reach = options.reachability ?? ((d: Dependency, a: Advisory) => reachabilityOf(usage, d, a));
   const queries = uniqueQueries(deps);
-  const vulns = await queryVulnerabilities(client, queries);
+  const useLocal = options.localDb !== false;
+  const vulns = await queryVulnerabilities(client, queries, { enabled: useLocal, ...(options.home ? { home: options.home } : {}) });
+  const localStatus = useLocal ? dbStatus(options.home).filter((st) => queries.some((q) => q.ecosystem === st.eco)) : [];
+  for (const st of localStatus) if (st.ageDays > STALE_GAP_DAYS) gaps.push(`advisory data ${Math.floor(st.ageDays)} days old (${st.eco}) — run athena update`);
+  const kev = useLocal ? loadKev(options.home) : null;
+  const epss = useLocal ? loadEpss(options.home) : null;
   if (vulns.unavailable > 0) gaps.push(`${vulns.unavailable} vulnerability lookup(s) unavailable`);
 
   for (const d of deps) {
@@ -95,11 +108,16 @@ export async function analyzeDependencies(root: string, options: DepsOptions = {
       const base = adv.severity;
       const severity = verdict === 'not-reached' && !adv.malicious ? lower(base) : base;
       const fix = adv.fixed.length > 0 ? ` Upgrade to ${adv.fixed.sort().pop()} or later.` : ' No fixed version is listed.';
+      const cve = [adv.id, ...adv.aliases].find((x) => x.startsWith('CVE-'));
+      const isKev = !!kev && [adv.id, ...adv.aliases].some((x) => x in kev.cves);
+      const score = cve ? epss?.get(cve) : undefined;
       const evidence = [`advisory ${adv.id}${adv.aliases.length ? ` (${adv.aliases.slice(0, 3).join(', ')})` : ''}`];
+      if (isKev) evidence.push('known exploited in the wild (CISA KEV)');
+      if (score) evidence.push(`EPSS ${(score.score * 100).toFixed(1)}% (top ${Math.max(1, Math.round((1 - score.percentile) * 100))}%)`);
       if (verdict === 'reached') evidence.push('the affected API is imported by this project');
       if (verdict === 'not-reached') evidence.push(`severity lowered from ${base}: the affected API is not imported by this project`);
       findings.push(make(root, d, adv.malicious ? 'deps.malicious-package' : 'deps.vulnerable', severity, adv.malicious ? 'Malicious package' : 'Vulnerable dependency',
-        adv.malicious ? `${d.name}@${d.version} is a known malicious package (${adv.id}). Remove it and rotate any secrets it could read.` : `${d.name}@${d.version}: ${adv.summary} (${adv.id}).${fix}`, { evidence }));
+        adv.malicious ? `${d.name}@${d.version} is a known malicious package (${adv.id}). Remove it and rotate any secrets it could read.` : `${d.name}@${d.version}: ${adv.summary} (${adv.id}).${fix}`, { evidence, ...(isKev ? { kev: true } : {}), ...(score ? { epss: score } : {}) }));
     }
   }
 
@@ -163,10 +181,11 @@ export async function analyzeDependencies(root: string, options: DepsOptions = {
 
   const byId = new Map(findings.map((f) => [`${f.id}:${f.file}:${f.line}`, f]));
   const out = [...byId.values()];
-  const detail = client.offline
+  const localNote = localStatus.length > 0 ? ` · local advisory data ${localStatus.map((st) => `${st.eco} ${st.updatedAt.slice(0, 10)}`).join(', ')}` : '';
+  const detail = (client.offline
     ? `offline${Number.isFinite(client.stats.oldestCache) ? ` (cache from ${new Date(client.stats.oldestCache).toISOString().slice(0, 10)})` : ' (no cache)'}`
-    : `${deps.length} dependencies from ${manifests.length} manifest(s)`;
-  if (client.offline && client.stats.unavailable > 0 && client.stats.cacheHits === 0) return { findings: out, dependencies: deps, gaps: [...gaps, 'dependencies: offline and no cached data'], status: 'unavailable', detail };
+    : `${deps.length} dependencies from ${manifests.length} manifest(s)`) + localNote;
+  if (client.offline && client.stats.unavailable > 0 && client.stats.cacheHits === 0 && localStatus.length === 0) return { findings: out, dependencies: deps, gaps: [...gaps, 'dependencies: offline and no cached data'], status: 'unavailable', detail };
   return { findings: out, dependencies: deps, gaps, status: 'ran', detail };
 }
 

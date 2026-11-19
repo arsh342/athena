@@ -387,10 +387,12 @@ export async function scanFiles(
     }
   }
   let depsOutcome: { status: CheckCoverage['status']; detail: string; gaps: string[] } | null = null;
+  let inventory: NonNullable<ScanReport['inventory']> = [];
   if (config.dependencies?.enabled) {
     try {
       const deps = await analyzeDependencies(projectRoot, { offline: config.dependencies.offline, registryChecks: config.dependencies.registryChecks, ...(options.depsOptions ?? {}) });
       depsOutcome = { status: deps.status, detail: deps.detail, gaps: deps.gaps };
+      inventory = deps.dependencies.filter((d) => !d.private).map((d) => ({ ecosystem: d.ecosystem, name: d.name, version: d.version, direct: d.direct, manifest: relative(projectRoot, d.manifest).split('\\').join('/') }));
       const reportsByPath = new Map(files.map((file) => [file.path, file]));
       for (const finding of deps.findings) {
         const existing = reportsByPath.get(finding.file);
@@ -433,6 +435,7 @@ export async function scanFiles(
   const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers, method, analysisFamilies, skippedMinified, depsOutcome);
 
   const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded, method));
+  if (inventory.length > 0) report.inventory = inventory;
   if (Object.keys(languages).length > 0) report.summary.languages = languages;
   if (skillNotes.length > 0) report.summary.skills = skillNotes.sort((a, b) => b.rules - a.rules || a.name.localeCompare(b.name)).map(({ rules: _rules, ...rest }) => rest);
   if (compiledSkills?.budgets) for (const [name, b] of compiledSkills.budgets) if (b.spent > b.limit) skillWarnings.push(`skill ${clean(name)} was switched off part-way: its rules used more than ${b.limit} ms`);
