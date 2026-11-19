@@ -23,8 +23,3 @@ test('scoreUnit sets provenance and flagged = provenance ai|mixed || recorded', 
   assert.equal(scored.flagged, scored.provenance === 'ai' || scored.provenance === 'mixed');
 });
 
-test('hallucination detection runs on every unit, not only flagged ones', () => {
-  const unit = parseSource('h.ts', 'function f() {\n  const x = 1;\n  return axios.fetchData(x);\n}\n')[0];
-  const scored = { ...scoreUnit(unit, mergeConfig()), flagged: false, provenance: 'human' as const };
-  assert.ok(analyzeSecurity(scored, mergeConfig()).some((f) => f.ruleId === 'hallucination.invalid-api-call'));
-});

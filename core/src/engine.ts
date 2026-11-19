@@ -1,4 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
+import { analyzeDependencies, checkApiExistence, type DepsOptions } from './deps/analyze.js';
 import { mergeConfig } from './config.js';
 import { analyzeSecurity } from './analyzers/security-analyzer.js';
 import { runSemgrep } from './analyzers/semgrep-adapter.js';
@@ -55,6 +56,8 @@ export interface ScanFilesOptions {
   textFiles?: string[];
   /** `false` disables skills; a compiled set overrides discovery (tests). Default: built-in, user and repo skills that apply to the project. */
   skills?: false | CompiledSkills;
+  /** Overrides for dependency intelligence (endpoints, cache directory, clock); tests and offline mirrors. */
+  depsOptions?: Partial<DepsOptions>;
   /** Run Athena's own rule packs and taint analysis (default true). */
   analysis?: boolean;
 }
@@ -367,6 +370,42 @@ export async function scanFiles(
     }
   }
 
+  if (config.hallucinationDetection) {
+    try {
+      const reportsByPath = new Map(files.map((file) => [file.path, file]));
+      for (const finding of await checkApiExistence(projectRoot)) {
+        const existing = reportsByPath.get(finding.file);
+        if (existing) existing.findings.push(finding);
+        else {
+          const created: FileReport = { path: finding.file, units: [], findings: [finding] };
+          files.push(created);
+          reportsByPath.set(finding.file, created);
+        }
+      }
+    } catch {
+      // API existence is a best-effort offline check
+    }
+  }
+  let depsOutcome: { status: CheckCoverage['status']; detail: string; gaps: string[] } | null = null;
+  if (config.dependencies?.enabled) {
+    try {
+      const deps = await analyzeDependencies(projectRoot, { offline: config.dependencies.offline, registryChecks: config.dependencies.registryChecks, ...(options.depsOptions ?? {}) });
+      depsOutcome = { status: deps.status, detail: deps.detail, gaps: deps.gaps };
+      const reportsByPath = new Map(files.map((file) => [file.path, file]));
+      for (const finding of deps.findings) {
+        const existing = reportsByPath.get(finding.file);
+        if (existing) existing.findings.push(finding);
+        else {
+          const created: FileReport = { path: finding.file, units: [], findings: [finding] };
+          files.push(created);
+          reportsByPath.set(finding.file, created);
+        }
+      }
+    } catch (error) {
+      depsOutcome = { status: 'failed', detail: error instanceof Error ? error.message.slice(0, 120) : 'failed', gaps: [] };
+    }
+  }
+
   hooks.onScannerStage?.({
     phase: 'report',
     filePath: '',
@@ -391,7 +430,7 @@ export async function scanFiles(
         method: 'heuristic' as const,
         ...(fastModel ? { heuristicDetail: `heuristic · athena-detect-fast ${fastModel.meta.version} not enabled for these languages (below release targets)` } : {}),
       };
-  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers, method, analysisFamilies, skippedMinified);
+  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers, method, analysisFamilies, skippedMinified, depsOutcome);
 
   const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded, method));
   if (Object.keys(languages).length > 0) report.summary.languages = languages;
@@ -411,6 +450,7 @@ function buildCoverage(
   method: { method: 'fast' | 'heuristic'; model?: string; heuristicLanguages?: LanguageId[]; heuristicDetail?: string } = { method: 'heuristic' },
   analysisFamilies: Map<string, number> = new Map(),
   skippedMinified = 0,
+  depsOutcome: { status: CheckCoverage['status']; detail: string; gaps: string[] } | null = null,
 ): ScanCoverage {
   const checks: CheckCoverage[] = [
     { name: 'secrets', status: config.secretDetection ? 'ran' : 'disabled' },
@@ -429,6 +469,7 @@ function buildCoverage(
       : { name: `taint:${family}`, status: 'ran' });
   }
   if (skippedMinified > 0) checks.push({ name: 'rules-skipped', status: 'ran', detail: `${skippedMinified} minified or generated file(s) not rule-analyzed` });
+  if (depsOutcome) checks.push({ name: 'dependencies', status: depsOutcome.status, detail: depsOutcome.detail });
   for (const lang of [...unavailableParsers].sort()) {
     checks.push({ name: `parser:${lang}`, status: 'unavailable', detail: 'grammar failed to load' });
   }
@@ -455,6 +496,7 @@ function buildCoverage(
     if (check.status === 'failed') gaps.push(`${check.name} failed`);
   }
 
+  for (const g of depsOutcome?.gaps ?? []) gaps.push(g);
   return { files, checks, complete: gaps.length === 0, gaps };
 }
 

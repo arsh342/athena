@@ -36,7 +36,9 @@ function addRunFlags(command: Command): Command {
     .option('--show-low', 'list LOW findings instead of collapsing them')
     .option('-t, --threshold <number>', 'deprecated: only affects the heuristic fallback')
     .option('--no-eslint', 'disable ESLint scanner')
-    .option('--no-npm-audit', 'disable npm audit scanner')
+    .option('--no-npm-audit', 'deprecated no-op: npm audit was replaced by dependency checks')
+    .option('--no-deps', 'skip dependency checks (vulnerabilities, missing and typosquatted packages)')
+    .option('--offline', 'dependency checks use only cached data')
     .option('--no-nodejsscan', 'disable nodejsscan scanner')
     .option('--no-bearer', 'disable Bearer scanner')
     .option('--no-semgrep', 'disable Semgrep scanner');

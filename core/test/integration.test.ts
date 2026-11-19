@@ -85,7 +85,7 @@ describe('Scanner Integration', () => {
 
       assert.ok(merged.semgrep);
       assert.ok(merged.eslint);
-      assert.ok(merged.npmAudit);
+      assert.ok(merged.dependencies);
       assert.ok(merged.nodejsscan);
       assert.ok(merged.bearer);
     });

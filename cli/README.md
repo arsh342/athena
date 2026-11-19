@@ -65,7 +65,10 @@ athena setup semgrep --auto
 | `-q, --quiet` / `-v, --verbose` | No progress / also print scanner notes. |
 | `--no-color` | Disable colour (also off for `NO_COLOR` and non-TTY output). |
 | `-m, --max-findings <n\|all>`, `--show-low` | Control how many findings are listed. |
-| `--no-eslint`, `--no-npm-audit`, `--no-nodejsscan`, `--no-bearer`, `--no-semgrep` | Skip a scanner. |
+| `--no-eslint`, `--no-nodejsscan`, `--no-bearer`, `--no-semgrep` | Skip a scanner. |
+| `--no-deps` | Skip dependency checks. |
+| `--offline` | Dependency checks use only cached data (a cold cache is reported as a gap). |
+| `--no-npm-audit` | Deprecated, does nothing (replaced by dependency checks). |
 | `-t, --threshold <n>` | Deprecated: only affects the heuristic AI fallback. |
 
 ## Exit codes
@@ -101,13 +104,30 @@ Optional `athena.config.json` at the scanned root. Flags override it.
 | PHP | `.php .phtml` | own rules + taint, secrets, units, AI provenance |
 | Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | own rules + taint, secrets, units, AI provenance |
 
-Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
 
 The report header shows files per language, e.g. `12 files (js 3 · py 2 · go 1)`.
 
 ## What Athena checks
 
 Athena's own offline engine covers all supported languages: rule packs, taint analysis with source-to-sink paths, 60+ secret formats (also in `.env`, YAML and JSON files), and an investigation engine that finds routes missing the authentication or owner filter their siblings use, validators that never fail, error paths that report success, read-then-write races and more. Each finding carries a confidence; `low` ones appear under **needs review** and never block. Mark routes that are public on purpose in `athena.config.json`: `{ "publicRoutes": ["/health"] }`. See the main README for details.
+
+## Dependency checks
+
+Athena reads every manifest and lockfile it finds (npm, Yarn, pnpm, pip/poetry/uv/Pipenv, Maven/Gradle, NuGet, Go, Cargo, Composer, vcpkg, Conan) and reports, in a separate **Dependencies** section:
+
+| Finding | Meaning | What to do |
+|---|---|---|
+| Vulnerable dependency | A known advisory (OSV.dev) affects the exact version. Severity comes from CVSS. If the advisory names the affected functions and your code never imports them, severity drops one level and the report says so. | Upgrade to the fixed version shown. |
+| Malicious package | The version is a known malicious release (`MAL-` advisory). | Remove it and rotate any secrets it could read. |
+| Package does not exist | A declared dependency, or an import that is declared nowhere, is not on the public registry. Often an AI-invented name that anyone could register. | Fix the name or remove it. |
+| Possible typosquat | A direct dependency is one or two edits away from a popular package. | Check you meant the popular one. |
+| Deprecated / yanked / abandoned | The registry says so. | Move to a maintained release or alternative. |
+| Very new release | Published in the last 72 hours. | Wait out the cooldown or review it. |
+| Install script | A direct npm dependency runs `preinstall`/`install`/`postinstall`. | Review it, or install with `--ignore-scripts`. |
+| Hallucinated API call | You call a member that the installed package's type declarations do not contain (`axios.fetchData`). Only checked when the package is installed with types. | Use the real API. |
+
+Private packages (`file:`, `git+`, workspace and scoped-registry packages) are never looked up. A registry outage or rate limit is reported as a coverage gap, never as "does not exist". Answers are cached for 24 hours (advisories 6 hours) under `~/.athena/cache/deps`; `--offline` uses only that cache (and reports the cache date or a gap), and `--no-deps` skips the checks. Athena sends package names and versions to OSV.dev and the package registries, never your code. `npm audit` was replaced by these checks; `--no-npm-audit` is accepted for one release and does nothing.
 
 ## Skills and variants
 

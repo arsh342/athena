@@ -33,7 +33,7 @@ Athena specifically targets these risks by identifying AI-generated code section
 | PHP | `.php .phtml` | own rules + taint, secrets, units, AI provenance  |
 | Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | own rules + taint, secrets, units, AI provenance  |
 
-Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
 
 ## How the AI-code estimate is made
 
@@ -57,6 +57,23 @@ No external scanner is needed for these; they run offline on every supported lan
 - **Confidence**: every finding is checked for reachability from an entry point, defenses on the path and impact (exposure, sensitive data). `high`/`medium` findings count toward the gate; `low` ones are listed as **needs review** and never block. Findings are ordered by severity × exposure × confidence.
 
 Benchmarks against known-vulnerable apps: [`docs/athena-bench/SAST.md`](docs/athena-bench/SAST.md) (recall against a hand-verified, partial answer key; precision is not yet measured).
+
+## Dependency checks
+
+Athena reads every manifest and lockfile it finds (npm, Yarn, pnpm, pip/poetry/uv/Pipenv, Maven/Gradle, NuGet, Go, Cargo, Composer, vcpkg, Conan) and reports, in a separate **Dependencies** section:
+
+| Finding | Meaning | What to do |
+|---|---|---|
+| Vulnerable dependency | A known advisory (OSV.dev) affects the exact version. Severity comes from CVSS. If the advisory names the affected functions and your code never imports them, severity drops one level and the report says so. | Upgrade to the fixed version shown. |
+| Malicious package | The version is a known malicious release (`MAL-` advisory). | Remove it and rotate any secrets it could read. |
+| Package does not exist | A declared dependency, or an import that is declared nowhere, is not on the public registry. Often an AI-invented name that anyone could register. | Fix the name or remove it. |
+| Possible typosquat | A direct dependency is one or two edits away from a popular package. | Check you meant the popular one. |
+| Deprecated / yanked / abandoned | The registry says so. | Move to a maintained release or alternative. |
+| Very new release | Published in the last 72 hours. | Wait out the cooldown or review it. |
+| Install script | A direct npm dependency runs `preinstall`/`install`/`postinstall`. | Review it, or install with `--ignore-scripts`. |
+| Hallucinated API call | You call a member that the installed package's type declarations do not contain (`axios.fetchData`). Only checked when the package is installed with types. | Use the real API. |
+
+Private packages (`file:`, `git+`, workspace and scoped-registry packages) are never looked up. A registry outage or rate limit is reported as a coverage gap, never as "does not exist". Answers are cached for 24 hours (advisories 6 hours) under `~/.athena/cache/deps`; `--offline` uses only that cache (and reports the cache date or a gap), and `--no-deps` skips the checks. Athena sends package names and versions to OSV.dev and the package registries, never your code. `npm audit` was replaced by these checks; `--no-npm-audit` is accepted for one release and does nothing.
 
 ## Skills
 
@@ -90,7 +107,7 @@ Skills are **data only**: rules (`rules.json`: a call, line or file pattern plus
   - Hallucination detection (invalid API call validation)
   - [Semgrep](https://semgrep.dev/) — SAST rule-based scanning
   - [ESLint](https://eslint.org/) + `eslint-plugin-security`
-  - `npm audit` — dependency vulnerability scanning
+  - dependency intelligence — OSV advisories, registry checks, typosquats (replaces `npm audit`)
   - [NodeJSScan](https://github.com/ajinabraham/nodejsscan) — Node.js security scanner (Docker)
   - [Bearer](https://www.bearer.com/) — data flow security analysis
 
@@ -222,7 +239,7 @@ The shared scanning library used by both the CLI and backend.
 - `provenance/` — recorded AI provenance from git and line-based aggregation
 - `lang/` — language detection, tree-sitter parser loading and per-language code unit extraction
 - `parser/ast-parser.ts` — reads a file, rejects binary content and hands it to `lang/`
-- `analyzers/` — security scanner adapters (Semgrep, ESLint, npm audit, Bearer, NodeJSScan, secret detection, hallucination detection)
+- `analyzers/` — security scanner adapters (Semgrep, ESLint, Bearer, NodeJSScan, secret detection); `deps/` — dependency intelligence
 - `scanner-registry.ts` — plugin registry for external scanners
 - `report/` — report generation (terminal, JSON)
 

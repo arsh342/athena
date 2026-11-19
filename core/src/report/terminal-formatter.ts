@@ -96,8 +96,12 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
 
   // ── Findings ──
   const all: Array<{ finding: ClassifiedFinding; unit?: ScoredUnit }> = [];
+  const depFindings: ClassifiedFinding[] = [];
   for (const file of report.files) {
-    for (const finding of file.findings) all.push({ finding, unit: owningUnit(file.units, finding.line) });
+    for (const finding of file.findings) {
+      if (finding.source === 'athena-deps') depFindings.push(finding);
+      else all.push({ finding, unit: owningUnit(file.units, finding.line) });
+    }
   }
   all.sort((a, b) =>
     Number(a.finding.confidence === 'low') - Number(b.finding.confidence === 'low')
@@ -133,6 +137,21 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     }
     if (visible.length > shown.length) out.push(dim(` … ${visible.length - shown.length} more (use --max-findings all)`));
     if (hiddenLow > 0) out.push(dim(` + ${hiddenLow} low (use --show-low)`));
+    out.push('');
+  }
+
+  if (depFindings.length > 0) {
+    depFindings.sort((a, b) => ORDER.indexOf(a.severity) - ORDER.indexOf(b.severity) || a.file.localeCompare(b.file) || a.line - b.line);
+    const depVisible = options.showLow ? depFindings : depFindings.filter((f) => f.severity !== 'LOW');
+    out.push(bold('Dependencies'));
+    for (const f of depVisible.slice(0, limit)) {
+      const label = paint(SEVERITY_COLOR[f.severity], f.severity.padEnd(9));
+      out.push(` ${label} ${f.type}  ${bold(f.code)}${' '.repeat(2)}${dim(`${rel(f.file)}:${f.line}`)}`);
+      out.push(`           ${f.message}`);
+      for (const note of (f.evidence ?? []).slice(0, 2)) out.push(`           ${dim(`· ${note}`)}`);
+    }
+    if (depVisible.length > limit) out.push(dim(` … ${depVisible.length - limit} more (use --max-findings all)`));
+    if (depFindings.length > depVisible.length) out.push(dim(` + ${depFindings.length - depVisible.length} low (use --show-low)`));
     out.push('');
   }
 

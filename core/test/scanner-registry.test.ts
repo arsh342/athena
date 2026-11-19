@@ -53,7 +53,7 @@ describe('ScannerRegistry', () => {
 
       assert.equal(scannerNames.includes('semgrep'), true);
       assert.equal(scannerNames.includes('eslint'), true);
-      assert.equal(scannerNames.includes('npmAudit'), true);
+      assert.equal(scannerNames.includes('npmAudit'), false, 'npm audit was replaced by dependency intelligence');
       assert.equal(scannerNames.includes('nodejsscan'), true);
       assert.equal(scannerNames.includes('bearer'), true);
     });
@@ -101,7 +101,7 @@ describe('ScannerRegistry', () => {
 
       assert.ok('semgrep' in availability);
       assert.ok('eslint' in availability);
-      assert.ok('npmAudit' in availability);
+      assert.ok(!('npmAudit' in availability));
       assert.ok('nodejsscan' in availability);
       assert.ok('bearer' in availability);
 
@@ -117,7 +117,6 @@ describe('ScannerRegistry', () => {
       // Disable all scanners
       testConfig.semgrep.enabled = false;
       testConfig.eslint!.enabled = false;
-      testConfig.npmAudit!.enabled = false;
       testConfig.nodejsscan!.enabled = false;
       testConfig.bearer!.enabled = false;
 

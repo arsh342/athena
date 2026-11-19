@@ -62,11 +62,6 @@ export function getSetupAllPlan(platform: NodeJS.Platform): SetupToolPlan[] {
       note: 'Bundled as Athena optional dependencies and used by the ESLint scanner when present.',
     },
     {
-      name: 'npm audit',
-      includedWithAthena: true,
-      note: 'Uses npm CLI that ships with Node.js. No separate scanner package install required.',
-    },
-    {
       name: 'Semgrep',
       includedWithAthena: false,
       autoInstallCommand: getSemgrepInstallCommand(platform),
