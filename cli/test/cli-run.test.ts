@@ -121,3 +121,16 @@ test('SARIF uris are relative to the git repository root', async () => {
     assert.ok(uris.every((u: string) => u === 'sub/x.ts'), uris.join(','));
   }
 });
+
+test('scan finds a secret in a Python file and the header lists languages', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'athena-py-'));
+  writeFileSync(join(dir, 'app.py'), 'def connect():\n    AWS_KEY = "AKIAQ7XZ4HJ2KL9MN3PW"\n    return AWS_KEY\n');
+  writeFileSync(join(dir, 'deploy.sh'), 'deploy() {\n  echo one\n  echo two\n}\n');
+  const json = await runCli(['scan', dir, '--format', 'json', ...OFF]);
+  assert.equal(json.code, 1, json.stderr);
+  const parsed = JSON.parse(json.stdout);
+  const findings = parsed.files.flatMap((f: { findings: Array<{ file: string }> }) => f.findings);
+  assert.ok(findings.some((f: { file: string }) => f.file.endsWith('app.py')));
+  const text = await runCli(['scan', dir, ...OFF]);
+  assert.match(text.stdout, /· 2 files \(py 1 · sh 1\)/);
+});

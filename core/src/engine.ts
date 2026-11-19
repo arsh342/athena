@@ -2,7 +2,8 @@ import { stat } from 'node:fs/promises';
 import { mergeConfig } from './config.js';
 import { analyzeSecurity } from './analyzers/security-analyzer.js';
 import { runSemgrep } from './analyzers/semgrep-adapter.js';
-import { parseFileDetailed } from './parser/ast-parser.js';
+import { detectLanguage, type LanguageId } from './lang/languages.js';
+import { parseFileDetailed, warmParsers } from './parser/ast-parser.js';
 import { generateReport } from './report/report-generator.js';
 import { scoreUnit } from './scorer/heuristic-scorer.js';
 import { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
@@ -54,6 +55,9 @@ export async function scanFiles(
   let processedFiles = 0;
   const fileCoverage: FileCoverage[] = [];
   const registry = options.registry ?? scannerRegistry;
+  const languages: Partial<Record<LanguageId, { files: number; units: number; lines: number }>> = {};
+  const unavailableParsers = new Set<LanguageId>();
+  await warmParsers([...new Set(filePaths.map((p) => detectLanguage(p)).filter((l): l is LanguageId => l !== null))]);
 
   hooks.onFileProgress?.({
     phase: 'prepare',
@@ -118,7 +122,14 @@ export async function scanFiles(
       detail: 'running secret + hallucination analyzers',
     });
 
-    const { units, error: parseError } = await parseFileDetailed(filePath);
+    const { units, error: parseError, language, parserUnavailable, lines } = await parseFileDetailed(filePath);
+    if (parserUnavailable && language) unavailableParsers.add(language);
+    if (language && !parserUnavailable) {
+      const stats = (languages[language] ??= { files: 0, units: 0, lines: 0 });
+      stats.files += 1;
+      stats.units += units.length;
+      stats.lines += lines ?? 0;
+    }
     fileCoverage.push(parseError
       ? { path: filePath, status: 'parse-failed', reason: parseError }
       : { path: filePath, status: 'analyzed' });
@@ -224,9 +235,11 @@ export async function scanFiles(
   for (const excluded of options.excludedFiles ?? []) {
     fileCoverage.push({ path: excluded, status: 'skipped-excluded', reason: 'excluded by configuration' });
   }
-  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded);
+  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers);
 
-  return generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded));
+  const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded));
+  if (Object.keys(languages).length > 0) report.summary.languages = languages;
+  return report;
 }
 
 function buildCoverage(
@@ -235,6 +248,7 @@ function buildCoverage(
   registry: ScannerRegistry,
   scannerOutcome: Map<string, CheckCoverage['status']>,
   recorded: RecordedRepo,
+  unavailableParsers: Set<LanguageId> = new Set(),
 ): ScanCoverage {
   const checks: CheckCoverage[] = [
     { name: 'secrets', status: config.secretDetection ? 'ran' : 'disabled' },
@@ -246,6 +260,9 @@ function buildCoverage(
         ? { name: 'recorded-provenance', status: 'ran' }
         : { name: 'recorded-provenance', status: 'unavailable', detail: recorded.reason },
   ];
+  for (const lang of [...unavailableParsers].sort()) {
+    checks.push({ name: `parser:${lang}`, status: 'unavailable', detail: 'grammar failed to load' });
+  }
   for (const scanner of registry.getAllScanners()) {
     const scannerConfig = config[scanner.name as keyof AthenaConfig] as { enabled?: boolean } | undefined;
     if (!scannerConfig || typeof scannerConfig !== 'object' || !scannerConfig.enabled) {
@@ -257,7 +274,8 @@ function buildCoverage(
 
   const count = (status: FileCoverage['status']) => files.filter((f) => f.status === status).length;
   const gaps: string[] = [];
-  if (count('parse-failed') > 0) gaps.push(`${count('parse-failed')} file(s) not parsed`);
+  const notParsed = files.filter((f) => f.status === 'parse-failed' && f.reason !== 'parser unavailable').length;
+  if (notParsed > 0) gaps.push(`${notParsed} file(s) not parsed`);
   if (count('skipped-size') > 0) gaps.push(`${count('skipped-size')} file(s) skipped: larger than ${config.maxFileSize} bytes`);
   if (count('missing') > 0) gaps.push(`${count('missing')} file(s) missing`);
   for (const check of checks) {

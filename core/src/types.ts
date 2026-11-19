@@ -1,3 +1,4 @@
+import type { LanguageId } from './lang/languages.js';
 export type CodeUnitKind = 'function' | 'class' | 'method' | 'arrow';
 export type ConfidenceBand = 'LOW' | 'UNCERTAIN' | 'HIGH';
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -202,6 +203,8 @@ export interface ScanReport {
     delta?: ScanDelta;
     coverage?: ScanCoverage;
     aiProvenance?: AiProvenance;
+    /** Per-language totals for files that were parsed (additive, phase 2). */
+    languages?: Partial<Record<LanguageId, { files: number; units: number; lines: number }>>;
   };
   files: FileReport[];
 }

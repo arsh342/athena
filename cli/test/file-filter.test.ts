@@ -92,3 +92,39 @@ test('findSourceFiles excludes nested test directories by segment name', async (
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('findSourceFilesWithExclusions discovers every supported language and shebang scripts', async () => {
+  const { findSourceFilesWithExclusions } = await import('../src/utils/file-filter.ts');
+  const root = await mkdtemp(join(tmpdir(), 'athena-cli-lang-'));
+  try {
+    await mkdir(join(root, 'bin'), { recursive: true });
+    await mkdir(join(root, '__pycache__'), { recursive: true });
+    const files: Record<string, string> = {
+      'app.py': 'x = 1\n', 'main.go': 'package main\n', 'lib.rs': 'fn f() {}\n', 'index.php': '<?php\n',
+      'Prog.cs': 'class P {}\n', 'Main.java': 'class M {}\n', 'a.c': 'int a;\n', 'a.h': 'int a;\n', 'b.cpp': 'int b;\n',
+      'run.sh': 'echo hi\n', 'bin/deploy': '#!/bin/bash\necho deploy\n', 'bin/tool': '#!/usr/bin/env python3\nprint(1)\n',
+      'bin/notes': 'just text\n', 'Makefile': 'all:\n', '__pycache__/x.py': 'x = 1\n',
+    };
+    for (const [name, body] of Object.entries(files)) await writeFile(join(root, name), body);
+    const found = (await findSourceFilesWithExclusions(root)).files.map((f) => relative(root, f)).sort();
+    assert.deepEqual(found, ['Main.java', 'Prog.cs', 'a.c', 'a.h', 'app.py', 'b.cpp', 'bin/deploy', 'bin/tool', 'index.php', 'lib.rs', 'main.go', 'run.sh']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('isSourceFile accepts every supported extension', () => {
+  for (const f of ['a.py', 'a.go', 'a.rs', 'a.php', 'a.cs', 'A.java', 'a.c', 'a.h', 'a.cpp', 'a.sh', 'a.mjs']) assert.equal(isSourceFile(f), true, f);
+});
+
+test('directories and unreadable paths are never source candidates (no EISDIR)', async () => {
+  const { isSourceCandidate } = await import('../src/utils/file-filter.ts');
+  const root = await mkdtemp(join(tmpdir(), 'athena-cli-dir-'));
+  try {
+    await mkdir(join(root, 'libs', 'sub'), { recursive: true });
+    assert.equal(await isSourceCandidate(join(root, 'libs', 'sub')), false);
+    assert.equal(await isSourceCandidate(join(root, 'missing')), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

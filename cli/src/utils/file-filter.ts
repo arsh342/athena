@@ -1,7 +1,7 @@
-import { readdir, stat } from 'node:fs/promises';
+import { open, readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
-const supported = new Set(['.js', '.jsx', '.ts', '.tsx']);
+import { hasExtension, isSupportedSource, languageFromShebang } from '@athena/core';
 const ignoredDirs = new Set([
   'node_modules',
   'dist',
@@ -21,10 +21,40 @@ const ignoredDirs = new Set([
   'tmp',
   'temp',
   'out',
+  '__pycache__',
+  '.venv',
+  'venv',
+  '.tox',
+  '.mypy_cache',
+  '.pytest_cache',
+  'target',
+  'vendor',
 ]);
 
+/** Extension-based check (no file read). Extensionless shebang scripts need isSourceCandidate. */
 export function isSourceFile(filePath: string): boolean {
-  return [...supported].some((ext) => filePath.endsWith(ext));
+  return isSupportedSource(filePath);
+}
+
+/** Supported extension, or an extensionless file whose first line is a known shebang. */
+export async function isSourceCandidate(filePath: string): Promise<boolean> {
+  if (isSupportedSource(filePath)) return true;
+  if (hasExtension(filePath)) return false;
+  if (!(await stat(filePath).catch(() => null))?.isFile()) return false;
+  return languageFromShebang(await readFirstLine(filePath)) !== null;
+}
+
+async function readFirstLine(filePath: string): Promise<string> {
+  const handle = await open(filePath, 'r').catch(() => null);
+  if (!handle) return '';
+  try {
+    const buffer = Buffer.alloc(256);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    const text = buffer.subarray(0, bytesRead).toString('utf8');
+    return text.split('\n', 1)[0] ?? '';
+  } finally {
+    await handle.close();
+  }
 }
 
 export function isExcludedPath(filePath: string, root: string, excludes: string[] = []): boolean {
@@ -61,7 +91,7 @@ export async function findSourceFilesWithExclusions(root: string, excludes: stri
   const result: SourceDiscovery = { files: [], excluded: [] };
   if (!rootStat) return result;
   if (rootStat.isFile()) {
-    if (isSourceFile(root)) (isExcludedPath(root, root, excludes) ? result.excluded : result.files).push(root);
+    if (await isSourceCandidate(root)) (isExcludedPath(root, root, excludes) ? result.excluded : result.files).push(root);
     return result;
   }
   await walk(root, root, result, excludes, false);
@@ -83,7 +113,7 @@ async function walk(dir: string, root: string, result: SourceDiscovery, excludes
       continue;
     }
 
-    if (entry.isFile() && isSourceFile(fullPath)) {
+    if (entry.isFile() && (await isSourceCandidate(fullPath))) {
       (underExcluded || isExcludedPath(fullPath, root, excludes) ? result.excluded : result.files).push(fullPath);
     }
   }

@@ -152,3 +152,9 @@ test('explain hint carries --path when the target is not the current directory',
   const here = formatTerminalReport(blocked(), { ...opts, target: '.' });
   assert.match(here, /^Next: athena explain [0-9a-f]{6}$/m);
 });
+
+test('header lists files per language family, most common first', () => {
+  const r = report([], { filesScanned: 5, languages: { python: { files: 1, units: 1, lines: 10 }, typescript: { files: 2, units: 3, lines: 40 }, tsx: { files: 1, units: 1, lines: 5 }, go: { files: 1, units: 1, lines: 9 } } });
+  const out = formatTerminalReport(r, opts);
+  assert.match(out, /· 5 files \(js 3 · go 1 · py 1\)/);
+});

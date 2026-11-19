@@ -1,6 +1,6 @@
 # Athena
 
-**AI Code Provenance Tracker** — detect AI-generated code and run targeted security analysis on JavaScript and TypeScript repositories.
+**AI Code Provenance Tracker** — detect AI-generated code and run targeted security analysis on repositories in JavaScript/TypeScript, Python, Java, C#, C/C++, Go, Rust, PHP and Shell.
 
 Athena identifies likely AI-generated sections in your codebase using git history and a style heuristic (labelled low confidence) and runs multi-engine security analysis on flagged code. It operates as both a **CLI tool** (pre-commit scanning) and a **web platform** (GitHub repo scanner with live terminal streaming).
 
@@ -19,11 +19,29 @@ Athena specifically targets these risks by identifying AI-generated code section
 
 ---
 
+## Supported languages
+
+| Language | Extensions | Today |
+|---|---|---|
+| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | units, AI provenance, secrets (inside functions and classes), hallucinated APIs, external scanners |
+| Python | `.py .pyi`, `#!…python` scripts | units, AI provenance, secrets (inside functions and classes) |
+| Java | `.java` | units, AI provenance, secrets (inside functions and classes) |
+| C# | `.cs` | units, AI provenance, secrets (inside functions and classes) |
+| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | units, AI provenance, secrets (inside functions and classes) (C is parsed with the C++ grammar) |
+| Go | `.go` | units, AI provenance, secrets (inside functions and classes) |
+| Rust | `.rs` | units, AI provenance, secrets (inside functions and classes) |
+| PHP | `.php .phtml` | units, AI provenance, secrets (inside functions and classes) |
+| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | units, AI provenance, secrets (inside functions and classes) |
+
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. The external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only; Athena's own rules for every language arrive in later releases.
+
+---
+
 ## Features
 
 ### Core Analysis Engine
 - **AI provenance by lines** — *recorded* (git co-author trailers and agent authors, a floor) plus a *heuristic estimate* from style signals, always reported as a range with its method
-- **AST parsing** via the TypeScript Compiler API — no Babel dependency
+- **One parser for nine language families** via tree-sitter (bundled WASM grammars) — see [Supported languages](#supported-languages)
 - **Multi-engine security scanning:**
   - Secret detection (regex + Shannon entropy)
   - Hallucination detection (invalid API call validation)
@@ -159,7 +177,8 @@ The shared scanning library used by both the CLI and backend.
 - `engine.ts` — orchestrates the full scan pipeline
 - `scorer/heuristic-scorer.ts` — heuristic style scorer (fallback estimate)
 - `provenance/` — recorded AI provenance from git and line-based aggregation
-- `parser/ast-parser.ts` — TypeScript AST code unit extraction
+- `lang/` — language detection, tree-sitter parser loading and per-language code unit extraction
+- `parser/ast-parser.ts` — reads a file, rejects binary content and hands it to `lang/`
 - `analyzers/` — security scanner adapters (Semgrep, ESLint, npm audit, Bearer, NodeJSScan, secret detection, hallucination detection)
 - `scanner-registry.ts` — plugin registry for external scanners
 - `report/` — report generation (terminal, JSON)

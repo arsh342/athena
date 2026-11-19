@@ -202,3 +202,14 @@ test('upload route uses terminal session when header present', async () => {
 
   assert.ok(sent.includes('line'));
 });
+
+test('runUploadScan scans Go files', async () => {
+  const body = 'package main\n\nfunc main() {\n\tx := 1\n\tprintln(x)\n}\n';
+  const result = await runUploadScan({
+    mode: 'folder',
+    rootName: 'go-repo',
+    files: [{ originalname: 'go-repo/main.go', buffer: Buffer.from(body), size: Buffer.byteLength(body) }],
+  });
+  assert.equal(result.scan.status, 'COMPLETED');
+  assert.equal(result.scan.filesScanned, 1);
+});

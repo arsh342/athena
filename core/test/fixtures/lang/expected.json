@@ -1,0 +1,667 @@
+{
+ "javascript": {
+  "file": "javascript/sample.js",
+  "units": [
+   {
+    "name": "add",
+    "kind": "function",
+    "startLine": 4,
+    "endLine": 7
+   },
+   {
+    "name": "Counter",
+    "kind": "class",
+    "startLine": 9,
+    "endLine": 21
+   },
+   {
+    "name": "constructor",
+    "kind": "method",
+    "startLine": 10,
+    "endLine": 13
+   },
+   {
+    "name": "increment",
+    "kind": "method",
+    "startLine": 15,
+    "endLine": 20
+   },
+   {
+    "name": "double",
+    "kind": "arrow",
+    "startLine": 23,
+    "endLine": 26
+   },
+   {
+    "name": "outer",
+    "kind": "function",
+    "startLine": 28,
+    "endLine": 36
+   },
+   {
+    "name": "inner",
+    "kind": "function",
+    "startLine": 31,
+    "endLine": 34
+   }
+  ],
+  "documented": {
+   "name": "add",
+   "startLine": 4
+  },
+  "check": {
+   "name": "increment",
+   "complexity": 3,
+   "parameters": [
+    "by"
+   ]
+  }
+ },
+ "typescript": {
+  "file": "typescript/sample.ts",
+  "units": [
+   {
+    "name": "formatName",
+    "kind": "function",
+    "startLine": 2,
+    "endLine": 5
+   },
+   {
+    "name": "Shape",
+    "kind": "class",
+    "startLine": 7,
+    "endLine": 10
+   },
+   {
+    "name": "Square",
+    "kind": "class",
+    "startLine": 12,
+    "endLine": 21
+   },
+   {
+    "name": "constructor",
+    "kind": "method",
+    "startLine": 14,
+    "endLine": 16
+   },
+   {
+    "name": "area",
+    "kind": "method",
+    "startLine": 18,
+    "endLine": 20
+   },
+   {
+    "name": "toUpper",
+    "kind": "arrow",
+    "startLine": 23,
+    "endLine": 26
+   },
+   {
+    "name": "wrap",
+    "kind": "function",
+    "startLine": 28,
+    "endLine": 36
+   },
+   {
+    "name": "each",
+    "kind": "function",
+    "startLine": 32,
+    "endLine": 34
+   }
+  ],
+  "documented": {
+   "name": "formatName",
+   "startLine": 2
+  },
+  "check": {
+   "name": "formatName",
+   "complexity": 1,
+   "parameters": [
+    "first",
+    "last"
+   ]
+  }
+ },
+ "tsx": {
+  "file": "tsx/sample.tsx",
+  "units": [
+   {
+    "name": "Greeting",
+    "kind": "function",
+    "startLine": 4,
+    "endLine": 7
+   },
+   {
+    "name": "Panel",
+    "kind": "class",
+    "startLine": 9,
+    "endLine": 18
+   },
+   {
+    "name": "handleClick",
+    "kind": "method",
+    "startLine": 10,
+    "endLine": 13
+   },
+   {
+    "name": "render",
+    "kind": "method",
+    "startLine": 15,
+    "endLine": 17
+   },
+   {
+    "name": "List",
+    "kind": "arrow",
+    "startLine": 20,
+    "endLine": 23
+   },
+   {
+    "name": "Outer",
+    "kind": "function",
+    "startLine": 25,
+    "endLine": 32
+   },
+   {
+    "name": "label",
+    "kind": "function",
+    "startLine": 27,
+    "endLine": 30
+   }
+  ],
+  "documented": {
+   "name": "Greeting",
+   "startLine": 4
+  },
+  "check": {
+   "name": "label",
+   "complexity": 1,
+   "parameters": [
+    "n"
+   ]
+  }
+ },
+ "python": {
+  "file": "python/sample.py",
+  "units": [
+   {
+    "name": "load_config",
+    "kind": "function",
+    "startLine": 4,
+    "endLine": 9
+   },
+   {
+    "name": "Repository",
+    "kind": "class",
+    "startLine": 12,
+    "endLine": 20
+   },
+   {
+    "name": "__init__",
+    "kind": "method",
+    "startLine": 13,
+    "endLine": 15
+   },
+   {
+    "name": "size",
+    "kind": "method",
+    "startLine": 18,
+    "endLine": 20
+   },
+   {
+    "name": "handler",
+    "kind": "arrow",
+    "startLine": 23,
+    "endLine": 26
+   },
+   {
+    "name": "outer",
+    "kind": "function",
+    "startLine": 29,
+    "endLine": 36
+   },
+   {
+    "name": "inner",
+    "kind": "function",
+    "startLine": 33,
+    "endLine": 35
+   }
+  ],
+  "documented": {
+   "name": "load_config",
+   "startLine": 4
+  },
+  "check": {
+   "name": "load_config",
+   "complexity": 2,
+   "parameters": [
+    "path",
+    "default"
+   ]
+  }
+ },
+ "java": {
+  "file": "java/sample.java",
+  "units": [
+   {
+    "name": "Inventory",
+    "kind": "class",
+    "startLine": 3,
+    "endLine": 34
+   },
+   {
+    "name": "Inventory",
+    "kind": "method",
+    "startLine": 9,
+    "endLine": 12
+   },
+   {
+    "name": "count",
+    "kind": "method",
+    "startLine": 14,
+    "endLine": 22
+   },
+   {
+    "name": "printer",
+    "kind": "method",
+    "startLine": 24,
+    "endLine": 33
+   },
+   {
+    "name": "r",
+    "kind": "arrow",
+    "startLine": 28,
+    "endLine": 31
+   },
+   {
+    "name": "Named",
+    "kind": "class",
+    "startLine": 36,
+    "endLine": 39
+   }
+  ],
+  "documented": {
+   "name": "Inventory",
+   "startLine": 9
+  },
+  "check": {
+   "name": "count",
+   "complexity": 4,
+   "parameters": [
+    "prefix"
+   ]
+  }
+ },
+ "csharp": {
+  "file": "csharp/sample.cs",
+  "units": [
+   {
+    "name": "MathUtil",
+    "kind": "class",
+    "startLine": 5,
+    "endLine": 18
+   },
+   {
+    "name": "Add",
+    "kind": "method",
+    "startLine": 8,
+    "endLine": 11
+   },
+   {
+    "name": "Clamp",
+    "kind": "method",
+    "startLine": 13,
+    "endLine": 17
+   },
+   {
+    "name": "Point",
+    "kind": "class",
+    "startLine": 20,
+    "endLine": 24
+   },
+   {
+    "name": "Runner",
+    "kind": "class",
+    "startLine": 26,
+    "endLine": 42
+   },
+   {
+    "name": "Run",
+    "kind": "method",
+    "startLine": 28,
+    "endLine": 41
+   },
+   {
+    "name": "square",
+    "kind": "arrow",
+    "startLine": 32,
+    "endLine": 35
+   },
+   {
+    "name": "Local",
+    "kind": "function",
+    "startLine": 36,
+    "endLine": 39
+   }
+  ],
+  "documented": {
+   "name": "Add",
+   "startLine": 8
+  },
+  "check": {
+   "name": "Clamp",
+   "complexity": 3,
+   "parameters": [
+    "v",
+    "min",
+    "max"
+   ]
+  }
+ },
+ "c": {
+  "file": "c/sample.c",
+  "units": [
+   {
+    "name": "max_of",
+    "kind": "function",
+    "startLine": 6,
+    "endLine": 9
+   },
+   {
+    "name": "point",
+    "kind": "class",
+    "startLine": 11,
+    "endLine": 14
+   },
+   {
+    "name": "sum",
+    "kind": "function",
+    "startLine": 16,
+    "endLine": 25
+   },
+   {
+    "name": "main",
+    "kind": "function",
+    "startLine": 30,
+    "endLine": 34
+   }
+  ],
+  "documented": {
+   "name": "max_of",
+   "startLine": 6
+  },
+  "check": {
+   "name": "sum",
+   "complexity": 4,
+   "parameters": [
+    "values",
+    "count"
+   ]
+  }
+ },
+ "cpp": {
+  "file": "cpp/sample.cpp",
+  "units": [
+   {
+    "name": "square",
+    "kind": "function",
+    "startLine": 4,
+    "endLine": 6
+   },
+   {
+    "name": "Stack",
+    "kind": "class",
+    "startLine": 8,
+    "endLine": 24
+   },
+   {
+    "name": "push",
+    "kind": "method",
+    "startLine": 10,
+    "endLine": 13
+   },
+   {
+    "name": "pop",
+    "kind": "method",
+    "startLine": 15,
+    "endLine": 19
+   },
+   {
+    "name": "stack_total",
+    "kind": "function",
+    "startLine": 26,
+    "endLine": 35
+   },
+   {
+    "name": "add",
+    "kind": "arrow",
+    "startLine": 29,
+    "endLine": 31
+   }
+  ],
+  "documented": {
+   "name": "square",
+   "startLine": 4
+  },
+  "check": {
+   "name": "stack_total",
+   "complexity": 2,
+   "parameters": [
+    "xs"
+   ]
+  }
+ },
+ "go": {
+  "file": "go/sample.go",
+  "units": [
+   {
+    "name": "Greet",
+    "kind": "function",
+    "startLine": 6,
+    "endLine": 9
+   },
+   {
+    "name": "Account",
+    "kind": "class",
+    "startLine": 11,
+    "endLine": 14
+   },
+   {
+    "name": "Deposit",
+    "kind": "method",
+    "startLine": 16,
+    "endLine": 20
+   },
+   {
+    "name": "String",
+    "kind": "method",
+    "startLine": 22,
+    "endLine": 25
+   },
+   {
+    "name": "Process",
+    "kind": "function",
+    "startLine": 27,
+    "endLine": 40
+   },
+   {
+    "name": "double",
+    "kind": "arrow",
+    "startLine": 31,
+    "endLine": 34
+   }
+  ],
+  "documented": {
+   "name": "Greet",
+   "startLine": 6
+  },
+  "check": {
+   "name": "Deposit",
+   "complexity": 2,
+   "parameters": [
+    "amount"
+   ]
+  }
+ },
+ "rust": {
+  "file": "rust/sample.rs",
+  "units": [
+   {
+    "name": "word_count",
+    "kind": "function",
+    "startLine": 4,
+    "endLine": 10
+   },
+   {
+    "name": "Stack",
+    "kind": "class",
+    "startLine": 12,
+    "endLine": 15
+   },
+   {
+    "name": "Stack",
+    "kind": "class",
+    "startLine": 17,
+    "endLine": 30
+   },
+   {
+    "name": "push",
+    "kind": "method",
+    "startLine": 18,
+    "endLine": 24
+   },
+   {
+    "name": "pop",
+    "kind": "method",
+    "startLine": 26,
+    "endLine": 29
+   },
+   {
+    "name": "outer",
+    "kind": "function",
+    "startLine": 32,
+    "endLine": 44
+   },
+   {
+    "name": "inner",
+    "kind": "function",
+    "startLine": 35,
+    "endLine": 38
+   },
+   {
+    "name": "add",
+    "kind": "arrow",
+    "startLine": 39,
+    "endLine": 42
+   }
+  ],
+  "documented": {
+   "name": "word_count",
+   "startLine": 4
+  },
+  "check": {
+   "name": "push",
+   "complexity": 2,
+   "parameters": [
+    "self",
+    "v"
+   ]
+  }
+ },
+ "php": {
+  "file": "php/sample.php",
+  "units": [
+   {
+    "name": "format_price",
+    "kind": "function",
+    "startLine": 6,
+    "endLine": 9
+   },
+   {
+    "name": "Cart",
+    "kind": "class",
+    "startLine": 11,
+    "endLine": 26
+   },
+   {
+    "name": "add",
+    "kind": "method",
+    "startLine": 15,
+    "endLine": 20
+   },
+   {
+    "name": "total",
+    "kind": "method",
+    "startLine": 22,
+    "endLine": 25
+   },
+   {
+    "name": "double",
+    "kind": "arrow",
+    "startLine": 28,
+    "endLine": 31
+   },
+   {
+    "name": "outer",
+    "kind": "function",
+    "startLine": 33,
+    "endLine": 42
+   },
+   {
+    "name": "inner_helper",
+    "kind": "function",
+    "startLine": 38,
+    "endLine": 40
+   }
+  ],
+  "documented": {
+   "name": "format_price",
+   "startLine": 6
+  },
+  "check": {
+   "name": "add",
+   "complexity": 3,
+   "parameters": [
+    "name",
+    "qty"
+   ]
+  }
+ },
+ "shell": {
+  "file": "shell/sample.sh",
+  "units": [
+   {
+    "name": "greet",
+    "kind": "function",
+    "startLine": 4,
+    "endLine": 7
+   },
+   {
+    "name": "cleanup",
+    "kind": "function",
+    "startLine": 9,
+    "endLine": 12
+   },
+   {
+    "name": "deploy",
+    "kind": "function",
+    "startLine": 14,
+    "endLine": 22
+   },
+   {
+    "name": "main",
+    "kind": "function",
+    "startLine": 24,
+    "endLine": 27
+   }
+  ],
+  "documented": {
+   "name": "greet",
+   "startLine": 4
+  },
+  "check": {
+   "name": "deploy",
+   "complexity": 4,
+   "parameters": []
+  }
+ }
+}

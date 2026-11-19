@@ -1,8 +1,8 @@
-import { mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, extname, join, normalize, resolve } from 'node:path';
+import { basename, dirname, join, normalize, resolve } from 'node:path';
 import AdmZip from 'adm-zip';
-import { scanFiles } from '@athena/core';
+import { hasExtension, isSupportedSource, languageFromShebang, scanFiles } from '@athena/core';
 import type { ClassifiedFinding, ScanReport } from '@athena/core';
 import { simpleGit } from 'simple-git';
 import { addScan } from './data.ts';
@@ -10,8 +10,7 @@ import type { Finding, ScanSummary } from './data.ts';
 
 const SCAN_TIMEOUT_MS = 120_000;
 const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
-const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.mts']);
-const IGNORE_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'coverage', '.next', '__pycache__', '.venv', '__MACOSX']);
+const IGNORE_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'coverage', '.next', '__pycache__', '.venv', 'venv', '.tox', 'target', 'vendor', '__MACOSX']);
 const IGNORE_FILE_NAMES = new Set(['.DS_Store']);
 
 export type UploadMode = 'folder' | 'zip';
@@ -70,6 +69,22 @@ function createEmitterLog(emitter?: ScanEmitter) {
   };
 }
 
+/** Supported extension, or an extensionless file whose first line is a known shebang (uploads lose the exec bit). */
+async function isSourceCandidate(filePath: string): Promise<boolean> {
+  if (isSupportedSource(filePath)) return true;
+  if (hasExtension(filePath)) return false;
+  if (!(await stat(filePath).catch(() => null))?.isFile()) return false;
+  const handle = await open(filePath, 'r').catch(() => null);
+  if (!handle) return false;
+  try {
+    const buffer = Buffer.alloc(256);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return languageFromShebang(buffer.subarray(0, bytesRead).toString('utf8').split('\n', 1)[0] ?? '') !== null;
+  } finally {
+    await handle.close();
+  }
+}
+
 /** Walk directory tree and collect source file paths. */
 async function collectSourceFiles(dir: string): Promise<string[]> {
   const results: string[] = [];
@@ -83,7 +98,7 @@ async function collectSourceFiles(dir: string): Promise<string[]> {
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         await walk(fullPath);
-      } else if (entry.isFile() && SOURCE_EXTENSIONS.has(extname(entry.name))) {
+      } else if (entry.isFile() && (await isSourceCandidate(fullPath))) {
         results.push(fullPath);
       }
     }

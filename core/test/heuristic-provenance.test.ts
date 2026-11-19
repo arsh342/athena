@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { mergeConfig } from '../src/config.ts';
-import { parseSource } from '../src/parser/ast-parser.ts';
+import { parseSource, warmParsers } from '../src/parser/ast-parser.ts';
 import { heuristicProvenance, scoreUnit } from '../src/scorer/heuristic-scorer.ts';
 import { analyzeSecurity } from '../src/analyzers/security-analyzer.ts';
+
+test.before(() => warmParsers(['typescript']));
 
 const SAMPLE = 'function add(a, b) {\n  // return the sum\n  const result = a + b;\n  return result;\n}\n';
 

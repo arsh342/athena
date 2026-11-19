@@ -1,7 +1,8 @@
 export { mergeConfig, defaultConfig, defaultWeights } from './config.js';
 export { scanFiles } from './engine.js';
 export type { ScanProgressEvent, ScanFilesOptions } from './engine.js';
-export { parseFile, parseFileDetailed, parseSource } from './parser/ast-parser.js';
+export { parseFile, parseFileDetailed, parseSource, warmParsers } from './parser/ast-parser.js';
+export type { ParseFileResult } from './parser/ast-parser.js';
 export { scoreUnit, heuristicProvenance } from './scorer/heuristic-scorer.js';
 export { analyzeSecurity } from './analyzers/security-analyzer.js';
 export { formatJsonl } from './report/report-generator.js';
@@ -44,3 +45,5 @@ export { isSecretFinding, redactSecrets, redactKnownSecrets } from './report/red
 export { getRuleInfo } from './rules/catalog.js';
 export type { RuleInfo } from './rules/catalog.js';
 export { formatSarif } from './report/sarif.js';
+export * from './lang/languages.js';
+export { getParser, ParserUnavailableError, type TreeSitterParser } from './lang/parser-pool.js';
