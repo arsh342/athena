@@ -53,5 +53,8 @@
     "@athena/core": "file:../core",
     "commander": "^14.0.0",
     "tsx": "^4.19.0"
+  },
+  "dependencies": {
+    "@vscode/tree-sitter-wasm": "^0.3.1"
   }
 }

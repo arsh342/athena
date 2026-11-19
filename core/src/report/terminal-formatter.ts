@@ -1,3 +1,4 @@
+import { LANGUAGE_FAMILY, type LanguageFamily, type LanguageId } from '../lang/languages.js';
 import { relative } from 'node:path';
 import type { ClassifiedFinding, ScanReport, ScoredUnit, Severity } from '../types.js';
 import { isSecretFinding, redactKnownSecrets, redactSecrets } from './redact.js';
@@ -58,6 +59,24 @@ export function gateLine(
   return { status: 'PASS', detail: `no findings at or above ${failOn}` };
 }
 
+const FAMILY_SHORT: Record<LanguageFamily, string> = {
+  js: 'js', python: 'py', java: 'java', csharp: 'cs', c: 'c', go: 'go', rust: 'rs', php: 'php', shell: 'sh',
+};
+
+/** ` (js 3 · go 1 · py 1)`: files per language family, most common first, ties alphabetical. */
+function languageBreakdown(languages: ScanReport['summary']['languages']): string {
+  if (!languages) return '';
+  const counts = new Map<string, number>();
+  for (const [lang, stats] of Object.entries(languages)) {
+    if (!stats || stats.files === 0) continue;
+    const short = FAMILY_SHORT[LANGUAGE_FAMILY[lang as LanguageId]];
+    counts.set(short, (counts.get(short) ?? 0) + stats.files);
+  }
+  if (counts.size === 0) return '';
+  const parts = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, n]) => `${name} ${n}`);
+  return ` (${parts.join(' · ')})`;
+}
+
 export function formatTerminalReport(report: ScanReport, options: TerminalReportOptions): string {
   const paint = (code: string, text: string) => (options.color ? `${code}${text}${RESET}` : text);
   const dim = (text: string) => paint('\x1b[2m', text);
@@ -66,7 +85,7 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
   const { summary } = report;
   const out: string[] = [];
 
-  out.push(`${paint(BRAND, 'athena')} ${options.version} · ${options.mode} ${options.target} · ${summary.filesScanned} files · ${(report.duration / 1000).toFixed(1)}s`);
+  out.push(`${paint(BRAND, 'athena')} ${options.version} · ${options.mode} ${options.target} · ${summary.filesScanned} files${languageBreakdown(summary.languages)} · ${(report.duration / 1000).toFixed(1)}s`);
   out.push('');
 
   const gate = gateLine(report, options.failOn);
