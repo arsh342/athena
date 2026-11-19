@@ -23,6 +23,7 @@ export type {
   SemgrepConfig,
   ESLintConfig,
   NpmAuditConfig,
+  DependenciesConfig,
   NodejsscanConfig,
   BearerConfig,
   Severity,
@@ -54,3 +55,7 @@ export { analyzeProject, loadProjectFiles, type ProjectFile } from './analysis/p
 export { scanTextForSecrets } from './secrets/scan.js';
 export { allRuleMeta, ruleMeta } from './rules/registry.js';
 export * from './skills/index.js';
+
+export { analyzeDependencies, type DepsOptions, type DepsResult } from './deps/analyze.js';
+export { parseManifests } from './deps/parsers/index.js';
+export type { Dependency, Ecosystem } from './deps/types.js';

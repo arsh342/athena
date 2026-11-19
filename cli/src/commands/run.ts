@@ -40,7 +40,7 @@ export async function runScan(args: RunArgs): Promise<number> {
     ...(options.threshold !== undefined ? { threshold: options.threshold } : {}),
   });
   config.eslint = { ...config.eslint!, enabled: options.scanners.eslint };
-  config.npmAudit = { ...config.npmAudit!, enabled: options.scanners.npmAudit };
+  config.dependencies = { enabled: options.deps.enabled, offline: options.deps.offline, registryChecks: true };
   config.nodejsscan = { ...config.nodejsscan!, enabled: options.scanners.nodejsscan };
   config.bearer = { ...config.bearer!, enabled: options.scanners.bearer };
   config.semgrep.enabled = options.scanners.semgrep;

@@ -19,6 +19,8 @@ export interface RunFlags {
   threshold?: string;
   eslint?: boolean;
   npmAudit?: boolean;
+  deps?: boolean;
+  offline?: boolean;
   nodejsscan?: boolean;
   bearer?: boolean;
   semgrep?: boolean;
@@ -38,7 +40,8 @@ export interface RunOptions {
   threshold?: number;
   exclude: string[];
   publicRoutes: string[];
-  scanners: { eslint: boolean; npmAudit: boolean; nodejsscan: boolean; bearer: boolean; semgrep: boolean };
+  scanners: { eslint: boolean; nodejsscan: boolean; bearer: boolean; semgrep: boolean };
+  deps: { enabled: boolean; offline: boolean };
   warnings: string[];
 }
 
@@ -70,6 +73,7 @@ export function resolveRunOptions(
 
   const warnings: string[] = [];
   let threshold: number | undefined;
+  if (flags.npmAudit === false) warnings.push('--no-npm-audit is deprecated and does nothing: npm audit was replaced by Athena\'s own dependency checks (use --no-deps to skip them)');
   if (flags.threshold !== undefined) {
     threshold = Number(flags.threshold);
     if (!Number.isFinite(threshold)) throw new UsageError(`--threshold must be a number, got "${flags.threshold}"`);
@@ -100,11 +104,11 @@ export function resolveRunOptions(
     publicRoutes: config.publicRoutes ?? [],
     scanners: {
       eslint: flags.eslint !== false,
-      npmAudit: flags.npmAudit !== false,
       nodejsscan: flags.nodejsscan !== false,
       bearer: flags.bearer !== false,
       semgrep: flags.semgrep !== false,
     },
+    deps: { enabled: flags.deps !== false, offline: flags.offline ?? false },
     warnings,
   };
 }

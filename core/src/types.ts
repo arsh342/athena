@@ -2,7 +2,7 @@ import type { LanguageId } from './lang/languages.js';
 export type CodeUnitKind = 'function' | 'class' | 'method' | 'arrow';
 export type ConfidenceBand = 'LOW' | 'UNCERTAIN' | 'HIGH';
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-export type FindingSource = 'athena-rules' | 'athena-taint' | 'athena-secrets' | 'athena-investigate' | 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep' | 'eslint' | 'npm-audit' | 'nodejsscan' | 'bearer';
+export type FindingSource = 'athena-rules' | 'athena-taint' | 'athena-secrets' | 'athena-investigate' | 'athena-deps' | 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep' | 'eslint' | 'npm-audit' | 'nodejsscan' | 'bearer';
 
 export interface SemgrepConfig {
   enabled: boolean;
@@ -15,6 +15,14 @@ export interface ESLintConfig {
   timeoutMs: number;
   rules?: string[];
   plugins?: string[];
+}
+
+export interface DependenciesConfig {
+  enabled: boolean;
+  /** Use only cached advisory/registry data. */
+  offline: boolean;
+  /** Registry lookups (existence, deprecation, freshness, install scripts). OSV is always queried. */
+  registryChecks: boolean;
 }
 
 export interface NpmAuditConfig {
@@ -160,6 +168,8 @@ export interface ClassifiedFinding {
   priority?: number;
   /** Source-to-sink path for taint findings (additive). */
   trace?: Array<{ file: string; line: number; note: string }>;
+  /** The package a dependency finding is about (additive). */
+  dependency?: { ecosystem: string; name: string; version: string; manifest: string };
 }
 
 export interface FileReport {
@@ -267,7 +277,9 @@ export interface AthenaConfig {
   hallucinationDetection: boolean;
   semgrep: SemgrepConfig;
   eslint?: ESLintConfig;
+  /** Deprecated and ignored: `npm audit` was replaced by dependency intelligence (`dependencies`). */
   npmAudit?: NpmAuditConfig;
+  dependencies?: DependenciesConfig;
   nodejsscan?: NodejsscanConfig;
   bearer?: BearerConfig;
   maxFileSize: number;

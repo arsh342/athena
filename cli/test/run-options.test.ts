@@ -36,7 +36,8 @@ test('formats and defaults', () => {
   assert.equal(o.maxFindings, Number.POSITIVE_INFINITY);
   assert.equal(o.showLow, false);
   assert.equal(resolve({ maxFindings: '5' }).maxFindings, 5);
-  assert.deepEqual(o.scanners, { eslint: true, npmAudit: true, nodejsscan: true, bearer: true, semgrep: true });
+  assert.deepEqual(o.scanners, { eslint: true, nodejsscan: true, bearer: true, semgrep: true });
+  assert.deepEqual(o.deps, { enabled: true, offline: false });
   assert.equal(resolve({ semgrep: false }).scanners.semgrep, false);
 });
 

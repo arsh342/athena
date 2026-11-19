@@ -31,11 +31,7 @@ export const defaultConfig: AthenaConfig = {
     enabled: true,
     timeoutMs: 30000,
   },
-  npmAudit: {
-    enabled: true,
-    timeoutMs: 60000,
-    severityThreshold: 'HIGH',
-  },
+  dependencies: { enabled: false, offline: false, registryChecks: true },
   nodejsscan: {
     enabled: true,
     timeoutMs: 120000,
@@ -66,10 +62,10 @@ export function mergeConfig(config: Partial<AthenaConfig> = {}): AthenaConfig {
       ...config.semgrep,
     },
     eslint: mergedEslint,
-    npmAudit: {
-      enabled: config.npmAudit?.enabled ?? defaultConfig.npmAudit!.enabled,
-      timeoutMs: config.npmAudit?.timeoutMs ?? defaultConfig.npmAudit!.timeoutMs,
-      severityThreshold: config.npmAudit?.severityThreshold ?? defaultConfig.npmAudit!.severityThreshold,
+    dependencies: {
+      enabled: config.dependencies?.enabled ?? defaultConfig.dependencies!.enabled,
+      offline: config.dependencies?.offline ?? defaultConfig.dependencies!.offline,
+      registryChecks: config.dependencies?.registryChecks ?? defaultConfig.dependencies!.registryChecks,
     },
     nodejsscan: {
       enabled: config.nodejsscan?.enabled ?? defaultConfig.nodejsscan!.enabled,

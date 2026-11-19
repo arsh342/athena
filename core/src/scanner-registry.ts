@@ -1,7 +1,6 @@
 import type { AthenaConfig, ClassifiedFinding, ExplainedScore } from './types.js';
 import { runSemgrep, type SemgrepFinding } from './analyzers/semgrep-adapter.js';
 import { runESLint, type ESLintFinding } from './analyzers/eslint-adapter.js';
-import { runNpmAudit, type NpmAuditFinding } from './analyzers/npm-audit-adapter.js';
 import { runNodejsscan, type NodejsscanFinding } from './analyzers/nodejsscan-adapter.js';
 import { runBearer, type BearerFindingNormalized as BearerFinding } from './analyzers/bearer-adapter.js';
 
@@ -249,50 +248,6 @@ export class ScannerRegistry {
             topSignals: [],
           },
           source: 'eslint',
-          ruleId: finding.ruleId,
-        };
-      },
-    });
-
-    // npm-audit
-    this.register({
-      name: 'npmAudit',
-      version: '1.0.0',
-      enabled: true,
-      run: async (_filePaths, projectRoot, config) => {
-        return await runNpmAudit(projectRoot, config);
-      },
-      checkAvailable: async () => {
-        try {
-          const { execFile } = await import('node:child_process');
-          const { promisify } = await import('node:util');
-          const execFileAsync = promisify(execFile);
-          await execFileAsync('npm', ['--version'], { timeout: 5000 });
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      normalize: (finding: NpmAuditFinding, config: AthenaConfig) => {
-        return {
-          id: finding.id,
-          severity: finding.severity,
-          type: finding.type,
-          category: finding.category,
-          message: finding.message,
-          file: finding.file,
-          line: finding.line,
-          column: finding.column,
-          code: finding.code,
-          aiScore: config.threshold,
-          explainedScore: {
-            score: config.threshold,
-            band: 'LOW',
-            signalsTriggered: 0,
-            variance: 0,
-            topSignals: [],
-          },
-          source: 'npm-audit',
           ruleId: finding.ruleId,
         };
       },
