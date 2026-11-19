@@ -1,6 +1,6 @@
 # Athena CLI
 
-AI code provenance tracker for JavaScript and TypeScript repositories.
+AI code provenance tracker and security scanner for JavaScript/TypeScript, Python, Java, C#, C/C++, Go, Rust, PHP and Shell.
 
 Athena scans JS/TS/JSX/TSX files, extracts function-level code units, scores AI-origin likelihood with local heuristics, and runs targeted security checks.
 
@@ -87,6 +87,24 @@ Optional `athena.config.json` at the scanned root. Flags override it.
 { "failOn": "high", "exclude": ["generated/"], "strict": false }
 ```
 
+## Supported languages
+
+| Language | Extensions | Today |
+|---|---|---|
+| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | units, AI provenance, secrets, hallucinated APIs, external scanners |
+| Python | `.py .pyi`, `#!…python` scripts | units, AI provenance, secrets |
+| Java | `.java` | units, AI provenance, secrets |
+| C# | `.cs` | units, AI provenance, secrets |
+| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | units, AI provenance, secrets (C is parsed with the C++ grammar) |
+| Go | `.go` | units, AI provenance, secrets |
+| Rust | `.rs` | units, AI provenance, secrets |
+| PHP | `.php .phtml` | units, AI provenance, secrets |
+| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | units, AI provenance, secrets |
+
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. The external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only; Athena's own rules for every language arrive in later releases.
+
+The report header shows files per language, e.g. `12 files (js 3 · py 2 · go 1)`.
+
 ## What the report tells you
 
 - **Gate**: `BLOCKED`, `PASS`, or `PASS (incomplete)`. A scan never reads as a plain pass when files could not be parsed, were too large, or a scanner was unavailable.
@@ -119,7 +137,7 @@ npm run build -w @arsh342/athena
 ## Notes
 
 - Runs fully local (no external AI service required).
-- Supports JavaScript, TypeScript, JSX, and TSX.
+- Supports JavaScript/TypeScript (JSX, TSX), Python, Java, C#, C/C++, Go, Rust, PHP and Shell (see Supported languages).
 - Requires Node.js 18 or newer.
 - ESLint scanner support is included via optional package dependencies.
 - Semgrep, Docker (for nodejsscan), and Bearer CLI remain external optional tools.
