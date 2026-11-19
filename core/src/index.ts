@@ -47,3 +47,5 @@ export type { RuleInfo } from './rules/catalog.js';
 export { formatSarif } from './report/sarif.js';
 export * from './lang/languages.js';
 export { getParser, ParserUnavailableError, type TreeSitterParser } from './lang/parser-pool.js';
+export { loadFastModel, classifyUnit, probabilitiesFromFeatures } from './provenance/fast-model.js';
+export type { FastModel, FastModelMeta } from './provenance/fast-model.js';

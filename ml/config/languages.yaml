@@ -1,0 +1,25 @@
+# GitHub search language name -> Athena language id (core/src/lang/languages.ts)
+languages:
+  JavaScript: javascript
+  TypeScript: typescript
+  Python: python
+  Java: java
+  "C#": csharp
+  C: c
+  "C++": cpp
+  Go: go
+  Rust: rust
+  PHP: php
+  Shell: shell
+human:
+  created_before: "2020-06-01"
+  checkout_before: "2021-06-01"
+  min_stars: 50
+  repos_per_language: 20
+  max_units_per_repo: 200
+ai:
+  committed_since: "2025-01-01"
+  min_ai_fraction: 0.95
+  refined_range: [0.30, 0.80]
+  max_repo_kb: 60000
+  max_units_per_repo: 400

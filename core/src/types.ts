@@ -104,7 +104,11 @@ export interface AiProvenance {
   totalLines: number;
   recorded: { lines: number; available: boolean; reason?: string };
   estimated: {
-    method: 'heuristic';
+    method: 'heuristic' | 'fast';
+    /** Model that produced the estimate for the languages it covers, e.g. `athena-detect-fast 1.0.0`. */
+    model?: string;
+    /** Languages in this scan that fell back to the heuristic (no enabled model). */
+    heuristicLanguages?: LanguageId[];
     aiLines: number;
     mixedLines: number;
     uncertainLines: number;

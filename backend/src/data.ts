@@ -18,7 +18,7 @@ export interface AiProvenanceSummary {
   unit: 'lines';
   totalLines: number;
   recorded: { lines: number; available: boolean; reason?: string };
-  estimated: { method: 'heuristic'; aiLines: number; mixedLines: number; uncertainLines: number; humanLines: number };
+  estimated: { method: 'heuristic' | 'fast'; model?: string; heuristicLanguages?: string[]; aiLines: number; mixedLines: number; uncertainLines: number; humanLines: number };
   topFiles: Array<{ path: string; lines: number; recordedLines: number; aiLines: number; mixedLines: number; uncertainLines: number }>;
 }
 

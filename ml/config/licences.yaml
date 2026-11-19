@@ -1,0 +1,2 @@
+# SPDX ids (lower-case) whose code may be used for training / benchmark manifests.
+allowed: [mit, apache-2.0, bsd-2-clause, bsd-3-clause, isc, unlicense, 0bsd, cc0-1.0, zlib]
