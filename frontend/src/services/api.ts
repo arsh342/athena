@@ -39,7 +39,7 @@ interface AuthResponse {
   user: AuthUser;
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = (import.meta.env?.VITE_API_URL || '').replace(/\/$/, '');
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const url = path.startsWith('http') ? path : `${API_BASE}${path}`;

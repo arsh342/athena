@@ -1,7 +1,7 @@
-import { open, readdir, stat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
-import { hasExtension, isConfigTextFile, isSupportedSource, languageFromShebang } from '@athena/core';
+import { isConfigTextFile, isSourceCandidate, isSupportedSource } from '@athena/core';
 const ignoredDirs = new Set([
   'node_modules',
   'dist',
@@ -36,26 +36,7 @@ export function isSourceFile(filePath: string): boolean {
   return isSupportedSource(filePath);
 }
 
-/** Supported extension, or an extensionless file whose first line is a known shebang. */
-export async function isSourceCandidate(filePath: string): Promise<boolean> {
-  if (isSupportedSource(filePath)) return true;
-  if (hasExtension(filePath)) return false;
-  if (!(await stat(filePath).catch(() => null))?.isFile()) return false;
-  return languageFromShebang(await readFirstLine(filePath)) !== null;
-}
-
-async function readFirstLine(filePath: string): Promise<string> {
-  const handle = await open(filePath, 'r').catch(() => null);
-  if (!handle) return '';
-  try {
-    const buffer = Buffer.alloc(256);
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
-    const text = buffer.subarray(0, bytesRead).toString('utf8');
-    return text.split('\n', 1)[0] ?? '';
-  } finally {
-    await handle.close();
-  }
-}
+export { isSourceCandidate };
 
 export function isExcludedPath(filePath: string, root: string, excludes: string[] = []): boolean {
   if (excludes.length === 0) return false;

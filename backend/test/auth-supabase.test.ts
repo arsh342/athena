@@ -83,7 +83,8 @@ test('register maps success to 201 and stable payload shape with auth cookies', 
     await handlers.registerUser(req, res);
 
     assert.equal(state.statusCode, 201);
-    assert.deepEqual(state.jsonBody, { user: { id: 17, email: 'dev@athena.dev' } });
+    // Tokens are also returned in the body for Bearer-token clients (commit 4dd6e2a); cookies remain the browser default.
+    assert.deepEqual(state.jsonBody, { user: { id: 17, email: 'dev@athena.dev' }, accessToken: 'access-token', refreshToken: 'refresh-token' });
 
     assert.equal(state.cookies.length, 2);
     assert.deepEqual(
@@ -220,7 +221,8 @@ test('completeOAuthCallback exchanges code, links local user, sets auth cookies,
     assert.deepEqual(capturedExchange, { code: 'auth-code', codeVerifier: 'verifier-abc' });
     assert.deepEqual(capturedLink, { userId: 'supa-7', email: 'dev@athena.dev' });
     assert.equal(state.statusCode, 302);
-    assert.equal(state.redirectLocation, 'http://localhost:5173/dashboard');
+    // The dashboard URL carries the tokens once so a cross-origin frontend can store them; useAuth strips them from the URL.
+    assert.equal(state.redirectLocation, 'http://localhost:5173/dashboard?token=oauth-access&refresh_token=oauth-refresh');
     assert.deepEqual(
       state.cookies.map((cookie) => [cookie.name, cookie.value]),
       [

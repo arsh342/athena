@@ -6,7 +6,7 @@ export const oauthProviders: Array<{ provider: OAuthProvider; label: string }> =
 ];
 
 export function getOAuthStartPath(provider: OAuthProvider): string {
-  const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const apiBase = (import.meta.env?.VITE_API_URL || '').replace(/\/$/, '');
   return `${apiBase}/api/auth/oauth/${provider}/start`;
 }
 

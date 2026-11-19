@@ -6,11 +6,23 @@ types.setTypeParser(types.builtins.INT8, (val) => parseInt(val, 10));
 
 const connectionString = process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/athena';
 
+/**
+ * TLS for hosted databases. With `DATABASE_CA_CERT` (PEM text) the server certificate is verified against it.
+ * Without it, Supabase connections fall back to the legacy unverified mode (their certificate chain is not in Node's
+ * store), which cannot detect a man-in-the-middle: a warning is logged. Set DATABASE_CA_CERT to close that gap.
+ */
+export function sslConfigFor(url: string, env: NodeJS.ProcessEnv = process.env): false | { rejectUnauthorized: boolean; ca?: string } {
+  const hosted = url.includes('supabase.co') || url.includes('supabase.com');
+  const ca = env.DATABASE_CA_CERT?.trim();
+  if (ca) return { rejectUnauthorized: true, ca };
+  if (!hosted) return false;
+  console.warn('[athena-backend] database TLS certificate is not verified; set DATABASE_CA_CERT to enable verification');
+  return { rejectUnauthorized: false };
+}
+
 export const db = new Pool({
   connectionString,
-  ssl: (connectionString.includes('supabase.co') || connectionString.includes('supabase.com'))
-    ? { rejectUnauthorized: false }
-    : false
+  ssl: sslConfigFor(connectionString),
 });
 
 export async function ensureAuthSchema(): Promise<void> {
@@ -101,6 +113,12 @@ export async function ensureAuthSchema(): Promise<void> {
       top_signals JSONB NOT NULL
     );
   `);
+
+  // Offline-verification results (additive columns).
+  await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS confidence TEXT;`);
+  await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS evidence JSONB;`);
+  await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS trace JSONB;`);
+  await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS exposure TEXT;`);
 
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_scan_findings_scan_id ON scan_findings(scan_id);

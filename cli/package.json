@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@vscode/tree-sitter-wasm": "^0.3.1",
+    "@vscode/tree-sitter-wasm": "0.3.1",
     "zod": "^4.6.7"
   }
 }

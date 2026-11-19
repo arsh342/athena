@@ -65,17 +65,42 @@ export function detectLanguage(filePath: string, firstLine?: string): LanguageId
 }
 
 export function languageFromShebang(firstLine: string): LanguageId | null {
-  const match = /^#!\s*(\S+)(?:\s+(\S+))?/.exec(firstLine);
+  const line = firstLine.replace(/^\uFEFF/, '').replace(/\r$/, '');
+  const match = /^#!\s*(\S+)((?:\s+\S+)*)/.exec(line);
   if (!match) return null;
   const program = match[1]!.split('/').pop()!;
-  const interpreter = program === 'env' ? match[2] : program;
-  return interpreter ? SHEBANG_INTERPRETERS[interpreter] ?? null : null;
+  let interpreter: string | undefined = program;
+  if (program === 'env') {
+    // `env [-S|-i|--flag] [NAME=value ...] interpreter [args]`: the first word that is neither a flag nor an assignment.
+    interpreter = match[2]!.trim().split(/\s+/).find((w) => w && !w.startsWith('-') && !w.includes('='));
+  }
+  if (!interpreter) return null;
+  // python3.11 -> python3, node18 stays as is.
+  const base = interpreter.replace(/^(python\d?)\.\d+$/, '$1');
+  return SHEBANG_INTERPRETERS[base] ?? null;
 }
 
 /** Cheap, extension-only check (no file read). Extensionless shebang scripts need detectLanguage. */
 export function isSupportedSource(filePath: string): boolean {
   const ext = extensionOf(filePath);
   return ext !== null && ext in EXTENSIONS;
+}
+
+/** Supported extension, or an extensionless file whose first line is a known shebang (reads at most 256 bytes). */
+export async function isSourceCandidate(filePath: string): Promise<boolean> {
+  if (isSupportedSource(filePath)) return true;
+  if (hasExtension(filePath)) return false;
+  const { open, stat } = await import('node:fs/promises');
+  if (!(await stat(filePath).catch(() => null))?.isFile()) return false;
+  const handle = await open(filePath, 'r').catch(() => null);
+  if (!handle) return false;
+  try {
+    const buffer = Buffer.alloc(256);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return languageFromShebang(buffer.subarray(0, bytesRead).toString('utf8').split('\n', 1)[0] ?? '') !== null;
+  } finally {
+    await handle.close();
+  }
 }
 
 export function hasExtension(filePath: string): boolean {

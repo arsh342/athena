@@ -35,3 +35,8 @@ export function getTerminalSession(sessionId: string): SessionRecord | null {
 export function clearTerminalSession(sessionId: string): void {
   sessions.delete(sessionId);
 }
+
+/** Number of live sessions (used by tests and diagnostics). */
+export function terminalSessionCount(): number {
+  return sessions.size;
+}

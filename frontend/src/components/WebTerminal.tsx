@@ -1,3 +1,4 @@
+import { scanVerdict } from '../utils/gate';
 import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -19,12 +20,12 @@ const SPINNER_FRAMES = ['⠋', '⠙', '⠸', '⠴', '⠦', '⠇'];
  * Resolve the WebSocket URL for the terminal endpoint.
  */
 async function resolveWsUrlAsync(): Promise<string> {
-  const wsUrl = import.meta.env.VITE_WS_URL;
+  const wsUrl = import.meta.env?.VITE_WS_URL;
   if (wsUrl) {
     const cleanUrl = wsUrl.replace(/\/$/, '');
     return `${cleanUrl}/ws/terminal`;
   }
-  const apiBase = import.meta.env.VITE_API_URL;
+  const apiBase = import.meta.env?.VITE_API_URL;
   if (apiBase) {
     const cleanApiBase = apiBase.replace(/\/$/, '');
     if (cleanApiBase.startsWith('https://')) {
@@ -327,7 +328,7 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
             const high = scan.findings.HIGH ?? 0;
             const medium = scan.findings.MEDIUM ?? 0;
             const low = scan.findings.LOW ?? 0;
-            const isBlocked = critical > 0 || high > 0;
+            const verdict = scanVerdict(scan);
 
             term.writeln('');
             term.writeln('  \x1b[90m─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\x1b[0m');
@@ -337,8 +338,12 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
             term.writeln(`  \x1b[2mFindings:\x1b[0m \x1b[31mCRITICAL: ${critical}\x1b[0m | \x1b[38;2;255;122;69mHIGH: ${high}\x1b[0m | \x1b[33mMEDIUM: ${medium}\x1b[0m | \x1b[34mLOW: ${low}\x1b[0m`);
             term.writeln(`  \x1b[2mAI (estimated):\x1b[0m \x1b[38;2;232;122;65m${formatProvenance(scan)}\x1b[0m`);
             term.writeln('');
-            if (isBlocked) {
+            if (verdict === 'failed') {
+              term.writeln(`  \x1b[31m✗\x1b[0m \x1b[1mgate: \x1b[31mscan failed\x1b[0m`);
+            } else if (verdict === 'blocked') {
               term.writeln(`  \x1b[31m✗\x1b[0m \x1b[1mgate: \x1b[31mblocked\x1b[0m`);
+            } else if (verdict === 'pass (incomplete)') {
+              term.writeln(`  \x1b[33m!\x1b[0m \x1b[1mgate: \x1b[33mpass (incomplete)\x1b[0m`);
             } else {
               term.writeln(`  \x1b[32m✓\x1b[0m \x1b[1mgate: \x1b[32mpass\x1b[0m`);
             }

@@ -228,3 +228,24 @@ test('appendTerminalLine returns persisted terminal row and getTerminalLines ret
     assert.deepEqual(history, [appended]);
   });
 });
+
+test('confidence, evidence, trace and exposure are persisted with a finding and read back', async () => {
+  const calls: Array<{ text: string; params?: unknown[] }> = [];
+  const finding: Finding = { ...createFinding('f-rich'), confidence: 'medium', evidence: ['reachable from POST /x'], trace: [{ file: 'a.js', line: 3, note: 'source' }], exposure: 'public' };
+  await withMockDb({
+    connect: async () => ({ query: async (text: string, params?: unknown[]) => { calls.push({ text, params }); return { rows: [] }; }, release: () => undefined }),
+  }, async () => { await addScan(7, createScan('scan-rich'), [finding]); });
+  const insert = calls.find((c) => /INSERT INTO scan_findings/.test(c.text))!;
+  assert.match(insert.text, /confidence/);
+  const flat = JSON.stringify(insert.params);
+  assert.ok(flat.includes('"medium"') && flat.includes('reachable from POST /x') && flat.includes('"public"') && flat.includes('note') && flat.includes('source'));
+
+  const row = { id: 'f-rich', severity: 'HIGH', type: 't', category: 'c', message: 'm', file: 'a.js', line: 3, column: 1, source: 'athena-taint', ai_score: 0, code: 'x', rule_id: 'r', top_signals: [], confidence: 'medium', evidence: ['reachable from POST /x'], trace: [{ file: 'a.js', line: 3, note: 'source' }], exposure: 'public' };
+  await withMockDb({ query: async () => ({ rows: [row] }) }, async () => {
+    const [back] = await getFindingsByScanId('scan-rich', 7);
+    assert.equal(back!.confidence, 'medium');
+    assert.deepEqual(back!.evidence, ['reachable from POST /x']);
+    assert.equal(back!.trace![0]!.note, 'source');
+    assert.equal(back!.exposure, 'public');
+  });
+});

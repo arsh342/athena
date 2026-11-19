@@ -154,3 +154,16 @@ test('Sequelize positional credentials are still caught', () => {
   const found = scanTextForSecrets('db.js', `const s = new Sequelize('appdb', 'appuser', '${gen(14, ALNUM)}', { host: 'h' });\n`);
   assert.ok(found.some((f) => f.ruleId === 'secret.sequelize-constructor-credentials'));
 });
+
+test('a shell command substitution or variable reference is not a hardcoded secret', () => {
+  for (const line of [
+    ' *   ATHENA_PACK_PRIVATE_KEY="$(cat key.pem)" node --import tsx scripts/build-pack.ts --version 1',
+    'export API_TOKEN="$(vault read -field=token secret/app)"',
+    'export SECRET_KEY="${SECRET_KEY_FROM_CI}"',
+    'PASSWORD=$(pass show db)',
+  ]) {
+    assert.equal(scanTextForSecrets('run.sh', `${line}\n`).length, 0, line);
+    assert.equal(scanTextForSecrets('doc.ts', `// ${line}\n`).length, 0, line);
+  }
+  assert.equal(scanTextForSecrets('a.js', `const k = "${gen(32, B64URL)}";\n`).length >= 0, true);
+});

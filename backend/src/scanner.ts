@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, normalize, resolve } from 'node:path';
+import { basename, dirname, join, normalize, relative, resolve } from 'node:path';
 import AdmZip from 'adm-zip';
-import { hasExtension, isConfigTextFile, isSupportedSource, languageFromShebang, scanFiles } from '@athena/core';
+import { isConfigTextFile, isSourceCandidate, scanFiles } from '@athena/core';
 import type { ClassifiedFinding, ScanReport } from '@athena/core';
 import { simpleGit } from 'simple-git';
 import { addScan } from './data.ts';
@@ -70,21 +70,6 @@ function createEmitterLog(emitter?: ScanEmitter) {
 }
 
 /** Supported extension, or an extensionless file whose first line is a known shebang (uploads lose the exec bit). */
-async function isSourceCandidate(filePath: string): Promise<boolean> {
-  if (isSupportedSource(filePath)) return true;
-  if (hasExtension(filePath)) return false;
-  if (!(await stat(filePath).catch(() => null))?.isFile()) return false;
-  const handle = await open(filePath, 'r').catch(() => null);
-  if (!handle) return false;
-  try {
-    const buffer = Buffer.alloc(256);
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
-    return languageFromShebang(buffer.subarray(0, bytesRead).toString('utf8').split('\n', 1)[0] ?? '') !== null;
-  } finally {
-    await handle.close();
-  }
-}
-
 /** Walk directory tree and collect source file paths. */
 async function collectSourceFiles(dir: string, textOut?: string[]): Promise<string[]> {
   const results: string[] = [];
@@ -142,7 +127,7 @@ function mapFinding(finding: ClassifiedFinding): Finding {
 }
 
 /** Map core ScanReport to API ScanSummary shape. */
-export function mapScanSummary(report: ScanReport, scanId: string, repoName: string, repoUrl: string): ScanSummary {
+export function mapScanSummary(report: ScanReport, scanId: string, repoName: string, repoUrl: string, rootPath?: string): ScanSummary {
   return {
     scanId,
     repoName,
@@ -156,16 +141,18 @@ export function mapScanSummary(report: ScanReport, scanId: string, repoName: str
     findings: report.summary.findings,
     riskDensity: report.summary.riskDensity,
     duration: report.duration,
-    aiProvenance: toProvenanceSummary(report),
+    aiProvenance: toProvenanceSummary(report, rootPath),
     coverage: toCoverageSummary(report),
   };
 }
 
-function toProvenanceSummary(report: ScanReport): ScanSummary['aiProvenance'] {
+function toProvenanceSummary(report: ScanReport, rootPath?: string): ScanSummary['aiProvenance'] {
   const provenance = report.summary.aiProvenance;
   if (!provenance) return null;
   const { files, ...rest } = provenance;
-  return { ...rest, topFiles: files.slice(0, 5) };
+  // Store repo-relative paths: the server's temporary clone directory means nothing to the user.
+  const relPath = (p: string) => (rootPath ? relative(rootPath, p).split('\\').join('/') : p);
+  return { ...rest, topFiles: files.slice(0, 5).map((f) => ({ ...f, path: relPath(f.path) })) };
 }
 
 function toCoverageSummary(report: ScanReport): ScanSummary['coverage'] {
@@ -174,7 +161,8 @@ function toCoverageSummary(report: ScanReport): ScanSummary['coverage'] {
   const considered = coverage.files.filter((file) => file.status !== 'skipped-excluded');
   return {
     complete: coverage.complete,
-    gaps: coverage.gaps,
+    // A scanner that is missing here is missing on this server, not on the user's machine.
+    gaps: coverage.gaps.map((g) => g.replace(/^(.+) unavailable$/, '$1 not installed on this server')),
     analyzedFiles: considered.filter((file) => file.status === 'analyzed').length,
     totalFiles: considered.length,
   };
@@ -276,7 +264,7 @@ async function scanFromPath(input: {
 
     const report: ScanReport = await runScanFilesInProjectRoot(rootPath, sourceFiles, textFiles);
     const allFindings = report.files.flatMap((file) => file.findings).map(mapFinding);
-    const scanSummary = mapScanSummary(report, scanId, repoName, repoUrl);
+    const scanSummary = mapScanSummary(report, scanId, repoName, repoUrl, rootPath);
 
     log(`Extracted ${report.summary.totalUnits} code units`);
     log(`Flagged ${report.summary.flaggedUnits} units above threshold`);
@@ -458,14 +446,21 @@ export async function runScan(repoUrl: string, userId?: number | string, emit?: 
 
     const git = simpleGit();
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    await Promise.race([
-      git.clone(normalizedUrl, tmpDir, ['--depth', '1']),
-      new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error('Clone timed out after 120s')), SCAN_TIMEOUT_MS);
-      }),
-    ]).finally(() => {
-      if (timeoutId) clearTimeout(timeoutId);
-    });
+    try {
+      await Promise.race([
+        git.clone(normalizedUrl, tmpDir, ['--depth', '1']),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Clone timed out after 120s')), SCAN_TIMEOUT_MS);
+        }),
+      ]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
+    } catch (error) {
+      // A scan that fails to clone is still a finished scan: record it as FAILED, then let the router report the error.
+      emit?.status?.('Scan failed', 100);
+      await persistScan(userId, createEmptyScan(scanId, repoName, normalizedUrl, 'FAILED'), []).catch(() => undefined);
+      throw error;
+    }
 
     log('Clone complete.');
     return await scanFromPath({

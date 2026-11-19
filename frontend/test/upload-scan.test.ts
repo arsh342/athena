@@ -13,6 +13,6 @@ test('MAX_UPLOAD_BYTES matches 200MB policy', () => {
   assert.equal(MAX_UPLOAD_BYTES, 200 * 1024 * 1024);
 });
 
-test('upload scans do not enqueue terminal commands', () => {
-  assert.equal(buildUploadQueuedCommand('local-folder-upload'), null);
+test('upload scans enqueue an `upload <label>` terminal command', () => {
+  assert.equal(buildUploadQueuedCommand('local-folder-upload'), 'upload local-folder-upload');
 });

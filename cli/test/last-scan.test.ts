@@ -15,3 +15,17 @@ test('last scan round trips under ATHENA_HOME and is keyed by root', async () =>
   assert.deepEqual(await loadLastScan('/some/root'), report);
   assert.equal(await loadLastScan('/other/root'), null);
 });
+
+import { statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+
+test('#15 the saved scan is private (0600) and secret-bearing code is redacted before it is written', async () => {
+  process.env.ATHENA_HOME = mkdtempSync(join(tmpdir(), 'athena-home-'));
+  const KEY = 'AKIAIOSFODNN7EXAMPLE';
+  const report = { timestamp: 't', summary: {}, files: [{ path: '/r/a.js', units: [], findings: [{ id: 'x1', severity: 'HIGH', type: 'Hardcoded secret', message: `AWS key ${KEY}`, source: 'eslint', ruleId: 'r', file: '/r/a.js', line: 1, column: 1, code: `const k = "${KEY}";`, evidence: [`found ${KEY}`] }] }] } as unknown as ScanReport;
+  await saveLastScan('/r', report);
+  const path = join(process.env.ATHENA_HOME, 'last-scan', `${createHash('sha1').update('/r').digest('hex')}.json`);
+  assert.equal(statSync(path).mode & 0o777, 0o600);
+  const { readFileSync } = await import('node:fs');
+  assert.ok(!readFileSync(path, 'utf8').includes(KEY), 'the key never reaches disk');
+});
