@@ -1,0 +1,193 @@
+{
+ "dev": {
+  "c": {
+   "ai": 1,
+   "human": 349,
+   "refined": 1
+  },
+  "cpp": {
+   "human": 464
+  },
+  "csharp": {
+   "human": 223
+  },
+  "go": {
+   "ai": 30,
+   "human": 759
+  },
+  "java": {
+   "human": 337
+  },
+  "javascript": {
+   "ai": 17,
+   "human": 252
+  },
+  "python": {
+   "ai": 896,
+   "human": 231,
+   "refined": 201
+  },
+  "rust": {
+   "ai": 7,
+   "human": 576
+  },
+  "shell": {
+   "ai": 117,
+   "human": 43,
+   "refined": 31
+  },
+  "tsx": {
+   "ai": 56,
+   "refined": 7
+  },
+  "typescript": {
+   "ai": 405,
+   "human": 22,
+   "refined": 7
+  }
+ },
+ "newest": {
+  "go": {
+   "ai": 428,
+   "refined": 34
+  },
+  "java": {
+   "ai": 13,
+   "refined": 7
+  },
+  "javascript": {
+   "ai": 400
+  },
+  "php": {
+   "ai": 1
+  },
+  "python": {
+   "ai": 1274,
+   "refined": 45
+  },
+  "rust": {
+   "ai": 2
+  },
+  "shell": {
+   "ai": 2
+  },
+  "tsx": {
+   "ai": 548,
+   "refined": 36
+  },
+  "typescript": {
+   "ai": 1386,
+   "refined": 157
+  }
+ },
+ "test": {
+  "c": {
+   "human": 62
+  },
+  "cpp": {
+   "human": 341
+  },
+  "csharp": {
+   "ai": 3,
+   "human": 398,
+   "refined": 2
+  },
+  "go": {
+   "ai": 495,
+   "human": 199
+  },
+  "java": {
+   "human": 376
+  },
+  "javascript": {
+   "ai": 874,
+   "human": 378,
+   "refined": 75
+  },
+  "php": {
+   "human": 388
+  },
+  "python": {
+   "ai": 167,
+   "human": 520,
+   "refined": 2
+  },
+  "rust": {
+   "ai": 216,
+   "human": 198,
+   "refined": 1
+  },
+  "shell": {
+   "ai": 31,
+   "human": 117,
+   "refined": 1
+  },
+  "tsx": {
+   "ai": 59,
+   "human": 4,
+   "refined": 8
+  },
+  "typescript": {
+   "ai": 222,
+   "human": 164,
+   "refined": 16
+  }
+ },
+ "train": {
+  "c": {
+   "human": 3275
+  },
+  "cpp": {
+   "ai": 398,
+   "human": 2162
+  },
+  "csharp": {
+   "ai": 398,
+   "human": 2944
+  },
+  "go": {
+   "ai": 756,
+   "human": 2858,
+   "refined": 43
+  },
+  "java": {
+   "ai": 9,
+   "human": 2680
+  },
+  "javascript": {
+   "ai": 1215,
+   "human": 3440,
+   "refined": 73
+  },
+  "php": {
+   "ai": 731,
+   "human": 3183,
+   "refined": 32
+  },
+  "python": {
+   "ai": 3413,
+   "human": 2611,
+   "refined": 135
+  },
+  "rust": {
+   "ai": 1202,
+   "human": 2025,
+   "refined": 51
+  },
+  "shell": {
+   "ai": 509,
+   "human": 709,
+   "refined": 6
+  },
+  "tsx": {
+   "ai": 910,
+   "human": 293,
+   "refined": 49
+  },
+  "typescript": {
+   "ai": 2709,
+   "human": 412,
+   "refined": 102
+  }
+ }
+}

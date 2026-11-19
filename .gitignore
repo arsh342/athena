@@ -83,3 +83,13 @@ frontend/src/components/ui/flickering-grid-hero.tsx
 
 docs/superpowers/**
 docs/IMPLEMENTATION_PLAN.md
+# ML data and virtualenv
+ml/data/
+ml/.venv/
+
+# ML data and virtualenv
+ml/data/
+ml/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

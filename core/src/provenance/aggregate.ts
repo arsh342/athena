@@ -37,7 +37,11 @@ export function markRecordedUnits(files: FileReport[], recorded: RecordedRepo): 
 }
 
 /** Line-based AI provenance. Each line is owned by its innermost unit, so totals never exceed the code. */
-export function buildAiProvenance(files: FileReport[], recorded: RecordedRepo): AiProvenance {
+export function buildAiProvenance(
+  files: FileReport[],
+  recorded: RecordedRepo,
+  method: Pick<AiProvenance['estimated'], 'method' | 'model' | 'heuristicLanguages'> = { method: 'heuristic' },
+): AiProvenance {
   const totals = { aiLines: 0, mixedLines: 0, uncertainLines: 0, humanLines: 0 };
   let totalLines = 0;
   let recordedLines = 0;
@@ -86,7 +90,12 @@ export function buildAiProvenance(files: FileReport[], recorded: RecordedRepo): 
     recorded: recorded.available
       ? { lines: recordedLines, available: true }
       : { lines: 0, available: false, ...(recorded.reason ? { reason: recorded.reason } : {}) },
-    estimated: { method: 'heuristic', ...totals },
+    estimated: {
+      method: method.method,
+      ...(method.model ? { model: method.model } : {}),
+      ...(method.heuristicLanguages ? { heuristicLanguages: method.heuristicLanguages } : {}),
+      ...totals,
+    },
     files: perFile,
   };
 }

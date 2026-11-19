@@ -139,7 +139,9 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
       out.push(`  estimated: ${pct(e.aiLines)}–${pct(e.aiLines + e.mixedLines)}%`);
       out.push(`  uncertain: ${pct(e.uncertainLines)}%`);
       out.push(`  human (est.): ${pct(e.humanLines)}%`);
-      out.push(dim('  method: heuristic (low confidence) — classifier coming in a later release'));
+      out.push(dim(e.method === 'fast'
+        ? `  method: ${e.model}${e.heuristicLanguages && e.heuristicLanguages.length > 0 ? ` · heuristic for: ${e.heuristicLanguages.join(', ')}` : ''}`
+        : '  method: heuristic (low confidence)'));
       const top = provenance.files
         .filter((file) => file.aiLines > 0)
         .slice(0, 3)

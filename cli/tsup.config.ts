@@ -1,3 +1,4 @@
+import { cpSync } from 'node:fs';
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
@@ -24,6 +25,10 @@ export default defineConfig({
     // Grammar .wasm files are resolved from node_modules at runtime.
     '@vscode/tree-sitter-wasm',
   ],
+  // The fast detector's weights ship next to the bundle (dist/models/fast).
+  onSuccess: async () => {
+    cpSync('../core/models', 'dist/models', { recursive: true });
+  },
   outExtension() {
     return {
       js: '.cjs',

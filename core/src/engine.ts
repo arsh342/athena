@@ -8,6 +8,7 @@ import { generateReport } from './report/report-generator.js';
 import { scoreUnit } from './scorer/heuristic-scorer.js';
 import { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
 import { recordedAiLines, type RecordedRepo } from './provenance/git-recorded.js';
+import { classifyUnit, loadFastModel, type FastModel } from './provenance/fast-model.js';
 import { scannerRegistry, type ScannerRegistry } from './scanner-registry.js';
 import type { AthenaConfig, CheckCoverage, ExplainedScore, FileCoverage, FileReport, ScanCoverage, ScoredUnit, ScanReport, Severity } from './types.js';
 
@@ -38,6 +39,8 @@ export interface ScanFilesOptions {
   excludedFiles?: string[];
   recordedProvenance?: boolean;
   registry?: ScannerRegistry;
+  /** Override the bundled fast detector (tests). `null` forces the heuristic. */
+  fastModel?: FastModel | null;
 }
 
 export async function scanFiles(
@@ -57,6 +60,8 @@ export async function scanFiles(
   const registry = options.registry ?? scannerRegistry;
   const languages: Partial<Record<LanguageId, { files: number; units: number; lines: number }>> = {};
   const unavailableParsers = new Set<LanguageId>();
+  const fastModel = options.fastModel === undefined ? loadFastModel() : options.fastModel;
+  const languagesWithUnits = new Set<LanguageId>();
   await warmParsers([...new Set(filePaths.map((p) => detectLanguage(p)).filter((l): l is LanguageId => l !== null))]);
 
   hooks.onFileProgress?.({
@@ -133,7 +138,18 @@ export async function scanFiles(
     fileCoverage.push(parseError
       ? { path: filePath, status: 'parse-failed', reason: parseError }
       : { path: filePath, status: 'analyzed' });
-    const scoredUnits = units.map((unit) => scoreUnit(unit, config));
+    const scoredUnits = units.map((unit) => {
+      const scored = scoreUnit(unit, config);
+      if (fastModel && language && !parserUnavailable) {
+        languagesWithUnits.add(language);
+        const result = classifyUnit(fastModel, unit, language);
+        if (result) {
+          scored.provenance = result.provenance;
+          scored.flagged = result.provenance === 'ai' || result.provenance === 'mixed';
+        }
+      }
+      return scored;
+    });
     const findings = scoredUnits.flatMap((scored) => analyzeSecurity(scored, config));
     totalLoc += units.reduce((sum, unit) => sum + unit.metadata.loc, 0);
 
@@ -235,9 +251,20 @@ export async function scanFiles(
   for (const excluded of options.excludedFiles ?? []) {
     fileCoverage.push({ path: excluded, status: 'skipped-excluded', reason: 'excluded by configuration' });
   }
-  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers);
+  const enabledHere = fastModel ? [...languagesWithUnits].filter((l) => !fastModel.heuristicLanguages([l]).length) : [];
+  const method = fastModel && enabledHere.length > 0
+    ? {
+        method: 'fast' as const,
+        model: `athena-detect-fast ${fastModel.meta.version}`,
+        heuristicLanguages: fastModel.heuristicLanguages([...languagesWithUnits].sort()),
+      }
+    : {
+        method: 'heuristic' as const,
+        ...(fastModel ? { heuristicDetail: `heuristic · athena-detect-fast ${fastModel.meta.version} not enabled for these languages (below release targets)` } : {}),
+      };
+  const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers, method);
 
-  const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded));
+  const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded, method));
   if (Object.keys(languages).length > 0) report.summary.languages = languages;
   return report;
 }
@@ -249,11 +276,12 @@ function buildCoverage(
   scannerOutcome: Map<string, CheckCoverage['status']>,
   recorded: RecordedRepo,
   unavailableParsers: Set<LanguageId> = new Set(),
+  method: { method: 'fast' | 'heuristic'; model?: string; heuristicLanguages?: LanguageId[]; heuristicDetail?: string } = { method: 'heuristic' },
 ): ScanCoverage {
   const checks: CheckCoverage[] = [
     { name: 'secrets', status: config.secretDetection ? 'ran' : 'disabled' },
     { name: 'hallucination', status: config.hallucinationDetection ? 'ran' : 'disabled' },
-    { name: 'ai-provenance', status: 'ran', detail: 'heuristic' },
+    { name: 'ai-provenance', status: 'ran', detail: method.method === 'fast' ? method.model : method.heuristicDetail ?? 'heuristic · fast model unavailable' },
     recorded.reason === 'disabled'
       ? { name: 'recorded-provenance', status: 'disabled' }
       : recorded.available

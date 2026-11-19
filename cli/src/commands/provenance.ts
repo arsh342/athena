@@ -1,6 +1,6 @@
 import { stat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
-import { defaultConfig, mergeConfig, scanFiles, type AiProvenance } from '@athena/core';
+import { defaultConfig, loadFastModel, mergeConfig, scanFiles, type AiProvenance } from '@athena/core';
 import { shouldUseColor } from '../utils/colors.js';
 import { findSourceFilesWithExclusions } from '../utils/file-filter.js';
 import { writeResult } from '../utils/output.js';
@@ -17,20 +17,34 @@ const ABOUT = `How Athena measures AI-written code
              not the total: plenty of AI-assisted code leaves no trace. It is not
              available outside a git repository or in a shallow clone.
 
-  estimated  A heuristic over style signals (comment habits, naming, boilerplate).
-             It has no measured accuracy yet and is labelled low confidence. Trained
-             detectors with published accuracy are planned for a later release.
+  estimated  Athena's own detector (athena-detect-fast): style statistics plus hashed
+             token and character n-grams, fed to a calibrated classifier. It is enabled
+             per language only where it meets the release targets on Athena-Bench
+             (human false-positive rate <= 5%, F1 >= 0.85); every other language uses
+             a style heuristic that is labelled low confidence.
 
   Numbers are lines of code (blank and comment lines excluded). "Uncertain" is
   reported separately and never folded into either side.
 `;
+
+function benchmarkSummary(): string {
+  const model = loadFastModel();
+  if (!model) return '\nDetector: not available in this install (heuristic estimate only).\n';
+  const rows = Object.entries(model.meta.languages).sort(([a], [b]) => a.localeCompare(b)).map(([lang, v]) => {
+    const t = v.test as Record<string, number> | undefined;
+    const measured = t && (t.humans ?? 0) >= 10 && (t.ais ?? 0) >= 10;
+    const numbers = measured && t ? ` (test: F1 ${t.f1?.toFixed(2)}, human false positives ${((t.fpr ?? 0) * 100).toFixed(1)}%)` : '';
+    return `  ${lang.padEnd(11)} ${v.enabled ? 'detector' : 'heuristic'}${numbers}${v.enabled ? '' : v.reason ? ` — ${v.reason}` : ''}`;
+  });
+  return `\nDetector athena-detect-fast ${model.meta.version}, per language:\n${rows.join('\n')}\n\nFull benchmark: https://github.com/arsh342/athena/blob/main/docs/athena-bench/RESULTS.md\n`;
+}
 
 export async function provenanceCommand(
   path: string,
   opts: { sort?: string; about?: boolean; format?: string; color?: boolean } = {},
 ): Promise<number> {
   if (opts.about) {
-    writeResult(ABOUT);
+    writeResult(ABOUT + benchmarkSummary());
     return 0;
   }
   const sort = (opts.sort ?? 'ai') as SortKey;
@@ -76,7 +90,9 @@ function renderTerminal(p: AiProvenance, root: string, sort: SortKey, color: boo
   out.push(`  estimated: ${pct(e.aiLines, p.totalLines)}–${pct(e.aiLines + e.mixedLines, p.totalLines)}`);
   out.push(`  uncertain: ${pct(e.uncertainLines, p.totalLines)}`);
   out.push(`  human (est.): ${pct(e.humanLines, p.totalLines)}`);
-  out.push('  method: heuristic (low confidence)', '');
+  out.push(e.method === 'fast'
+    ? `  method: ${e.model}${e.heuristicLanguages && e.heuristicLanguages.length > 0 ? ` · heuristic for: ${e.heuristicLanguages.join(', ')}` : ''}`
+    : '  method: heuristic (low confidence)', '');
 
   const key = (f: AiProvenance['files'][number]): number =>
     sort === 'lines' ? f.lines : sort === 'recorded' ? f.recordedLines / Math.max(1, f.lines) : f.aiLines / Math.max(1, f.lines);

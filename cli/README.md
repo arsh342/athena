@@ -105,6 +105,10 @@ Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled
 
 The report header shows files per language, e.g. `12 files (js 3 · py 2 · go 1)`.
 
+## How AI-written code is estimated
+
+`recorded` comes from git history (a floor). `estimated` uses Athena's own detector where it meets the published release targets for that language, and a labelled style heuristic elsewhere. Run `athena provenance --about` to see which languages use which, with benchmark numbers.
+
 ## What the report tells you
 
 - **Gate**: `BLOCKED`, `PASS`, or `PASS (incomplete)`. A scan never reads as a plain pass when files could not be parsed, were too large, or a scanner was unavailable.
