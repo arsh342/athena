@@ -1,189 +1,76 @@
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import ts from 'typescript';
-import type { CodeUnit, CodeUnitKind, CodeUnitMetadata } from '../types.js';
 
-const supportedScriptKinds: Record<string, ts.ScriptKind> = {
-  '.js': ts.ScriptKind.JS,
-  '.jsx': ts.ScriptKind.JSX,
-  '.ts': ts.ScriptKind.TS,
-  '.tsx': ts.ScriptKind.TSX,
-};
+import { detectLanguage, type LanguageId } from '../lang/languages.js';
+import { getLoadedParser, getParser, ParserUnavailableError } from '../lang/parser-pool.js';
+import { extractUnits, extractWithParser } from '../lang/units.js';
+import type { CodeUnit } from '../types.js';
+
+export interface ParseFileResult {
+  units: CodeUnit[];
+  error?: string;
+  /** Detected language; absent when the file could not be read or is not a supported language. */
+  language?: LanguageId;
+  /** True when the language's grammar could not be loaded (a coverage gap, not a file problem). */
+  parserUnavailable?: boolean;
+  /** Number of lines in the file. */
+  lines?: number;
+}
 
 export async function parseFile(filePath: string): Promise<CodeUnit[]> {
   return (await parseFileDetailed(filePath)).units;
 }
 
-/** Like parseFile, but reports a read error or the first parse diagnostic instead of hiding it. */
-export async function parseFileDetailed(filePath: string): Promise<{ units: CodeUnit[]; error?: string }> {
-  let source: string;
+const TEXT_PROBE_BYTES = 8192;
+
+/** Reads, detects the language and extracts units; reports read, text, grammar and syntax problems. */
+export async function parseFileDetailed(filePath: string): Promise<ParseFileResult> {
+  let bytes: Buffer;
   try {
-    source = await readFile(filePath, 'utf8');
+    bytes = await readFile(filePath);
   } catch (error) {
     return { units: [], error: error instanceof Error ? error.message : String(error) };
   }
-  const { units, error } = parseSourceDetailed(filePath, source);
-  return error ? { units, error } : { units };
+  if (bytes.subarray(0, TEXT_PROBE_BYTES).includes(0)) return { units: [], error: 'not a text file' };
+  const source = bytes.toString('utf8');
+  if (source.includes('�')) return { units: [], error: 'not a text file' };
+
+  const newline = source.indexOf('\n');
+  const language = detectLanguage(filePath, newline === -1 ? source : source.slice(0, newline));
+  if (!language) return { units: [], error: 'unsupported language' };
+  const lines = countLines(source);
+
+  try {
+    const { units, error } = await extractUnits(filePath, source, language);
+    return error ? { units, error, language, lines } : { units, language, lines };
+  } catch (error) {
+    if (error instanceof ParserUnavailableError) {
+      return { units: [], error: 'parser unavailable', language, parserUnavailable: true, lines };
+    }
+    throw error;
+  }
 }
 
+/**
+ * Synchronous parse for callers that already loaded the grammar (see warmParsers).
+ * Throws if the language's parser has not been loaded yet.
+ */
 export function parseSource(filePath: string, source: string): CodeUnit[] {
-  return parseSourceDetailed(filePath, source).units;
+  const newline = source.indexOf('\n');
+  const language = detectLanguage(filePath, newline === -1 ? source : source.slice(0, newline)) ?? 'typescript';
+  const parser = getLoadedParser(language);
+  if (!parser) throw new Error('call parseFileDetailed first or await warmParsers()');
+  return extractWithParser(parser, filePath, source, language).units;
 }
 
-function parseSourceDetailed(filePath: string, source: string): { units: CodeUnit[]; error?: string } {
-  const scriptKind = supportedScriptKinds[filePath.match(/\.[^.]+$/)?.[0] ?? '.ts'] ?? ts.ScriptKind.TS;
-  const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, scriptKind);
-  const units: CodeUnit[] = [];
-
-  function visit(node: ts.Node): void {
-    const unit = createUnit(node, sourceFile, source, filePath);
-    if (unit && unit.metadata.loc >= 3) {
-      units.push(unit);
-    }
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
-
-  const diagnostics = (sourceFile as unknown as { parseDiagnostics?: ts.Diagnostic[] }).parseDiagnostics ?? [];
-  const first = diagnostics[0];
-  if (!first) return { units };
-  const line = first.start === undefined ? undefined : sourceFile.getLineAndCharacterOfPosition(first.start).line + 1;
-  const message = ts.flattenDiagnosticMessageText(first.messageText, ' ');
-  return { units, error: line === undefined ? message : `${message} (line ${line})` };
+/** Load grammars ahead of time (all supported languages by default). Grammars that fail to load are skipped. */
+export async function warmParsers(langs?: LanguageId[]): Promise<void> {
+  const all: LanguageId[] = ['javascript', 'typescript', 'tsx', 'python', 'java', 'csharp', 'c', 'cpp', 'go', 'rust', 'php', 'shell'];
+  await Promise.all((langs ?? all).map((lang) => getParser(lang).catch(() => undefined)));
 }
 
-function createUnit(node: ts.Node, sourceFile: ts.SourceFile, source: string, filePath: string): CodeUnit | null {
-  const kind = getKind(node);
-  if (!kind) return null;
-
-  const start = node.getStart(sourceFile);
-  const end = node.getEnd();
-  const startLine = sourceFile.getLineAndCharacterOfPosition(start).line + 1;
-  const endLine = sourceFile.getLineAndCharacterOfPosition(end).line + 1;
-  const code = source.slice(start, end);
-  const name = getName(node);
-  const metadata = getMetadata(node, sourceFile, source, code, start);
-
-  return {
-    id: createHash('sha1').update(`${filePath}:${startLine}:${endLine}:${name}`).digest('hex').slice(0, 12),
-    name,
-    kind,
-    filePath,
-    startLine,
-    endLine,
-    code,
-    metadata,
-  };
-}
-
-function getKind(node: ts.Node): CodeUnitKind | null {
-  if (ts.isFunctionDeclaration(node)) return 'function';
-  if (ts.isClassDeclaration(node)) return 'class';
-  if (ts.isMethodDeclaration(node)) return 'method';
-  if (ts.isArrowFunction(node)) return 'arrow';
-  return null;
-}
-
-function getName(node: ts.Node): string {
-  if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isMethodDeclaration(node)) && node.name) {
-    return node.name.getText();
-  }
-
-  if (ts.isArrowFunction(node)) {
-    const parent = node.parent;
-    if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) return parent.name.text;
-    if (ts.isPropertyAssignment(parent) && ts.isIdentifier(parent.name)) return parent.name.text;
-  }
-
-  return '<anonymous>';
-}
-
-function getMetadata(
-  node: ts.Node,
-  sourceFile: ts.SourceFile,
-  source: string,
-  code: string,
-  start: number,
-): CodeUnitMetadata {
-  const lines = code.split(/\r?\n/);
-  const commentLines = lines.filter((line) => /^\s*(\/\/|\/\*|\*|\*\/)/.test(line)).length;
-  const loc = lines.filter((line) => {
-    const trimmed = line.trim();
-    return trimmed.length > 0 && !trimmed.startsWith('//') && !trimmed.startsWith('*') && !trimmed.startsWith('/*');
-  }).length;
-  const identifiers = collectIdentifiers(node);
-  const parameters = collectParameters(node);
-  const hasJSDoc = /\/\*\*[\s\S]*?\*\/\s*$/.test(source.slice(Math.max(0, start - 400), start));
-
-  return {
-    loc,
-    commentLines,
-    commentRatio: commentLines / Math.max(1, loc + commentLines),
-    identifiers,
-    nestingDepth: maxNestingDepth(node, sourceFile),
-    parameters,
-    hasJSDoc,
-    complexity: estimateComplexity(node),
-  };
-}
-
-function collectIdentifiers(node: ts.Node): string[] {
-  const identifiers: string[] = [];
-  function visit(child: ts.Node): void {
-    if (ts.isIdentifier(child)) identifiers.push(child.text);
-    ts.forEachChild(child, visit);
-  }
-  visit(node);
-  return identifiers;
-}
-
-function collectParameters(node: ts.Node): string[] {
-  if (!('parameters' in node)) return [];
-  return Array.from((node as ts.SignatureDeclaration).parameters ?? [])
-    .map((parameter) => parameter.name.getText())
-    .filter(Boolean);
-}
-
-function maxNestingDepth(node: ts.Node, sourceFile: ts.SourceFile, depth = 0): number {
-  let nextDepth = depth;
-  if (
-    ts.isIfStatement(node) ||
-    ts.isForStatement(node) ||
-    ts.isForInStatement(node) ||
-    ts.isForOfStatement(node) ||
-    ts.isWhileStatement(node) ||
-    ts.isSwitchStatement(node) ||
-    ts.isTryStatement(node)
-  ) {
-    nextDepth += 1;
-  }
-
-  let max = nextDepth;
-  ts.forEachChild(node, (child) => {
-    max = Math.max(max, maxNestingDepth(child, sourceFile, nextDepth));
-  });
-  return max;
-}
-
-function estimateComplexity(node: ts.Node): number {
-  let complexity = 1;
-  function visit(child: ts.Node): void {
-    if (
-      ts.isIfStatement(child) ||
-      ts.isForStatement(child) ||
-      ts.isForInStatement(child) ||
-      ts.isForOfStatement(child) ||
-      ts.isWhileStatement(child) ||
-      ts.isCaseClause(child) ||
-      child.kind === ts.SyntaxKind.QuestionQuestionToken ||
-      child.kind === ts.SyntaxKind.BarBarToken ||
-      child.kind === ts.SyntaxKind.AmpersandAmpersandToken
-    ) {
-      complexity += 1;
-    }
-    ts.forEachChild(child, visit);
-  }
-  visit(node);
-  return complexity;
+function countLines(source: string): number {
+  if (source.length === 0) return 0;
+  let count = 1;
+  for (let i = source.indexOf('\n'); i !== -1; i = source.indexOf('\n', i + 1)) count += 1;
+  return source.endsWith('\n') ? count - 1 : count;
 }
