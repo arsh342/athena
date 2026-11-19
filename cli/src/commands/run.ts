@@ -1,4 +1,4 @@
-import { formatCycloneDx } from '@athena/core';
+import { applyChangeFilter, formatCycloneDx, formatMarkdownReview, type ChangeSet } from '@athena/core';
 import { startBackgroundUpdate } from './update.js';
 import { readFileSync } from 'node:fs';
 import { realpath, writeFile } from 'node:fs/promises';
@@ -19,7 +19,7 @@ import { createProgress, shouldShowProgress } from '../utils/scan-progress.js';
 import { CLI_VERSION } from '../version.js';
 
 export interface RunArgs {
-  mode: 'scan' | 'check';
+  mode: 'scan' | 'check' | 'review';
   /** Absolute project root. */
   root: string;
   /** Shown in the report header. */
@@ -29,6 +29,8 @@ export interface RunArgs {
   /** Config-style text files searched for secrets. */
   textFiles?: string[];
   options: RunOptions;
+  /** `athena review`: restrict the report to what the change introduced. */
+  review?: { changes: ChangeSet; scope: string };
 }
 
 /** Runs core, prints the chosen format, saves state, and returns the process exit code. */
@@ -66,7 +68,8 @@ export async function runScan(args: RunArgs): Promise<number> {
       progress.stop();
     }
   });
-  await attachScanDelta(report, `${mode}:${root}`, root);
+  if (args.review) report.review = applyChangeFilter(report, args.review.changes, root, config, args.review.scope);
+  else await attachScanDelta(report, `${mode}:${root}`, root);
   if (config.updates?.auto !== false && !options.deps.offline && options.deps.enabled) startBackgroundUpdate(config.updates?.intervalHours ?? 24);
   for (const w of report.summary.skillWarnings ?? []) writeInfo(`warning: ${w}`);
 
@@ -114,6 +117,8 @@ function render(report: ScanReport, args: RunArgs, uriPrefix: string): string {
       return JSON.stringify(report, null, 2);
     case 'jsonl':
       return formatJsonl(report);
+    case 'markdown':
+      return formatMarkdownReview(report, report.review ?? { scope: 'scan', skippedBinary: [], renamed: [], deleted: [], existing: [] }, { root: args.root });
     case 'cyclonedx':
       return formatCycloneDx(report, { toolVersion: CLI_VERSION, projectName: basename(args.root) });
     case 'sarif':

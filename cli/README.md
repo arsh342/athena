@@ -67,6 +67,7 @@ athena setup semgrep --auto
 | `-m, --max-findings <n\|all>`, `--show-low` | Control how many findings are listed. |
 | `--no-eslint`, `--no-nodejsscan`, `--no-bearer`, `--no-semgrep` | Skip a scanner. |
 | `--no-deps` | Skip dependency checks. |
+| `--format markdown` | PR-comment-ready output (used by `athena review`). |
 | `--format cyclonedx` | Print the dependency inventory as a CycloneDX 1.6 SBOM. |
 | `--offline` | Dependency checks use only cached data (a cold cache is reported as a gap). |
 | `--no-npm-audit` | Deprecated, does nothing (replaced by dependency checks). |
@@ -129,6 +130,13 @@ Athena reads every manifest and lockfile it finds (npm, Yarn, pnpm, pip/poetry/u
 | Hallucinated API call | You call a member that the installed package's type declarations do not contain (`axios.fetchData`). Only checked when the package is installed with types. | Use the real API. |
 
 Private packages (`file:`, `git+`, workspace and scoped-registry packages) are never looked up. A registry outage or rate limit is reported as a coverage gap, never as "does not exist". Answers are cached for 24 hours (advisories 6 hours) under `~/.athena/cache/deps`; `--offline` uses only that cache (and reports the cache date or a gap), and `--no-deps` skips the checks. Athena sends package names and versions to OSV.dev and the package registries, never your code. `npm audit` was replaced by these checks; `--no-npm-audit` is accepted for one release and does nothing.
+
+## Review, git gates and AI agents
+
+- **`athena review`** reviews a change instead of the whole repository: `--staged` (default), `--uncommitted`, `--range origin/main..HEAD` or `--base main`. Only findings on changed lines count and block; issues elsewhere in a function you touched are listed separately as existing issues (not counted). Renames are followed, binary files are skipped with a note, and dependency checks run only when a manifest or lockfile changed. Formats: terminal, `json`, `sarif`, and `markdown` (a PR-comment-ready review, one section per file).
+- **Git gates.** `athena init` installs a pre-commit hook (`athena check --staged`, about one second on a typical commit); `athena init --hooks pre-commit,pre-push` adds a pre-push hook that reviews `@{u}..HEAD`. Both honour `--fail-on` (or `failOn` in `athena.config.json`) and `core.hooksPath`. Husky, lefthook and the pre-commit framework are detected: Athena prints the snippet to add and changes no file. An existing hook that is not Athena's is never overwritten without `--force`. `ATHENA_SKIP=1 git commit` skips the hooks with a note; a missing Athena or a push-hook timeout never blocks. `athena uninstall` removes only Athena's hooks.
+- **MCP server.** `athena mcp` serves Athena's tools over stdio to Claude Code, Cursor, Codex and other MCP clients: scan, check files, review, explain, provenance, dependencies, API existence, codebase map, taint paths, symbol and caller search, skills, and one write tool (`athena_add_learned_rule`, which needs `confirm: true`). Results are compact and paginated, secrets are redacted, paths outside the starting directory are refused, and no AI model is called, so no key is needed. Client setup: `docs/agents/mcp-clients.md`.
+- **Claude Code plugin.** `plugins/athena` bundles the MCP server, the `athena-security` skill (map, trace, verify under reachability/defenses/impact), a researcher and a verifier agent, `/athena-scan` and `/athena-review`, and hooks that check each edited file and suggest a review after a commit. The same skill is published in the open Agent Skills format at `skills/athena-security` (`npx skills add arsh342/athena`); add `docs/agents/AGENTS.md` to your repository for other agents.
 
 ## Staying current
 

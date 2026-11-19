@@ -192,6 +192,8 @@ export interface FileReport {
 
 export interface ScanReport {
   timestamp: string;
+  /** Present for `athena review`: what the change filter did (scope, skipped binaries, renames, existing issues). */
+  review?: import('./diff/filter.js').ReviewInfo;
   /** Dependencies found in this scan (lockfiles and manifests); exported as an SBOM and re-checked by `athena alerts`. */
   inventory?: Array<{ ecosystem: string; name: string; version: string; direct: boolean; manifest: string }>;
   duration: number;

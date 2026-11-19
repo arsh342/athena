@@ -68,3 +68,8 @@ export { queryLocal, hasLocal } from './updates/vulndb.js';
 export { loadKev } from './updates/kev.js';
 export { formatCycloneDx, purl } from './report/cyclonedx.js';
 export { newAlerts, alertsForInventory, ADVISORY_ID, type Alert } from './updates/alerts.js';
+export { parseUnifiedDiff, wholeFileChanges, isChangedLine, type ChangeSet, type ChangedFile } from './diff/changes.js';
+export { applyChangeFilter, type ReviewInfo } from './diff/filter.js';
+export { formatMarkdownReview } from './report/markdown.js';
+export { packageTypes, missingApis } from './deps/api-exists.js';
+export { enclosingFunction, fnId, type MapIndex } from './investigate/map.js';

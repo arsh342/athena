@@ -9,7 +9,9 @@ import { menuCommand } from './commands/menu.js';
 import { scanCommand } from './commands/scan.js';
 import { skillsAdd, skillsList, skillsNew, skillsRemove, skillsShow, skillsTest } from './commands/skills.js';
 import { variantsCommand } from './commands/variants.js';
+import { reviewCommand, type ReviewFlags } from './commands/review.js';
 import { updateCommand } from './commands/update.js';
+import { mcpCommand } from './commands/mcp.js';
 import { alertsCommand } from './commands/alerts.js';
 import { setupAllCommand, setupSemgrepCommand } from './commands/setup.js';
 import { uninstallCommand } from './commands/uninstall.js';
@@ -27,7 +29,7 @@ program
 /** Flags shared by scan and check. */
 function addRunFlags(command: Command): Command {
   return command
-    .option('-f, --format <format>', 'terminal | json | jsonl | sarif | cyclonedx (SBOM)', 'terminal')
+    .option('-f, --format <format>', 'terminal | json | jsonl | sarif | markdown | cyclonedx (SBOM)', 'terminal')
     .option('-o, --output <file>', 'write the report to a file instead of stdout')
     .option('--fail-on <level>', 'block on findings at or above: critical | high | medium | low | none (default: high)')
     .option('--strict', 'exit 3 when the scan was incomplete (files or checks skipped)')
@@ -57,6 +59,7 @@ addRunFlags(
   program
     .command('check')
     .argument('[files...]', 'files to check; defaults to staged JS/TS files')
+    .option('--staged', 'check staged files (default when no files are given)')
     .description('check changed files for blocking findings'),
 ).action(checkCommand);
 
@@ -97,6 +100,22 @@ skills.command('new').argument('<name>').option('--user', 'create in your user s
 skills.command('test').argument('[path]', 'a skill folder, or a folder of skills', '.').description('validate a skill and run its fixtures')
   .action(async (path: string) => { process.exitCode = await skillsTest(path); });
 
+addRunFlags(
+  program
+    .command('review')
+    .description('review a change (staged by default) and report only what it introduced')
+    .option('--staged', 'staged changes (default)')
+    .option('--uncommitted', 'staged, unstaged and untracked changes')
+    .option('--range <a..b>', 'a commit range, e.g. origin/main..HEAD')
+    .option('--base <branch>', 'changes since the merge-base with a branch'),
+).action(async (flags: ReviewFlags) => { await reviewCommand(flags); });
+
+program
+  .command('mcp')
+  .description('serve Athena as an MCP toolbox over stdio (for Claude Code, Cursor, Codex and other agents)')
+  .option('--root <dir>', 'only paths inside this directory are allowed (default: the current directory)')
+  .action(async (opts: { root?: string }) => { await mcpCommand(opts); });
+
 program
   .command('alerts')
   .argument('[dir]', 'project scanned before', '.')
@@ -122,8 +141,12 @@ program
   .description('turn one confirmed finding into a rule and find its siblings in the code')
   .action(async (id: string, opts: { path?: string; save?: boolean; force?: boolean }) => { process.exitCode = await variantsCommand(id, opts); });
 
-program.command('init').description('install Athena pre-commit hook').action(initCommand);
-program.command('uninstall').description('remove Athena pre-commit hook').action(uninstallCommand);
+program.command('init').description('install Athena git hooks (pre-commit by default)')
+  .option('--hooks <list>', 'pre-commit, pre-push or both (comma separated)', 'pre-commit')
+  .option('--fail-on <level>', 'blocking level the hooks use (default from athena.config.json or high)')
+  .option('--force', 'replace an existing hook that is not Athena\'s')
+  .action(initCommand);
+program.command('uninstall').description('remove Athena git hooks').action(uninstallCommand);
 program.command('doctor').description('check local toolchain health (node, npm, semgrep, trivy)').action(doctorCommand);
 
 const setupCommand = program

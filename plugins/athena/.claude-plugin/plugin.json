@@ -1,0 +1,9 @@
+{
+  "name": "athena",
+  "version": "0.1.0",
+  "description": "Athena security review toolbox for Claude Code: offline scanning, taint paths, dependency intelligence, change review and a verification workflow.",
+  "author": { "name": "arsh342" },
+  "homepage": "https://github.com/arsh342/athena",
+  "license": "MIT",
+  "keywords": ["security", "sast", "dependencies", "review", "mcp"]
+}

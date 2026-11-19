@@ -8,7 +8,7 @@ export type FailOn = 'critical' | 'high' | 'medium' | 'low' | 'none';
 export interface TerminalReportOptions {
   color: boolean;
   version: string;
-  mode: 'scan' | 'check';
+  mode: 'scan' | 'check' | 'review';
   /** Shown in the header exactly as the user typed it. */
   target: string;
   failOn: FailOn;
@@ -138,6 +138,18 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     if (visible.length > shown.length) out.push(dim(` … ${visible.length - shown.length} more (use --max-findings all)`));
     if (hiddenLow > 0) out.push(dim(` + ${hiddenLow} low (use --show-low)`));
     out.push('');
+  }
+
+  if (report.review) {
+    const r = report.review;
+    if (r.existing.length > 0) {
+      out.push(bold('Existing issues in changed code') + dim(`  (${r.existing.length}, not counted, not blocking)`));
+      for (const f of r.existing.slice(0, 10)) out.push(` ${f.severity.padEnd(9)} ${f.type}  ${dim(`${rel(f.file)}:${f.line}`)}`);
+      out.push('');
+    }
+    for (const b of r.skippedBinary) out.push(dim(`Skipped binary file ${b}`));
+    for (const x of r.renamed) out.push(dim(`Renamed ${x.from} → ${x.to}`));
+    if (r.skippedBinary.length + r.renamed.length > 0) out.push('');
   }
 
   if (depFindings.length > 0) {
