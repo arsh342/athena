@@ -60,10 +60,13 @@ export function typosquatOf(ecosystem: Ecosystem, name: string, list: string[] |
   for (const [from, to] of Object.entries(HOMOGLYPH)) homo = homo.split(from).join(to);
   const max = bare.length >= 9 ? 2 : 1;
   for (const popular of list) {
+    // Scoped names are only compared within the same scope: `@acme/core` is not a typo of `@babel/core`.
+    const scopeOf = (n: string): string => (n.startsWith('@') ? n.slice(0, n.indexOf('/')) : '');
+    if (scopeOf(popular) !== scopeOf(name)) continue;
     const pb = popular.replace(/^@[^/]+\//, '');
     if (Math.abs(pb.length - bare.length) > max) continue;
     if (squash(pb) === sq || squash(pb) === homo) return popular; // separator swap or homoglyph
-    if (pb.length >= 4 && editDistance(bare.toLowerCase(), pb.toLowerCase(), max) <= max) return popular;
+    if (bare.length >= 5 && pb.length >= 4 && editDistance(bare.toLowerCase(), pb.toLowerCase(), max) <= max) return popular;
   }
   return null;
 }

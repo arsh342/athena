@@ -29,6 +29,7 @@ export default defineConfig({
   onSuccess: async () => {
     cpSync('../core/models', 'dist/models', { recursive: true });
     cpSync('../core/skills', 'dist/skills', { recursive: true });
+    cpSync('../core/src/deps/data', 'dist/data', { recursive: true });
   },
   outExtension() {
     return {

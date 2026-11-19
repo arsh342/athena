@@ -44,4 +44,5 @@ for (let skip = 0; skip < 5000; skip += 1000) {
 save('nuget', nuget);
 
 // npm has no download-ranked listing. Write core/src/deps/data/popular-npm.json from the `npm-high-impact` package
-// (npm view npm-high-impact; its default export lists the most depended-upon names) after reviewing it.
+// (`npm pack npm-high-impact`, then read the string arrays in lib/top-download.js, lib/top-dependent.js and lib/top.js as text,
+// deduplicate, keep 5000) — do not execute the package.

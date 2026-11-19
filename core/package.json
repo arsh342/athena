@@ -17,7 +17,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').cpSync('src/deps/data','dist/deps/data',{recursive:true})\"",
     "dev": "tsx src/index.ts",
     "calibrate": "tsx src/calibration/calibrate-threshold.ts",
     "test": "node --import tsx --test test/**/*.test.ts"

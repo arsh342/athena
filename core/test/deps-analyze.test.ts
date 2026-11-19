@@ -174,3 +174,26 @@ test('private scoped registries and custom pip indexes are never reported as non
   s.close();
   assert.deepEqual(r.findings.filter((f) => f.ruleId === 'deps.package-not-found').map((f) => f.dependency!.name), ['@other/ghost']);
 });
+
+test('the bundled popular-package lists exist for every ecosystem and catch real typosquats', async () => {
+  const { popularList, typosquatOf } = await import('../src/deps/typosquat.ts');
+  for (const eco of ['npm', 'PyPI', 'crates.io', 'Packagist', 'NuGet'] as const) {
+    const list = popularList(eco);
+    assert.ok(list && list.length >= 3000, `${eco} list has ${list?.length}`);
+  }
+  assert.equal(typosquatOf('npm', 'expresss'), 'express');
+  assert.equal(typosquatOf('npm', 'lodahs'), 'lodash');
+  assert.equal(typosquatOf('PyPI', 'reqeusts'), 'requests');
+  assert.equal(typosquatOf('crates.io', 'serde_jsno'), 'serde_json');
+  assert.equal(typosquatOf('npm', 'react'), null, 'the popular package itself');
+  assert.equal(typosquatOf('npm', '@acme/internal-billing-service'), null);
+  assert.equal(typosquatOf('PyPI', 'acme-billing-client'), null);
+});
+
+test('scoped packages are compared only within their own scope', async () => {
+  const { typosquatOf } = await import('../src/deps/typosquat.ts');
+  const list = ['@babel/core', '@babel/preset-env', 'express'];
+  assert.equal(typosquatOf('npm', '@athena/core', list), null);
+  assert.equal(typosquatOf('npm', 'core', list), null);
+  assert.equal(typosquatOf('npm', '@babel/preset-evn', list), '@babel/preset-env');
+});

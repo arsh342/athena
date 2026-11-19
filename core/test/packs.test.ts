@@ -96,3 +96,9 @@ test('without a configured key nothing is trusted', async () => {
   const t = build('2026.11.01');
   await assert.rejects(installPack({ tarGz: t, signature: sign(t), publicKey: '', home: home() }), PackRejected);
 });
+
+test('the shipped public key is a valid Ed25519 key', async () => {
+  const { createPublicKey } = await import('node:crypto');
+  const { PACK_PUBLIC_KEY } = await import('../src/updates/signature.ts');
+  assert.equal(createPublicKey(PACK_PUBLIC_KEY).asymmetricKeyType, 'ed25519');
+});
