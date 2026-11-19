@@ -1,7 +1,7 @@
 import { open, readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
-import { hasExtension, isSupportedSource, languageFromShebang } from '@athena/core';
+import { hasExtension, isConfigTextFile, isSupportedSource, languageFromShebang } from '@athena/core';
 const ignoredDirs = new Set([
   'node_modules',
   'dist',
@@ -82,16 +82,19 @@ export function isExcludedPath(filePath: string, root: string, excludes: string[
 
 export interface SourceDiscovery {
   files: string[];
+  /** Config-style text files (.env, YAML, JSON, ...) to search for secrets. */
+  textFiles: string[];
   /** Source files left out by configured excludes; reported in coverage, never silently dropped. */
   excluded: string[];
 }
 
 export async function findSourceFilesWithExclusions(root: string, excludes: string[] = []): Promise<SourceDiscovery> {
   const rootStat = await stat(root).catch(() => null);
-  const result: SourceDiscovery = { files: [], excluded: [] };
+  const result: SourceDiscovery = { files: [], excluded: [], textFiles: [] };
   if (!rootStat) return result;
   if (rootStat.isFile()) {
     if (await isSourceCandidate(root)) (isExcludedPath(root, root, excludes) ? result.excluded : result.files).push(root);
+    else if (isConfigTextFile(root) && !isExcludedPath(root, root, excludes)) result.textFiles.push(root);
     return result;
   }
   await walk(root, root, result, excludes, false);
@@ -115,6 +118,8 @@ async function walk(dir: string, root: string, result: SourceDiscovery, excludes
 
     if (entry.isFile() && (await isSourceCandidate(fullPath))) {
       (underExcluded || isExcludedPath(fullPath, root, excludes) ? result.excluded : result.files).push(fullPath);
+    } else if (entry.isFile() && isConfigTextFile(fullPath) && !underExcluded && !isExcludedPath(fullPath, root, excludes)) {
+      result.textFiles.push(fullPath);
     }
   }
 }

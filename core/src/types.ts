@@ -2,7 +2,7 @@ import type { LanguageId } from './lang/languages.js';
 export type CodeUnitKind = 'function' | 'class' | 'method' | 'arrow';
 export type ConfidenceBand = 'LOW' | 'UNCERTAIN' | 'HIGH';
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-export type FindingSource = 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep' | 'eslint' | 'npm-audit' | 'nodejsscan' | 'bearer';
+export type FindingSource = 'athena-rules' | 'athena-taint' | 'athena-secrets' | 'athena-investigate' | 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep' | 'eslint' | 'npm-audit' | 'nodejsscan' | 'bearer';
 
 export interface SemgrepConfig {
   enabled: boolean;
@@ -148,6 +148,16 @@ export interface ClassifiedFinding {
   explainedScore: ExplainedScore;
   source: FindingSource;
   ruleId: string;
+  /** How sure Athena is after its offline checks (reachability, defenses, impact). `low` never blocks. */
+  confidence?: 'high' | 'medium' | 'low';
+  /** Why the confidence is what it is, one line per lens. */
+  evidence?: string[];
+  /** Who can reach the code: from the entry point that contains it, when one does. */
+  exposure?: 'public' | 'authenticated' | 'internal';
+  /** severity x exposure x confidence; used to order findings. */
+  priority?: number;
+  /** Source-to-sink path for taint findings (additive). */
+  trace?: Array<{ file: string; line: number; note: string }>;
 }
 
 export interface FileReport {
@@ -165,6 +175,8 @@ export interface ScanReport {
     totalUnits: number;
     flaggedUnits: number;
     findings: Record<Severity, number>;
+    /** Findings Athena could not confirm (low confidence): shown, never blocking. */
+    needsReview?: number;
     blocked: boolean;
     aiScore: number;
     aiFlagRatio: number;
@@ -240,6 +252,8 @@ export interface ScanDelta {
 }
 
 export interface AthenaConfig {
+  /** Routes that are public on purpose; convention mining will not flag them for missing auth. */
+  publicRoutes?: string[];
   threshold: number;
   blockOn: Severity[];
   exclude: string[];

@@ -1,7 +1,7 @@
 import { LANGUAGE_FAMILY, type LanguageFamily, type LanguageId } from '../lang/languages.js';
 import { relative } from 'node:path';
 import type { ClassifiedFinding, ScanReport, ScoredUnit, Severity } from '../types.js';
-import { isSecretFinding, redactKnownSecrets, redactSecrets } from './redact.js';
+import { isSecretFinding, redactFrameLine } from './redact.js';
 
 export type FailOn = 'critical' | 'high' | 'medium' | 'low' | 'none';
 
@@ -52,11 +52,12 @@ export function gateLine(
     const base = parts.length > 0 ? `${parts.join(' · ')}   (fail-on: ${failOn})` : 'findings matched the block policy';
     return { status: 'BLOCKED', detail: incomplete ? `${base} · scan incomplete` : base };
   }
-  if (incomplete) return { status: 'PASS (incomplete)', detail: coverage!.gaps.join(' · ') };
+  const review = summary.needsReview ? ` · ${summary.needsReview} need review (not blocking)` : '';
+  if (incomplete) return { status: 'PASS (incomplete)', detail: coverage!.gaps.join(' · ') + review };
 
   const total = ORDER.reduce((sum, severity) => sum + summary.findings[severity], 0);
-  if (failOn === 'none') return { status: 'PASS', detail: total === 0 ? 'no findings' : `${total} finding(s), fail-on: none` };
-  return { status: 'PASS', detail: `no findings at or above ${failOn}` };
+  if (failOn === 'none') return { status: 'PASS', detail: (total === 0 ? 'no findings' : `${total} finding(s), fail-on: none`) + review };
+  return { status: 'PASS', detail: `no findings at or above ${failOn}${review}` };
 }
 
 const FAMILY_SHORT: Record<LanguageFamily, string> = {
@@ -99,7 +100,9 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     for (const finding of file.findings) all.push({ finding, unit: owningUnit(file.units, finding.line) });
   }
   all.sort((a, b) =>
-    ORDER.indexOf(a.finding.severity) - ORDER.indexOf(b.finding.severity)
+    Number(a.finding.confidence === 'low') - Number(b.finding.confidence === 'low')
+    || ORDER.indexOf(a.finding.severity) - ORDER.indexOf(b.finding.severity)
+    || (b.finding.priority ?? 0) - (a.finding.priority ?? 0)
     || a.finding.file.localeCompare(b.finding.file)
     || a.finding.line - b.finding.line);
 
@@ -110,13 +113,22 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
 
   if (all.length > 0) {
     out.push(bold('Findings'));
+    let reviewHeadingShown = false;
     for (const { finding, unit } of shown) {
-      const label = paint(SEVERITY_COLOR[finding.severity], finding.severity.padEnd(9));
+      if (finding.confidence === 'low' && !reviewHeadingShown) {
+        reviewHeadingShown = true;
+        out.push(dim(' Needs review — Athena could not confirm these (not counted, not blocking)'));
+      }
+      const label = paint(SEVERITY_COLOR[finding.severity], (finding.confidence === 'low' ? 'REVIEW' : finding.severity).padEnd(9));
       const left = ` ${finding.severity.padEnd(9)} ${finding.type}`;
       const location = `${rel(finding.file)}:${finding.line}`;
       out.push(` ${label} ${finding.type}${' '.repeat(Math.max(2, 60 - left.length))}${dim(location)}`);
       const aiNote = unit && (unit.provenance === 'ai' || unit.provenance === 'mixed' || unit.recorded) ? ' · in AI-estimated code' : '';
-      out.push(`           ${dim(`${finding.ruleId}${aiNote} · id ${finding.id.slice(0, 6)}`)}`);
+      out.push(`           ${dim(`${finding.ruleId}${aiNote} · id ${finding.id.slice(0, 6)}${finding.confidence ? ` · ${finding.confidence} confidence` : ''}`)}`);
+      if (finding.trace && finding.trace.length > 0) {
+        out.push(`           ${dim('path:')} ${finding.trace.map((t) => `${rel(t.file)}:${t.line}`).join(dim(' → '))}`);
+      }
+      for (const note of (finding.evidence ?? []).slice(0, 3)) out.push(`           ${dim(`· ${note}`)}`);
       for (const frameLine of codeFrame(finding, options.readLines)) out.push(`           ${frameLine}`);
     }
     if (visible.length > shown.length) out.push(dim(` … ${visible.length - shown.length} more (use --max-findings all)`));
@@ -213,10 +225,9 @@ function codeFrame(finding: ClassifiedFinding, readLines?: (file: string) => str
   const from = Math.max(1, finding.line - 1);
   const to = Math.min(lines.length, finding.line + 1);
   const width = String(to).length;
-  const secret = isSecretFinding(finding);
   const frame: string[] = [];
   for (let n = from; n <= to; n += 1) {
-    const text = secret ? redactSecrets(lines[n - 1]) : redactKnownSecrets(lines[n - 1]);
+    const text = redactFrameLine(finding, n, lines[n - 1]);
     frame.push(`${n === finding.line ? '>' : ' '} ${String(n).padStart(width)} │ ${text.trimEnd()}`);
   }
   return frame;

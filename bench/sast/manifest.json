@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "note": "Expected findings were curated by reading the pinned source of each app. Only issues that were verified by hand are listed, so the numbers are recall against a partial answer key; precision is not measured here.",
+  "apps": [
+    {
+      "id": "nodegoat", "language": "js", "repo": "https://github.com/OWASP/NodeGoat", "commit": "c5cb68a7084e4ae7dcc60e6a98768720a81841e8",
+      "expected": [
+        { "file": "app/data/allocations-dao.js", "line": 73, "rule": "injection.nosql-where", "note": "$where built from request values" },
+        { "file": "app/data/allocations-dao.js", "line": 78, "rule": "injection.nosql-where" },
+        { "file": "app/routes/contributions.js", "line": 32, "rule": "taint.code-injection", "note": "eval of request body" },
+        { "file": "app/routes/contributions.js", "line": 33, "rule": "taint.code-injection" },
+        { "file": "app/routes/contributions.js", "line": 34, "rule": "taint.code-injection" },
+        { "file": "app/routes/research.js", "line": 16, "rule": "taint.ssrf", "note": "needle.get of a query-supplied URL" },
+        { "file": "app/routes/index.js", "line": 72, "rule": "taint.open-redirect" }
+      ]
+    },
+    {
+      "id": "vulnerable-flask-app", "language": "python", "repo": "https://github.com/we45/Vulnerable-Flask-App", "commit": "b6a4f97afd466e83e1f60781494252dec1c37039",
+      "expected": [
+        { "file": "app/app.py", "line": 114, "rule": "taint.template-injection" },
+        { "file": "app/app.py", "line": 281, "rule": "taint.template-injection", "note": "template text built from an exception that contains request input" },
+        { "file": "app/app.py", "line": 141, "rule": "crypto.weak-hash", "note": "md5 password hash" },
+        { "file": "app/app.py", "line": 265, "rule": "taint.sql-injection" },
+        { "file": "app/app.py", "line": 329, "rule": "taint.deserialization", "note": "yaml.load" }
+      ]
+    }
+  ]
+}

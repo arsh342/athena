@@ -93,3 +93,5 @@ ml/.venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+bench/sast/.cache/

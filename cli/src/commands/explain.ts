@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import {
-  getRuleInfo, isSecretFinding, redactKnownSecrets, redactSecrets,
+  getRuleInfo, isSecretFinding, redactFrameLine, redactSecrets,
   type ClassifiedFinding, type FileReport, type ScoredUnit,
 } from '@athena/core';
 import { shouldUseColor } from '../utils/colors.js';
@@ -65,7 +65,7 @@ export async function explainCommand(id: string, opts: { path?: string; color?: 
     const width = String(to).length;
     out.push(bold('Code'));
     for (let n = from; n <= to; n += 1) {
-      const text = secret ? redactSecrets(lines[n - 1]) : redactKnownSecrets(lines[n - 1]);
+      const text = redactFrameLine(finding, n, lines[n - 1]);
       out.push(`  ${n === finding.line ? '>' : ' '} ${String(n).padStart(width)} │ ${text.trimEnd()}`);
     }
     out.push('');

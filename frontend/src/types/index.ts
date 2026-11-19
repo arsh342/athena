@@ -4,6 +4,10 @@ export type ConfidenceBand = 'LOW' | 'UNCERTAIN' | 'HIGH';
 
 export type FindingSource =
   | 'secret-detector'
+  | 'athena-secrets'
+  | 'athena-rules'
+  | 'athena-taint'
+  | 'athena-investigate'
   | 'hallucination-detector'
   | 'security-analyzer'
   | 'semgrep'
@@ -38,6 +42,10 @@ export interface Finding {
   aiScore: number;
   code: string;
   ruleId: string;
+  confidence?: 'high' | 'medium' | 'low';
+  evidence?: string[];
+  trace?: Array<{ file: string; line: number; note: string }>;
+  exposure?: 'public' | 'authenticated' | 'internal';
   topSignals: SignalContribution[];
 }
 

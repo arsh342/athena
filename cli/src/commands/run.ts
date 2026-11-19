@@ -24,6 +24,8 @@ export interface RunArgs {
   target: string;
   files: string[];
   excluded: string[];
+  /** Config-style text files searched for secrets. */
+  textFiles?: string[];
   options: RunOptions;
 }
 
@@ -34,6 +36,7 @@ export async function runScan(args: RunArgs): Promise<number> {
   const config = mergeConfig({
     blockOn: options.blockOn,
     exclude: options.exclude,
+    publicRoutes: options.publicRoutes,
     ...(options.threshold !== undefined ? { threshold: options.threshold } : {}),
   });
   config.eslint = { ...config.eslint!, enabled: options.scanners.eslint };
@@ -55,7 +58,7 @@ export async function runScan(args: RunArgs): Promise<number> {
         files,
         config as AthenaConfig,
         { onFileProgress: progress.onProgress, onScannerStage: progress.onStage },
-        { root, excludedFiles: excluded },
+        { root, excludedFiles: excluded, ...(args.textFiles ? { textFiles: args.textFiles } : {}) },
       );
     } finally {
       progress.stop();
