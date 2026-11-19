@@ -3,9 +3,15 @@ import { basename } from 'node:path';
 
 const FRAMES = ['⠋', '⠙', '⠸', '⠴', '⠦', '⠇'];
 
+/** `CI=false`, `CI=0` and an empty CI are not CI. */
+export function isCi(env: NodeJS.ProcessEnv): boolean {
+  const v = env.CI?.trim().toLowerCase();
+  return !!v && v !== '0' && v !== 'false';
+}
+
 /** Progress is for humans: only on an interactive stderr, never in CI or with --quiet. */
 export function shouldShowProgress(quiet: boolean, stream: { isTTY?: boolean }, env: NodeJS.ProcessEnv): boolean {
-  return !quiet && Boolean(stream.isTTY) && !env.CI;
+  return !quiet && Boolean(stream.isTTY) && !isCi(env);
 }
 
 export interface Progress {

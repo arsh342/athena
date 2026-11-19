@@ -74,7 +74,7 @@ export async function recordedAiLines(
 
     let porcelain: string;
     try {
-      porcelain = await git(root, ['blame', '--line-porcelain', '--', rel]);
+      porcelain = await git(root, ['-c', 'log.showSignature=false', 'blame', '--line-porcelain', '--', rel]);
     } catch {
       files.set(filePath, { available: false, reason: 'not tracked by git', aiLines: new Set() });
       return;
@@ -83,7 +83,7 @@ export async function recordedAiLines(
     const lineSha: Array<[number, string]> = [];
     let current: [number, string] | null = null;
     for (const line of porcelain.split('\n')) {
-      const header = line.match(/^([0-9a-f]{40}) \d+ (\d+)/);
+      const header = line.match(/^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)/);
       if (header && !current) current = [Number(header[2]), header[1]];
       else if (line.startsWith('\t') && current) {
         lineSha.push(current);
@@ -91,10 +91,17 @@ export async function recordedAiLines(
       }
     }
 
-    const unknown = [...new Set(lineSha.map(([, sha]) => sha))].filter((sha) => !/^0+$/.test(sha) && !aiBySha.has(sha));
-    for (let i = 0; i < unknown.length; i += 200) {
-      const chunk = unknown.slice(i, i + 200);
-      const out = await git(root, ['log', '--no-walk', '--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B%x1e', ...chunk]);
+    const unseen = [...new Set(lineSha.map(([, sha]) => sha))].filter((sha) => !/^0+$/.test(sha) && !aiBySha.has(sha));
+    for (let i = 0; i < unseen.length; i += 200) {
+      const chunk = unseen.slice(i, i + 200);
+      let out: string;
+      try {
+        out = await git(root, ['-c', 'log.showSignature=false', 'log', '--no-walk', '--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B%x1e', ...chunk]);
+      } catch {
+        // History unreadable (corrupt or partial object store): this file is unavailable, the scan carries on.
+        files.set(filePath, { available: false, reason: 'git history unreadable', aiLines: new Set() });
+        return;
+      }
       for (const record of out.split('\x1e')) {
         const parts = record.replace(/^\n/, '').split('\x00');
         if (parts.length < 6) continue;
@@ -125,5 +132,7 @@ export async function recordedAiLines(
     for (let path = queue.shift(); path !== undefined; path = queue.shift()) await blameFile(path);
   }));
 
+  const all = [...files.values()];
+  if (all.length > 0 && all.every((f) => !f.available)) return { available: false, reason: 'no tracked files', files };
   return { available: true, files };
 }

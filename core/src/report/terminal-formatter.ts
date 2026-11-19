@@ -193,7 +193,7 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
         : '  method: heuristic (low confidence)'));
       const top = provenance.files
         .filter((file) => file.aiLines > 0)
-        .slice(0, 3)
+        .slice(0, 5)
         .map((file) => `${rel(file.path)} ${Math.round((100 * file.aiLines) / Math.max(1, file.lines))}%`);
       if (top.length > 0) out.push(`  most AI-estimated: ${top.join(' · ')}`);
     }

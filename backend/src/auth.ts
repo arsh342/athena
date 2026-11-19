@@ -433,31 +433,22 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
 
   const matched = await bcrypt.compare(password, user.password_hash);
   if (!matched) {
-    const nextAttempts = user.failed_attempts + 1;
-    if (nextAttempts >= MAX_FAILED_ATTEMPTS) {
-      await db.query(
-        `
-          UPDATE users
-          SET failed_attempts = 0,
-              locked_until = NOW() + ($2 || ' minutes')::INTERVAL
-          WHERE id = $1
-        `,
-        [user.id, LOCK_MINUTES.toString()],
-      );
-
+    // Count the failure in the database, atomically: parallel guesses must each be counted, so they cannot undercount
+    // the attempts and keep the account unlocked.
+    const counted = await db.query<{ locked: boolean }>(
+      `
+        UPDATE users
+        SET failed_attempts = CASE WHEN failed_attempts + 1 >= $2 THEN 0 ELSE failed_attempts + 1 END,
+            locked_until = CASE WHEN failed_attempts + 1 >= $2 THEN NOW() + ($3 || ' minutes')::INTERVAL ELSE locked_until END
+        WHERE id = $1
+        RETURNING (locked_until IS NOT NULL AND locked_until > NOW()) AS locked
+      `,
+      [user.id, MAX_FAILED_ATTEMPTS, LOCK_MINUTES.toString()],
+    );
+    if (counted.rows[0]?.locked) {
       res.status(423).json({ error: 'Account temporarily locked. Try again later.' });
       return;
     }
-
-    await db.query(
-      `
-        UPDATE users
-        SET failed_attempts = $2,
-            locked_until = NULL
-        WHERE id = $1
-      `,
-      [user.id, nextAttempts],
-    );
 
     res.status(401).json({ error: 'Invalid credentials.' });
     return;
@@ -520,14 +511,21 @@ export async function refreshSession(req: Request, res: Response): Promise<void>
     return;
   }
 
-  await db.query(
+  // Redeem exactly once: only the request that flips revoked_at from NULL gets new tokens.
+  const redeemed = await db.query<{ id: number }>(
     `
       UPDATE auth_sessions
       SET revoked_at = NOW()
-      WHERE id = $1
+      WHERE id = $1 AND revoked_at IS NULL
+      RETURNING id
     `,
     [session.id],
   );
+  if (redeemed.rows.length === 0) {
+    clearAuthCookies(res);
+    res.status(401).json({ error: 'Invalid refresh token.' });
+    return;
+  }
 
   const tokens = await createDbSession(session.user_id);
   setAuthCookies(res, tokens);

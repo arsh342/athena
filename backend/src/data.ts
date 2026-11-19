@@ -144,6 +144,10 @@ interface FindingRow {
   code: string;
   rule_id: string;
   top_signals: Finding['topSignals'];
+  confidence?: Finding['confidence'] | null;
+  evidence?: Finding['evidence'] | null;
+  trace?: Finding['trace'] | null;
+  exposure?: Finding['exposure'] | null;
 }
 
 interface TerminalLineRow {
@@ -190,6 +194,10 @@ function mapFindingRow(row: FindingRow): Finding {
     code: row.code,
     ruleId: row.rule_id,
     topSignals: row.top_signals,
+    ...(row.confidence ? { confidence: row.confidence } : {}),
+    ...(row.evidence ? { evidence: row.evidence } : {}),
+    ...(row.trace ? { trace: row.trace } : {}),
+    ...(row.exposure ? { exposure: row.exposure } : {}),
   };
 }
 
@@ -274,7 +282,8 @@ export function getFindingsByScanId(scanId: string, userId?: number | string): F
   return db.query<FindingRow>(
     `
       SELECT COALESCE(sf.finding_id, sf.id::text) AS id, sf.severity, sf.type, sf.category, sf.message, sf.file, sf.line,
-             sf."column" AS column, sf.source, sf.ai_score, sf.code, sf.rule_id, sf.top_signals
+             sf."column" AS column, sf.source, sf.ai_score, sf.code, sf.rule_id, sf.top_signals,
+             sf.confidence, sf.evidence, sf.trace, sf.exposure
       FROM scan_findings sf
       JOIN scans s ON s.scan_id = sf.scan_id
       WHERE sf.scan_id = $1 AND s.user_id = $2
@@ -381,9 +390,9 @@ export function addScan(
           `
             INSERT INTO scan_findings (
               finding_id, scan_id, severity, type, category, message, file, line, "column",
-              source, ai_score, code, rule_id, top_signals
+              source, ai_score, code, rule_id, top_signals, confidence, evidence, trace, exposure
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16::jsonb, $17::jsonb, $18)
           `,
           [
             finding.id,
@@ -400,6 +409,10 @@ export function addScan(
             finding.code,
             finding.ruleId,
             JSON.stringify(finding.topSignals),
+            finding.confidence ?? null,
+            finding.evidence ? JSON.stringify(finding.evidence) : null,
+            finding.trace ? JSON.stringify(finding.trace) : null,
+            finding.exposure ?? null,
           ],
         );
       }

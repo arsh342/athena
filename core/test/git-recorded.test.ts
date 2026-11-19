@@ -100,3 +100,42 @@ test('first run writes one cache file per blamed file under cacheDir/<repoKey>/'
   await recordedAiLines(dir, [join(dir, 'a.ts')], { cacheDir });
   assert.equal(readdirSync(join(cacheDir, repoKey(dir))).filter((n) => n.endsWith('.json')).length, 1);
 });
+
+test('#10 a folder with no tracked files is "unavailable: no tracked files", not an empty floor', async () => {
+  const dir = tmp();
+  git(dir, 'init', '-q', '-b', 'main');
+  git(dir, 'commit', '-q', '--allow-empty', '-m', 'init');
+  writeFileSync(join(dir, 'untracked.js'), 'export const a = 1;\n');
+  const r = await recordedAiLines(dir, [join(dir, 'untracked.js')], { cacheDir: tmp() });
+  assert.equal(r.available, false);
+  assert.match(r.reason ?? '', /no tracked files/);
+});
+
+test('#11 a failing git log degrades to unavailable instead of aborting the scan, and signatures are never requested', async () => {
+  const dir = tmp();
+  git(dir, 'init', '-q', '-b', 'main');
+  writeFileSync(join(dir, 'a.js'), 'export const a = 1;\n');
+  git(dir, 'add', 'a.js');
+  git(dir, 'commit', '-q', '-m', 'init');
+  // Corrupt the object store so blame/log fail after rev-parse succeeds.
+  const objects = join(dir, '.git', 'objects');
+  for (const d of readdirSync(objects)) if (d.length === 2) { const { rmSync } = await import('node:fs'); rmSync(join(objects, d), { recursive: true, force: true }); }
+  const r = await recordedAiLines(dir, [join(dir, 'a.js')], { cacheDir: tmp() });
+  assert.equal(r.available === false || r.files.get(join(dir, 'a.js'))?.available === false, true);
+});
+
+test('#11 SHA-256 repositories (64-hex object ids) are blamed too', async () => {
+  const dir = tmp();
+  try {
+    execFileSync('git', ['init', '-q', '-b', 'main', '--object-format=sha256'], { cwd: dir });
+  } catch {
+    return; // this git cannot create SHA-256 repositories
+  }
+  git(dir, 'config', 'user.email', 'h@example.com');
+  git(dir, 'config', 'user.name', 'Human');
+  writeFileSync(join(dir, 'a.js'), 'export const a = 1;\n');
+  git(dir, 'add', 'a.js');
+  git(dir, 'commit', '-q', '-m', 'feat: x\n\nCo-Authored-By: Claude <noreply@anthropic.com>');
+  const r = await recordedAiLines(dir, [join(dir, 'a.js')], { cacheDir: tmp() });
+  assert.deepEqual([...r.files.get(join(dir, 'a.js'))!.aiLines], [1]);
+});

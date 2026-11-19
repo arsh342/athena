@@ -49,3 +49,16 @@ test('every language has a family', () => {
   assert.equal(LANGUAGE_FAMILY.shell, 'shell');
   assert.equal(Object.keys(LANGUAGE_FAMILY).length, 12);
 });
+
+test('shebang variants: env -S, env flags, versioned interpreters, BOM and CRLF', async () => {
+  const { languageFromShebang } = await import('../src/lang/languages.ts');
+  assert.equal(languageFromShebang('#!/usr/bin/env -S node --no-warnings'), 'javascript');
+  assert.equal(languageFromShebang('#!/usr/bin/env -S python3 -u'), 'python');
+  assert.equal(languageFromShebang('#!/usr/bin/env PATH=/x node'), 'javascript');
+  assert.equal(languageFromShebang('#!/usr/bin/python3.11'), 'python');
+  assert.equal(languageFromShebang('#!/usr/local/bin/python3.12 -O'), 'python');
+  assert.equal(languageFromShebang('#!/usr/bin/env node\r'), 'javascript');
+  assert.equal(languageFromShebang('﻿#!/usr/bin/env node'), 'javascript');
+  assert.equal(languageFromShebang('#!/bin/sh'), 'shell');
+  assert.equal(languageFromShebang('#!/usr/bin/env ruby'), null);
+});

@@ -158,3 +158,10 @@ test('header lists files per language family, most common first', () => {
   const out = formatTerminalReport(r, opts);
   assert.match(out, /· 5 files \(js 3 · go 1 · py 1\)/);
 });
+
+test('#14 "most AI-estimated" lists up to five files', () => {
+  const many: AiProvenance = { ...provenance, files: Array.from({ length: 7 }, (_, i) => ({ path: `/app/src/f${i}.ts`, lines: 100, recordedLines: 0, aiLines: 90 - i, mixedLines: 0, uncertainLines: 0 })) };
+  const out = formatTerminalReport(report([finding('c1', 'CRITICAL', 12)], { aiProvenance: many }), opts);
+  const line = out.split('\n').find((l) => l.includes('most AI-estimated'))!;
+  assert.equal((line.match(/src\/f\d\.ts/g) ?? []).length, 5);
+});

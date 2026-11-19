@@ -28,5 +28,5 @@ test('groupFindings dedupes by ruleId + file + line', () => {
 
 test('redactFindingText masks secrets by default', () => {
   const redacted = redactFindingText(finding.message, finding);
-  assert.ok(redacted.includes('***REDACTED***'));
+  assert.ok(redacted.includes('[REDACTED]'));
 });

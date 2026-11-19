@@ -77,3 +77,19 @@ test('mapScanSummary copies the top 5 files and a coverage summary', () => {
   assert.equal(mapped.aiProvenance!.recorded.reason, 'shallow clone: history not available');
   assert.deepEqual(mapped.coverage, { complete: false, gaps: ['x'], analyzedFiles: 1, totalFiles: 2 });
 });
+
+import { mapScanSummary } from '../src/scanner.ts';
+
+test('#13 topFiles are repo-relative (no server temp paths) and scanner gaps say "not installed on this server"', () => {
+  const report = {
+    timestamp: new Date().toISOString(), duration: 1, files: [],
+    summary: {
+      aiPercentage: 0, flaggedUnits: 0, filesScanned: 1, totalUnits: 0, findings: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }, riskDensity: { findingsPer1kLoc: 0, criticalPer1kLoc: 0, flaggedRatio: 0 },
+      aiProvenance: { unit: 'lines', totalLines: 10, recorded: { lines: 0, available: false }, estimated: { method: 'heuristic', aiLines: 5, mixedLines: 0, uncertainLines: 0, humanLines: 5 }, files: [{ path: '/tmp/athena-repo-abc/src/a.js', lines: 10, recordedLines: 0, aiLines: 5, mixedLines: 0, uncertainLines: 0 }] },
+      coverage: { files: [], checks: [], complete: false, gaps: ['semgrep unavailable', '1 file(s) not parsed'] },
+    },
+  } as never;
+  const scan = mapScanSummary(report, 's1', 'repo', 'https://x/y', '/tmp/athena-repo-abc');
+  assert.equal(scan.aiProvenance!.topFiles[0]!.path, 'src/a.js');
+  assert.deepEqual(scan.coverage!.gaps, ['semgrep not installed on this server', '1 file(s) not parsed']);
+});

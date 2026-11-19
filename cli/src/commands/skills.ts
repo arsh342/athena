@@ -1,9 +1,9 @@
 import { readFile, stat } from 'node:fs/promises';
 import { createInterface } from 'node:readline/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import {
   activationReason, buildProfile, disposeFetched, fetchSkills, installCandidate, isInstalled, loadSkills, removeSkill, scaffoldSkill, testSkill,
-  userSkillsDir, validateSkill, detectLanguage, type Skill,
+  userSkillsDir, validateSkill, detectLanguage, isVendoredOrGenerated, type Skill,
 } from '@athena/core';
 import { findSourceFilesWithExclusions } from '../utils/file-filter.js';
 import { writeInfo, writeResult } from '../utils/output.js';
@@ -21,7 +21,10 @@ async function projectProfile(root: string) {
     const lang = detectLanguage(path, '');
     if (!lang) continue;
     try {
-      sources.push({ path, source: await readFile(path, 'utf8'), lang });
+      const source = await readFile(path, 'utf8');
+      // Same exclusions as a scan: vendored, generated and skill-fixture files do not activate skills.
+      if (isVendoredOrGenerated(relative(root, path).split('\\').join('/'), source)) continue;
+      sources.push({ path, source, lang });
     } catch {
       // unreadable files do not influence activation
     }

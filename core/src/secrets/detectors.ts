@@ -93,6 +93,8 @@ const placeholderWords = /(?:example|sample|dummy|placeholder|changeme|change[_-
 /** True for values that are clearly documentation placeholders or references rather than real credentials. */
 export function isPlaceholder(value: string): boolean {
   if (placeholderWords.test(value)) return true;
+  // A reference, not a value: `$(cmd)`, `${VAR}`, `$VAR`, `{{ template }}`, `%VAR%`.
+  if (/^(?:\$[({A-Za-z_]|\{\{|%[A-Za-z_]+%)/.test(value.trim())) return true;
   if (/^(.)\1{5,}$/.test(value)) return true; // repeated character
   const distinct = new Set(value).size;
   if (value.length >= 8 && distinct <= 3) return true;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import './storage-shim.ts';
 import { fetchScans, startScan, startUploadScan } from '../src/services/api.ts';
 
 type FetchInput = Parameters<typeof fetch>[0];
@@ -59,7 +60,7 @@ test('startScan posts repoUrl as json body', async () => {
     await startScan('https://github.com/arsh342/athena');
 
     assert.equal(capturedInit?.method, 'POST');
-    assert.deepEqual(capturedInit?.headers, { 'Content-Type': 'application/json' });
+    assert.equal(new Headers(capturedInit?.headers).get('Content-Type'), 'application/json');
     assert.equal(capturedInit?.body, JSON.stringify({ repoUrl: 'https://github.com/arsh342/athena' }));
     assert.equal(capturedInit?.credentials, 'include');
   } finally {
@@ -108,8 +109,22 @@ test('startUploadScan includes terminal session header when provided', async () 
 
   try {
     await startUploadScan(form, 'session-123');
-    assert.equal((capturedInit?.headers as Record<string, string>)['X-Terminal-Session'], 'session-123');
+    assert.equal(new Headers(capturedInit?.headers).get('X-Terminal-Session'), 'session-123');
   } finally {
     (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
+  }
+});
+
+test('a stored access token is sent as a Bearer header', async () => {
+  localStorage.setItem('athena_token', 'tok-123');
+  let sent: Headers | undefined;
+  const originalFetch = globalThis.fetch;
+  (globalThis as { fetch: typeof fetch }).fetch = (async (_i: FetchInput, init?: FetchInit) => { sent = new Headers(init?.headers); return { ok: true, status: 200, json: async () => ({ scans: [] }) }; }) as unknown as typeof fetch;
+  try {
+    await fetchScans();
+    assert.equal(sent?.get('Authorization'), 'Bearer tok-123');
+  } finally {
+    (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
+    localStorage.removeItem('athena_token');
   }
 });
