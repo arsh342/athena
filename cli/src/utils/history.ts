@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 export interface ScanHistoryEntry {
   timestamp: string;
-  mode: 'scan' | 'check';
+  mode: 'scan' | 'check' | 'review';
   target: string;
   blocked: boolean;
   filesScanned: number;

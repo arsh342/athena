@@ -27,7 +27,7 @@ export interface RunFlags {
 }
 
 export interface RunOptions {
-  format: 'terminal' | 'json' | 'jsonl' | 'sarif' | 'cyclonedx';
+  format: 'terminal' | 'json' | 'jsonl' | 'sarif' | 'cyclonedx' | 'markdown';
   output?: string;
   failOn: FailOn;
   blockOn: Severity[];
@@ -45,7 +45,7 @@ export interface RunOptions {
   warnings: string[];
 }
 
-const FORMATS = ['terminal', 'json', 'jsonl', 'sarif', 'cyclonedx'] as const;
+const FORMATS = ['terminal', 'json', 'jsonl', 'sarif', 'cyclonedx', 'markdown'] as const;
 const FAIL_ON: FailOn[] = ['critical', 'high', 'medium', 'low', 'none'];
 const BLOCK_ON: Record<FailOn, Severity[]> = {
   critical: ['CRITICAL'],

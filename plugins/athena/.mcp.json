@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "athena": {
+      "command": "npx",
+      "args": ["-y", "@arsh342/athena", "mcp"]
+    }
+  }
+}
