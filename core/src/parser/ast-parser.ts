@@ -31,8 +31,12 @@ export async function parseFileDetailed(filePath: string): Promise<ParseFileResu
     return { units: [], error: error instanceof Error ? error.message : String(error) };
   }
   if (bytes.subarray(0, TEXT_PROBE_BYTES).includes(0)) return { units: [], error: 'not a text file' };
-  const source = bytes.toString('utf8');
-  if (source.includes('�')) return { units: [], error: 'not a text file' };
+  let source: string;
+  try {
+    source = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return { units: [], error: 'not a text file' };
+  }
 
   const newline = source.indexOf('\n');
   const language = detectLanguage(filePath, newline === -1 ? source : source.slice(0, newline));

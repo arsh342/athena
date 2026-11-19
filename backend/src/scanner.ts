@@ -73,6 +73,7 @@ function createEmitterLog(emitter?: ScanEmitter) {
 async function isSourceCandidate(filePath: string): Promise<boolean> {
   if (isSupportedSource(filePath)) return true;
   if (hasExtension(filePath)) return false;
+  if (!(await stat(filePath).catch(() => null))?.isFile()) return false;
   const handle = await open(filePath, 'r').catch(() => null);
   if (!handle) return false;
   try {

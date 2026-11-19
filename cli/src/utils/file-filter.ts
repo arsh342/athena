@@ -40,6 +40,7 @@ export function isSourceFile(filePath: string): boolean {
 export async function isSourceCandidate(filePath: string): Promise<boolean> {
   if (isSupportedSource(filePath)) return true;
   if (hasExtension(filePath)) return false;
+  if (!(await stat(filePath).catch(() => null))?.isFile()) return false;
   return languageFromShebang(await readFirstLine(filePath)) !== null;
 }
 

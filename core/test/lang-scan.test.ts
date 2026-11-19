@@ -84,3 +84,36 @@ test('a grammar that fails to load is a coverage gap and other languages still s
     __setGrammarDirForTests(null);
   }
 });
+
+test('deeply nested one-line code is fast (rows < 3 are skipped before metadata)', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'athena-nest1-'));
+  const file = join(dir, 'n.js');
+  await writeFile(file, 'const f = ' + '() => ('.repeat(3000) + '1' + ')'.repeat(3000) + ';');
+  const started = Date.now();
+  const report = await scanFiles([file], mergeConfig(noExternal), {}, options(dir));
+  assert.ok(Date.now() - started < 2000, `took ${Date.now() - started} ms`);
+  assert.equal(report.summary.totalUnits, 0);
+});
+
+test('deeply nested multi-line code stops at a work budget and is reported, not hung', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'athena-nest2-'));
+  const file = join(dir, 'n.js');
+  await writeFile(file, 'const f = ' + '() => (\n'.repeat(3000) + '1' + ')'.repeat(3000) + ';\n');
+  const started = Date.now();
+  const report = await scanFiles([file], mergeConfig(noExternal), {}, options(dir));
+  assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
+  const cov = report.summary.coverage!.files[0]!;
+  assert.deepEqual([cov.status, cov.reason], ['parse-failed', 'too complex to analyze']);
+});
+
+test('valid UTF-8 containing a literal U+FFFD is analyzed, invalid UTF-8 is not', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'athena-utf-'));
+  const ok = join(dir, 'ok.js');
+  await writeFile(ok, 'function f() {\n  const s = "�";\n  return s;\n}\n');
+  const bad = join(dir, 'bad.js');
+  await writeFile(bad, Buffer.from('function f() {\n  return "\xff\xfe";\n}\n', 'latin1'));
+  const report = await scanFiles([ok, bad], mergeConfig(noExternal), {}, options(dir));
+  const by = (p: string) => report.summary.coverage!.files.find((f) => f.path === p)!;
+  assert.equal(by(ok).status, 'analyzed');
+  assert.equal(by(bad).reason, 'not a text file');
+});

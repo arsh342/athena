@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type { CodeUnit, CodeUnitKind } from '../types.js';
 import { LANGUAGE_FAMILY, type LanguageId } from './languages.js';
-import { computeMetadata, firstIdentifier, walk } from './metadata.js';
+import { ComplexityBudgetError, computeMetadata, firstIdentifier, walk, type WorkBudget } from './metadata.js';
 import { getParser, type TSNode } from './parser-pool.js';
 import { CLASS_BODIES, CLASS_OWNERS, NAME_HOLDERS, NAME_PASS_THROUGH, UNIT_NODES, type UnitRule } from './queries.js';
 
@@ -33,12 +33,26 @@ export function extractWithParser(
     const lines = text.split(/\r?\n/);
     const rules = UNIT_NODES[LANGUAGE_FAMILY[lang]];
     const units: CodeUnit[] = [];
+    const budget: WorkBudget = { remaining: 2_000_000 + text.length };
+    let tooComplex = false;
     walk(tree.rootNode, (node) => {
+      if (tooComplex) return false;
       const rule = rules[node.type];
       if (!rule) return;
       const kind = resolveKind(rule, node);
       if (!kind) return;
-      const metadata = computeMetadata(node, lines, lang);
+      // loc <= non-blank rows spanned: skip cheap-to-reject nodes before walking their subtree.
+      if (nonBlankRows(lines, node.startPosition.row, node.endPosition.row) < 3) return;
+      let metadata;
+      try {
+        metadata = computeMetadata(node, lines, lang, budget);
+      } catch (error) {
+        if (error instanceof ComplexityBudgetError) {
+          tooComplex = true;
+          return false;
+        }
+        throw error;
+      }
       if (metadata.loc < 3) return;
       const name = unitName(node, kind);
       const startLine = node.startPosition.row + 1;
@@ -54,6 +68,7 @@ export function extractWithParser(
         metadata,
       });
     });
+    if (tooComplex) return { units, error: 'too complex to analyze', language: lang };
     const errorLine = firstErrorLine(tree.rootNode);
     return errorLine === null
       ? { units, language: lang }
@@ -61,6 +76,12 @@ export function extractWithParser(
   } finally {
     tree.delete();
   }
+}
+
+function nonBlankRows(lines: string[], start: number, end: number): number {
+  let count = 0;
+  for (let row = start; row <= end && count < 3; row += 1) if ((lines[row] ?? '').trim().length > 0) count += 1;
+  return count;
 }
 
 function resolveKind(rule: UnitRule, node: TSNode): CodeUnitKind | null {

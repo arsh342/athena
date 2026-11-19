@@ -23,15 +23,15 @@ Athena specifically targets these risks by identifying AI-generated code section
 
 | Language | Extensions | Today |
 |---|---|---|
-| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | units, AI provenance, secrets, hallucinated APIs, external scanners |
-| Python | `.py .pyi`, `#!…python` scripts | units, AI provenance, secrets |
-| Java | `.java` | units, AI provenance, secrets |
-| C# | `.cs` | units, AI provenance, secrets |
-| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | units, AI provenance, secrets (C is parsed with the C++ grammar) |
-| Go | `.go` | units, AI provenance, secrets |
-| Rust | `.rs` | units, AI provenance, secrets |
-| PHP | `.php .phtml` | units, AI provenance, secrets |
-| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | units, AI provenance, secrets |
+| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | units, AI provenance, secrets (inside functions and classes), hallucinated APIs, external scanners |
+| Python | `.py .pyi`, `#!…python` scripts | units, AI provenance, secrets (inside functions and classes) |
+| Java | `.java` | units, AI provenance, secrets (inside functions and classes) |
+| C# | `.cs` | units, AI provenance, secrets (inside functions and classes) |
+| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | units, AI provenance, secrets (inside functions and classes) (C is parsed with the C++ grammar) |
+| Go | `.go` | units, AI provenance, secrets (inside functions and classes) |
+| Rust | `.rs` | units, AI provenance, secrets (inside functions and classes) |
+| PHP | `.php .phtml` | units, AI provenance, secrets (inside functions and classes) |
+| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | units, AI provenance, secrets (inside functions and classes) |
 
 Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. The external scanners (Semgrep, ESLint, npm audit, NodeJSScan, Bearer) still cover JavaScript/TypeScript only; Athena's own rules for every language arrive in later releases.
 

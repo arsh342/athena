@@ -45,7 +45,19 @@ export function firstIdentifier(node: TSNode | null): string | null {
  * Metadata for one unit. `lines` is the whole file split on line breaks (BOM removed),
  * so rows from tree-sitter index into it directly.
  */
-export function computeMetadata(node: TSNode, lines: string[], lang: LanguageId): CodeUnitMetadata {
+export class ComplexityBudgetError extends Error {
+  constructor() {
+    super('too complex to analyze');
+    this.name = 'ComplexityBudgetError';
+  }
+}
+
+/** Shared node-visit allowance for one file; deeply nested input is quadratic without it. */
+export interface WorkBudget {
+  remaining: number;
+}
+
+export function computeMetadata(node: TSNode, lines: string[], lang: LanguageId, budget?: WorkBudget): CodeUnitMetadata {
   const startRow = node.startPosition.row;
   const endRow = node.endPosition.row;
   const commentRows = new Set<number>();
@@ -57,6 +69,7 @@ export function computeMetadata(node: TSNode, lines: string[], lang: LanguageId)
   const stack: Array<[TSNode, number]> = [[node, 0]];
   while (stack.length > 0) {
     const [current, depth] = stack.pop()!;
+    if (budget && (budget.remaining -= 1) < 0) throw new ComplexityBudgetError();
     const type = current.type;
     let nextDepth = depth;
     if (CONTROL_NODES.has(type)) {

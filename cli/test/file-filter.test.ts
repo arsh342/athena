@@ -116,3 +116,15 @@ test('findSourceFilesWithExclusions discovers every supported language and sheba
 test('isSourceFile accepts every supported extension', () => {
   for (const f of ['a.py', 'a.go', 'a.rs', 'a.php', 'a.cs', 'A.java', 'a.c', 'a.h', 'a.cpp', 'a.sh', 'a.mjs']) assert.equal(isSourceFile(f), true, f);
 });
+
+test('directories and unreadable paths are never source candidates (no EISDIR)', async () => {
+  const { isSourceCandidate } = await import('../src/utils/file-filter.ts');
+  const root = await mkdtemp(join(tmpdir(), 'athena-cli-dir-'));
+  try {
+    await mkdir(join(root, 'libs', 'sub'), { recursive: true });
+    assert.equal(await isSourceCandidate(join(root, 'libs', 'sub')), false);
+    assert.equal(await isSourceCandidate(join(root, 'missing')), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
