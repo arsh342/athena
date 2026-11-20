@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { InfraPipeline } from '../components/InfraPipeline';
+import { AsciiHero, AsciiRule } from '../components/AsciiHero';
 import { Terminal } from '../components/Terminal';
 import { fetchFindings, fetchLandingContent, fetchLandingTerminalLines } from '../services/api';
 import type { Finding, LandingContent, LandingStat } from '../types';
@@ -136,22 +137,30 @@ export function Landing() {
   return (
     <div className="landing brutalist">
       {/* ═══ HERO ═══ */}
-      <section className="br-hero" id="hero">
-        <p className="br-hero-kicker">AI code provenance and security scanner for repositories.</p>
-        <h1 className="br-hero-title">Know what AI wrote before it ships.</h1>
-        <p className="br-hero-sub">
-          Athena reads your code the way a careful reviewer does: it maps entry points, traces untrusted input,
-          scores how likely each unit is machine-written, and gates the commit. Offline by default. An optional AI check
-          runs on your own key, under a spend cap you set.
-        </p>
-        <div className="br-hero-actions">
-          <Link className="br-cta-button" to="/scan" id="hero-cta-scan">
-            <span className="br-cta-arrow">→</span>
-            <span className="br-cta-text">Scan a repository</span>
-          </Link>
-          <Link className="br-route-secondary" to="/quickstart" style={{ padding: '14px 20px', fontSize: 13 }}>Quickstart</Link>
+      <section className="ed-hero" id="hero">
+        <div className="ed-hero-copy">
+          <p className="br-hero-kicker">AI code provenance and security scanner.</p>
+          <h1 className="br-hero-title">Know what AI wrote before it ships.</h1>
+          <p className="br-hero-sub">
+            Athena reads your code the way a careful reviewer does: it maps entry points, traces untrusted input,
+            scores how likely each unit is machine-written, and gates the commit. Offline by default. An optional AI check
+            runs on your own key, under a spend cap you set.
+          </p>
+          <div className="br-hero-actions">
+            <Link className="br-cta-button" to="/scan" id="hero-cta-scan">
+              <span className="br-cta-arrow">→</span>
+              <span className="br-cta-text">Scan a repository</span>
+            </Link>
+            <Link className="br-route-secondary" to="/quickstart" style={{ padding: '14px 20px', fontSize: 13 }}>Quickstart</Link>
+          </div>
         </div>
-        <div className="br-hero-diagram" style={{ marginTop: 48 }}>
+        <figure className="ed-hero-art"><AsciiHero /></figure>
+      </section>
+
+      <AsciiRule char="-" />
+
+      <section className="ed-pipeline" aria-label="Analysis pipeline">
+        <div className="br-hero-diagram">
           <Terminal
             lines={heroPipelineLines}
             playback
@@ -182,10 +191,7 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ═══ ANNOTATION DIVIDER ═══ */}
-      <div className="br-divider">
-        <span className="br-divider-line" />
-      </div>
+      <AsciiRule char="." />
 
       {/* ═══ ABOUT / INFRASTRUCTURE SHOWCASE ═══ */}
       <section className="br-about-infra" id="about" ref={observeRef}>
@@ -244,6 +250,8 @@ export function Landing() {
           </div>
         </div>
       </section>
+
+      <AsciiRule char="-" />
 
       {/* ═══ STATS BAR ═══ */}
       <section className="br-stats" ref={observeRef}>
