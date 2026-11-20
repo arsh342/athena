@@ -1,4 +1,5 @@
 import { applyChangeFilter, formatCycloneDx, formatMarkdownReview, type ChangeSet } from '@athena/core';
+import { runAiStep } from './ai.js';
 import { startBackgroundUpdate } from './update.js';
 import { readFileSync } from 'node:fs';
 import { realpath, writeFile } from 'node:fs/promises';
@@ -67,6 +68,7 @@ export async function runScan(args: RunArgs): Promise<number> {
   });
   if (args.review) report.review = applyChangeFilter(report, args.review.changes, root, config, args.review.scope);
   else await attachScanDelta(report, `${mode}:${root}`, root);
+  if (options.ai) await runAiStep(report, config, options.ai, root);
   if (config.updates?.auto !== false && !options.deps.offline && options.deps.enabled) startBackgroundUpdate(config.updates?.intervalHours ?? 24);
   for (const w of report.summary.skillWarnings ?? []) writeInfo(`warning: ${w}`);
 

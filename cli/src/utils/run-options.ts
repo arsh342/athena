@@ -24,6 +24,30 @@ export interface RunFlags {
   nodejsscan?: boolean;
   bearer?: boolean;
   semgrep?: boolean;
+  /** `--ai` (verify) or `--ai verify|hunt|deep`. */
+  ai?: boolean | string;
+  provider?: string;
+  model?: string;
+  quality?: string;
+  budget?: string;
+  budgetTokens?: string;
+  yes?: boolean;
+  baseUrl?: string;
+  preset?: string;
+  suggestFixes?: boolean;
+}
+
+export interface AiRunOptions {
+  mode: 'verify' | 'hunt' | 'deep';
+  provider: 'anthropic' | 'openai' | 'google' | 'openai-compatible';
+  model?: string;
+  quality: 'economy' | 'balanced' | 'high';
+  budget?: { runUsd?: number; runTokens?: number };
+  yes: boolean;
+  baseUrl?: string;
+  preset?: string;
+  /** Deep mode: write reviewed patch suggestions to .athena/patches (never applied). */
+  suggestFixes: boolean;
 }
 
 export interface RunOptions {
@@ -42,6 +66,8 @@ export interface RunOptions {
   publicRoutes: string[];
   scanners: { eslint: boolean };
   deps: { enabled: boolean; offline: boolean };
+  /** The optional AI layer; null unless `--ai` was given. */
+  ai: AiRunOptions | null;
   warnings: string[];
 }
 
@@ -109,6 +135,42 @@ export function resolveRunOptions(
       eslint: flags.eslint !== false,
     },
     deps: { enabled: flags.deps !== false, offline: flags.offline ?? false },
+    ai: resolveAi(flags),
     warnings,
+  };
+}
+
+const PROVIDER_NAMES = ['anthropic', 'openai', 'google', 'openai-compatible'] as const;
+
+function positive(value: string | undefined, flag: string): number | undefined {
+  if (value === undefined) return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) throw new UsageError(`${flag} must be a positive number, got "${value}"`);
+  return n;
+}
+
+function resolveAi(flags: RunFlags): AiRunOptions | null {
+  const given = flags.ai;
+  const others = [flags.provider, flags.model, flags.quality, flags.budget, flags.budgetTokens, flags.baseUrl, flags.preset, flags.suggestFixes].some((v) => v !== undefined);
+  if (given === undefined || given === false) {
+    if (others) throw new UsageError('--provider, --model, --quality, --budget, --budget-tokens, --base-url and --preset need --ai');
+    return null;
+  }
+  const mode = given === true ? 'verify' : given;
+  if (mode !== 'verify' && mode !== 'hunt' && mode !== 'deep') throw new UsageError(`unknown --ai mode "${String(given)}" (use verify, hunt or deep)`);
+  const provider = flags.provider ?? 'anthropic';
+  if (!(PROVIDER_NAMES as readonly string[]).includes(provider)) throw new UsageError(`unknown --provider "${provider}" (use ${PROVIDER_NAMES.join(', ')})`);
+  const quality = flags.quality ?? 'balanced';
+  if (quality !== 'economy' && quality !== 'balanced' && quality !== 'high') throw new UsageError(`unknown --quality "${quality}" (use economy or high; balanced is the default)`);
+  const runUsd = positive(flags.budget, '--budget');
+  const runTokens = positive(flags.budgetTokens, '--budget-tokens');
+  if (mode === 'deep' && runUsd === undefined && runTokens === undefined) throw new UsageError('--ai deep needs an explicit spend cap: pass --budget <usd> (or --budget-tokens <n>)');
+  if (flags.suggestFixes && mode !== 'deep') throw new UsageError('--suggest-fixes needs --ai deep');
+  return {
+    mode, provider: provider as AiRunOptions['provider'], quality: quality as AiRunOptions['quality'], yes: flags.yes ?? false, suggestFixes: flags.suggestFixes ?? false,
+    ...(flags.model ? { model: flags.model } : {}),
+    ...(runUsd !== undefined || runTokens !== undefined ? { budget: { ...(runUsd !== undefined ? { runUsd } : {}), ...(runTokens !== undefined ? { runTokens } : {}) } } : {}),
+    ...(flags.baseUrl ? { baseUrl: flags.baseUrl } : {}),
+    ...(flags.preset ? { preset: flags.preset } : {}),
   };
 }

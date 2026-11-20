@@ -50,13 +50,17 @@
     "eslint-plugin-security": "^3.0.0"
   },
   "devDependencies": {
+    "@athena/agents": "file:../agents",
     "@athena/core": "file:../core",
     "commander": "^14.0.0",
     "tsx": "^4.19.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.11.0",
+    "@google/genai": "^3.6.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@vscode/tree-sitter-wasm": "0.3.1",
+    "openai": "^7.62.0",
     "zod": "^4.6.7"
   }
 }

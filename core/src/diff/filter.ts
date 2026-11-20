@@ -41,14 +41,7 @@ export function applyChangeFilter(report: ScanReport, changes: ChangeSet, root: 
   }
   report.files = report.files.filter((f) => f.findings.length > 0 || f.units.length > 0);
 
-  const all = report.files.flatMap((f) => f.findings);
-  const counted = all.filter((f) => f.confidence !== 'low');
-  report.summary.findings = Object.fromEntries(SEVERITIES.map((s) => [s, counted.filter((f) => f.severity === s).length])) as Record<Severity, number>;
-  const needsReview = all.length - counted.length;
-  if (needsReview > 0) report.summary.needsReview = needsReview;
-  else delete report.summary.needsReview;
-  const blockKev = config.updates?.blockKnownExploited !== false;
-  report.summary.blocked = counted.some((f) => config.blockOn.includes(f.severity) || (blockKev && f.kev === true));
+  recomputeGate(report, config);
 
   const info: ReviewInfo = {
     scope,
@@ -58,4 +51,16 @@ export function applyChangeFilter(report: ScanReport, changes: ChangeSet, root: 
     existing,
   };
   return info;
+}
+
+/** Recompute the severity counts, the needs-review count and the gate after findings were added, removed or re-graded. */
+export function recomputeGate(report: ScanReport, config: Pick<AthenaConfig, 'blockOn' | 'updates'>): void {
+  const all = report.files.flatMap((f) => f.findings);
+  const counted = all.filter((f) => f.confidence !== 'low');
+  report.summary.findings = Object.fromEntries(SEVERITIES.map((s) => [s, counted.filter((f) => f.severity === s).length])) as Record<Severity, number>;
+  const needsReview = all.length - counted.length;
+  if (needsReview > 0) report.summary.needsReview = needsReview;
+  else delete report.summary.needsReview;
+  const blockKev = config.updates?.blockKnownExploited !== false;
+  report.summary.blocked = counted.some((f) => config.blockOn.includes(f.severity) || (blockKev && f.kev === true));
 }

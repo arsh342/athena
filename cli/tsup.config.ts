@@ -15,7 +15,7 @@ export default defineConfig({
   minify: false,
   // core uses import.meta.url (createRequire for the grammar package); shim it in the CJS bundle.
   shims: true,
-  noExternal: ['@athena/core', 'commander'],
+  noExternal: ['@athena/core', '@athena/agents', 'commander'],
   external: [
     // Optional scanner dependencies should resolve at runtime, not from bundle shims.
     'eslint',
@@ -24,6 +24,10 @@ export default defineConfig({
     'jiti/package.json',
     // Grammar .wasm files are resolved from node_modules at runtime.
     '@vscode/tree-sitter-wasm',
+    // Provider SDKs for the optional AI layer: loaded only when --ai is used.
+    '@anthropic-ai/sdk',
+    'openai',
+    '@google/genai',
   ],
   // The fast detector's weights ship next to the bundle (dist/models/fast).
   onSuccess: async () => {

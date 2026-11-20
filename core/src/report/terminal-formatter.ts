@@ -167,6 +167,17 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     out.push('');
   }
 
+  if (summary.ai) {
+    const ai = summary.ai;
+    const money = (n: number): string => `$${n.toFixed(2)}`;
+    const spend = ai.costUsd === null ? `${ai.tokens.toLocaleString('en-US')} tokens this run` : `${money(ai.costUsd)} this run`;
+    const today = ai.today ? ` · ${ai.today.unit === 'usd' ? `${money(ai.today.spent)} of ${money(ai.today.cap)}` : `${Math.round(ai.today.spent).toLocaleString('en-US')} of ${ai.today.cap.toLocaleString('en-US')} tokens`} today` : '';
+    out.push(bold('AI') + `  ${ai.mode} · ${ai.provider} ${ai.model} · ${ai.checked} checked${ai.cachedHits ? ` (${ai.cachedHits} from cache)` : ''}`);
+    out.push(`  AI: ${spend}${today}`);
+    if (ai.notChecked.length > 0) out.push(dim(`  ${ai.notChecked.length} not checked by AI: ${[...new Set(ai.notChecked.map((n) => n.reason))].slice(0, 2).join('; ')} (offline confidence applies)`));
+    out.push('');
+  }
+
   if (summary.skills && summary.skills.length > 0) {
     const names = summary.skills.map((s) => s.name);
     out.push(dim(`Skills: ${names.slice(0, 6).join(', ')}${names.length > 6 ? ` (+${names.length - 6})` : ''}`));

@@ -11,6 +11,7 @@ import { skillsAdd, skillsList, skillsNew, skillsRemove, skillsShow, skillsTest 
 import { variantsCommand } from './commands/variants.js';
 import { reviewCommand, type ReviewFlags } from './commands/review.js';
 import { updateCommand } from './commands/update.js';
+import { keysRemove, keysSet, keysStatus } from './commands/keys.js';
 import { mcpCommand } from './commands/mcp.js';
 import { alertsCommand } from './commands/alerts.js';
 import { setupAllCommand } from './commands/setup.js';
@@ -41,6 +42,16 @@ function addRunFlags(command: Command): Command {
     .option('-t, --threshold <number>', 'deprecated: only affects the heuristic fallback')
     .option('--no-eslint', 'disable ESLint scanner')
     .option('--no-npm-audit', 'deprecated no-op: npm audit was replaced by dependency checks')
+    .option('--ai [mode]', 'AI layer: verify (default) settles uncertain findings, hunt also explores risky components, deep adds a panel (needs --budget); spend is capped')
+    .option('--provider <name>', 'AI provider: anthropic (default), openai, google, openai-compatible')
+    .option('--model <id>', 'AI model (Anthropic default: claude-sonnet-5-5)')
+    .option('--quality <level>', 'economy (Haiku 5.5) or high (Opus 5.5); default balanced (Sonnet 5.5)')
+    .option('--budget <usd>', 'cap this AI run at this many dollars (default 0.25; day cap 1.00)')
+    .option('--budget-tokens <n>', 'cap this AI run at this many tokens (for models without a known price)')
+    .option('--base-url <url>', 'endpoint for openai-compatible (https, or localhost)')
+    .option('--preset <name>', 'openai-compatible preset: openrouter, deepseek, mistral, groq, xai, together, ollama, lmstudio')
+    .option('--suggest-fixes', 'with --ai deep: write reviewed patch suggestions to .athena/patches (never applied)')
+    .option('-y, --yes', 'agree to send code excerpts to the AI provider without asking')
     .option('--no-deps', 'skip dependency checks (vulnerabilities, missing and typosquatted packages)')
     .option('--offline', 'dependency checks use only cached data')
     .option('--no-nodejsscan', 'deprecated no-op: NodeJSScan was retired')
@@ -115,6 +126,19 @@ program
   .description('serve Athena as an MCP toolbox over stdio (for Claude Code, Cursor, Codex and other agents)')
   .option('--root <dir>', 'only paths inside this directory are allowed (default: the current directory)')
   .action(async (opts: { root?: string }) => { await mcpCommand(opts); });
+
+const keysCommand = program.command('keys').description('manage API keys for the optional AI layer (stored privately on this machine)');
+keysCommand
+  .command('set <provider>')
+  .option('--preset <name>', 'for openai-compatible: openrouter, deepseek, mistral, groq, xai, together')
+  .description('save a key (read from stdin or a hidden prompt, never from an argument)')
+  .action(async (name: string, opts: { preset?: string }) => { process.exitCode = await keysSet(name, opts); });
+keysCommand.command('status').description('show where each provider\'s key comes from (masked)').action(() => { process.exitCode = keysStatus(); });
+keysCommand
+  .command('remove <provider>')
+  .option('--preset <name>', 'for openai-compatible')
+  .description('delete a stored key')
+  .action((name: string, opts: { preset?: string }) => { process.exitCode = keysRemove(name, opts); });
 
 program
   .command('alerts')
