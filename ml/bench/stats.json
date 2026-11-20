@@ -9,6 +9,7 @@
    "human": 464
   },
   "csharp": {
+   "ai": 53,
    "human": 223
   },
   "go": {
@@ -20,22 +21,22 @@
    "human": 337
   },
   "javascript": {
-   "ai": 55,
+   "ai": 836,
    "human": 600,
-   "refined": 4
+   "refined": 12
   },
   "php": {
    "human": 387
   },
   "python": {
-   "ai": 3244,
+   "ai": 3565,
    "human": 431,
-   "refined": 255
+   "refined": 261
   },
   "rust": {
-   "ai": 400,
+   "ai": 1001,
    "human": 576,
-   "refined": 1
+   "refined": 35
   },
   "shell": {
    "ai": 149,
@@ -43,69 +44,67 @@
    "refined": 33
   },
   "tsx": {
-   "ai": 282,
+   "ai": 388,
    "human": 234,
-   "refined": 10
+   "refined": 23
   },
   "typescript": {
-   "ai": 813,
+   "ai": 892,
    "human": 175,
-   "refined": 22
+   "refined": 24
   }
  },
  "newest": {
   "c": {
-   "ai": 161,
-   "refined": 67
-  },
-  "cpp": {
-   "ai": 56,
-   "refined": 1
+   "ai": 19
   },
   "csharp": {
-   "ai": 1193,
-   "refined": 15
+   "ai": 389,
+   "refined": 10
   },
   "go": {
-   "ai": 1023,
-   "refined": 39
+   "ai": 1586,
+   "refined": 75
   },
   "java": {
-   "ai": 193,
-   "refined": 58
+   "ai": 195,
+   "refined": 63
   },
   "javascript": {
-   "ai": 1581,
-   "refined": 8
+   "ai": 904,
+   "refined": 98
   },
   "python": {
-   "ai": 2158,
-   "refined": 181
+   "ai": 2620,
+   "refined": 252
   },
   "rust": {
-   "ai": 1042,
-   "refined": 168
+   "ai": 3390,
+   "refined": 219
   },
   "shell": {
-   "ai": 76,
-   "refined": 8
+   "ai": 120,
+   "refined": 7
   },
   "tsx": {
-   "ai": 460,
-   "refined": 30
+   "ai": 1083,
+   "refined": 60
   },
   "typescript": {
-   "ai": 1612,
-   "refined": 205
+   "ai": 4982,
+   "refined": 314
   }
  },
  "test": {
   "c": {
-   "human": 62
+   "ai": 13,
+   "human": 62,
+   "refined": 4
   },
   "cpp": {
-   "ai": 1,
-   "human": 341
+   "ai": 47,
+   "human": 341,
+   "refined": 8
   },
   "csharp": {
    "ai": 3,
@@ -113,14 +112,15 @@
    "refined": 2
   },
   "go": {
-   "ai": 495,
-   "human": 241
+   "ai": 864,
+   "human": 241,
+   "refined": 27
   },
   "java": {
    "human": 376
   },
   "javascript": {
-   "ai": 931,
+   "ai": 1109,
    "human": 778,
    "refined": 77
   },
@@ -128,61 +128,61 @@
    "human": 588
   },
   "python": {
-   "ai": 588,
+   "ai": 1240,
    "human": 660,
-   "refined": 2
+   "refined": 70
   },
   "rust": {
-   "ai": 472,
+   "ai": 819,
    "human": 397,
    "refined": 21
   },
   "shell": {
-   "ai": 31,
+   "ai": 33,
    "human": 193,
    "refined": 1
   },
   "tsx": {
-   "ai": 60,
+   "ai": 96,
    "human": 73,
    "refined": 8
   },
   "typescript": {
-   "ai": 683,
+   "ai": 1327,
    "human": 493,
-   "refined": 16
+   "refined": 20
   }
  },
  "train": {
   "c": {
-   "ai": 312,
+   "ai": 558,
    "human": 3498,
-   "refined": 21
+   "refined": 88
   },
   "cpp": {
-   "ai": 1199,
+   "ai": 1422,
    "human": 2449,
-   "refined": 39
+   "refined": 40
   },
   "csharp": {
-   "ai": 2078,
+   "ai": 3759,
    "human": 3077,
-   "refined": 271
+   "refined": 294
   },
   "go": {
-   "ai": 1957,
+   "ai": 3631,
    "human": 5528,
-   "refined": 84
+   "refined": 180
   },
   "java": {
-   "ai": 25,
+   "ai": 231,
    "human": 2734,
-   "refined": 7
+   "refined": 76
   },
   "javascript": {
-   "ai": 3712,
+   "ai": 5895,
    "human": 6464,
-   "refined": 175
+   "refined": 237
   },
   "php": {
    "ai": 1127,
@@ -190,29 +190,29 @@
    "refined": 34
   },
   "python": {
-   "ai": 9309,
+   "ai": 13132,
    "human": 5492,
-   "refined": 437
+   "refined": 643
   },
   "rust": {
-   "ai": 2267,
+   "ai": 4057,
    "human": 5380,
-   "refined": 82
+   "refined": 226
   },
   "shell": {
-   "ai": 1043,
+   "ai": 1332,
    "human": 1217,
-   "refined": 14
+   "refined": 16
   },
   "tsx": {
-   "ai": 2278,
+   "ai": 4509,
    "human": 898,
-   "refined": 109
+   "refined": 315
   },
   "typescript": {
-   "ai": 7077,
+   "ai": 13290,
    "human": 2777,
-   "refined": 385
+   "refined": 1009
   }
  }
 }

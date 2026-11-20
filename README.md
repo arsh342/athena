@@ -61,7 +61,7 @@ athena models reset --repo                       # forget what was learned here 
 
 It starts after 30 labels with at least 10 of each kind, keeps only numbers (code hashes and style statistics, never code, in a private file), can shift an estimate by at most 0.25, and is adopted only if it improves on held-out labels and does not make a bundled check set worse. The report says what happened, for example `learning: tuned with 37 labels from this repo (changed 4 of 120 units)`.
 
-Honest limit: Athena's trained detector is enabled for JavaScript only so far (it must meet its release targets per language); every other language uses a style heuristic that rarely scores near the decision boundary, so tuning there seldom changes a result. The report shows how many units tuning changed.
+Honest limit: Athena's trained detector is enabled for JavaScript and TypeScript so far (it must meet its release targets per language); every other language uses a style heuristic that rarely scores near the decision boundary, so tuning there seldom changes a result. The report shows how many units tuning changed.
 
 ## Claude Code plugin
 

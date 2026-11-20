@@ -1,0 +1,283 @@
+{
+ "benchmark": {
+  "C": 2.0,
+  "classes": [
+   "human",
+   "ai",
+   "refined"
+  ],
+  "collected": "2026-11-20T16:36:51.356520+00:00",
+  "newest": {
+   "c": {
+    "ai_recall": 0.21052631578947367,
+    "n": 19
+   },
+   "csharp": {
+    "ai_recall": 0.6766917293233082,
+    "n": 399
+   },
+   "go": {
+    "ai_recall": 0.5761589403973509,
+    "n": 1661
+   },
+   "java": {
+    "ai_recall": 0.04263565891472868,
+    "n": 258
+   },
+   "javascript": {
+    "ai_recall": 0.9411177644710579,
+    "n": 1002
+   },
+   "python": {
+    "ai_recall": 0.9143454038997214,
+    "n": 2872
+   },
+   "rust": {
+    "ai_recall": 0.7234691050152396,
+    "n": 3609
+   },
+   "shell": {
+    "ai_recall": 0.5669291338582677,
+    "n": 127
+   },
+   "tsx": {
+    "ai_recall": 0.715660542432196,
+    "n": 1143
+   },
+   "typescript": {
+    "ai_recall": 0.7454682779456193,
+    "n": 5296
+   }
+  },
+  "split_sizes": {
+   "dev": 13235,
+   "newest": 16386,
+   "test": 10389,
+   "train": 100997
+  }
+ },
+ "classes": [
+  "human",
+  "ai",
+  "refined"
+ ],
+ "featureSpec": "fs1",
+ "languages": {
+  "c": {
+   "enabled": false,
+   "reason": "too few distinct repositories in the test split (2 human / 1 ai, need 5 each)",
+   "test": {
+    "ai_repos": 1,
+    "ais": 13,
+    "f1": 0.6956521739130435,
+    "fpr": 0.03225806451612903,
+    "human_repos": 2,
+    "humans": 62,
+    "late_humans": 0,
+    "n": 75,
+    "precision": 0.8,
+    "recall": 0.6153846153846154
+   },
+   "threshold": 0.5
+  },
+  "cpp": {
+   "enabled": false,
+   "reason": "too few distinct repositories in the test split (3 human / 2 ai, need 5 each)",
+   "test": {
+    "ai_repos": 2,
+    "ais": 47,
+    "f1": 0.7346938775510204,
+    "fpr": 0.04398826979472141,
+    "human_repos": 3,
+    "humans": 341,
+    "late_humans": 0,
+    "n": 388,
+    "precision": 0.7058823529411765,
+    "recall": 0.7659574468085106
+   },
+   "threshold": 0.5
+  },
+  "csharp": {
+   "enabled": false,
+   "reason": "too little test data (398 human / 3 ai)",
+   "test": {
+    "ai_repos": 1,
+    "ais": 3,
+    "f1": 0.2,
+    "fpr": 0.01507537688442211,
+    "human_repos": 2,
+    "humans": 398,
+    "late_humans": 0,
+    "n": 401,
+    "precision": 0.14285714285714285,
+    "recall": 0.3333333333333333
+   },
+   "threshold": 0.78
+  },
+  "go": {
+   "enabled": false,
+   "reason": "too few distinct repositories in the test split (2 human / 3 ai, need 5 each)",
+   "test": {
+    "ai_repos": 3,
+    "ais": 864,
+    "f1": 0.8623613829093281,
+    "fpr": 0.03319502074688797,
+    "human_repos": 2,
+    "humans": 241,
+    "late_fpr": 0.0,
+    "late_humans": 42,
+    "n": 1105,
+    "precision": 0.9880418535127056,
+    "recall": 0.7650462962962963
+   },
+   "threshold": 0.5
+  },
+  "java": {
+   "enabled": false,
+   "reason": "too little test data (376 human / 0 ai)",
+   "test": {
+    "ai_repos": 0,
+    "ais": 0,
+    "f1": 0.0,
+    "fpr": 0.0026595744680851063,
+    "human_repos": 4,
+    "humans": 376,
+    "late_humans": 0,
+    "n": 376,
+    "precision": 0.0,
+    "recall": 0.0
+   },
+   "threshold": 0.5
+  },
+  "javascript": {
+   "enabled": true,
+   "reason": "meets release targets",
+   "test": {
+    "ai_repos": 11,
+    "ais": 1109,
+    "f1": 0.9390815370196813,
+    "fpr": 0.02956298200514139,
+    "human_repos": 9,
+    "humans": 778,
+    "late_fpr": 0.0425,
+    "late_humans": 400,
+    "n": 1887,
+    "precision": 0.9775609756097561,
+    "recall": 0.9035166816952209
+   },
+   "threshold": 0.72
+  },
+  "php": {
+   "enabled": false,
+   "reason": "too little test data (588 human / 0 ai)",
+   "test": {
+    "ai_repos": 0,
+    "ais": 0,
+    "f1": 0.0,
+    "fpr": 0.0,
+    "human_repos": 4,
+    "humans": 588,
+    "late_fpr": 0.0,
+    "late_humans": 200,
+    "n": 588,
+    "precision": 0.0,
+    "recall": 0.0
+   },
+   "threshold": 0.5
+  },
+  "python": {
+   "enabled": false,
+   "reason": "human false-positive rate 13.3% > 5%",
+   "test": {
+    "ai_repos": 7,
+    "ais": 1240,
+    "f1": 0.9460317460317461,
+    "fpr": 0.13333333333333333,
+    "human_repos": 7,
+    "humans": 660,
+    "late_fpr": 0.007142857142857143,
+    "late_humans": 140,
+    "n": 1900,
+    "precision": 0.93125,
+    "recall": 0.9612903225806452
+   },
+   "threshold": 0.69
+  },
+  "rust": {
+   "enabled": false,
+   "reason": "too few distinct repositories in the test split (2 human / 5 ai, need 5 each)",
+   "test": {
+    "ai_repos": 5,
+    "ais": 819,
+    "f1": 0.5677308024158757,
+    "fpr": 0.027707808564231738,
+    "human_repos": 2,
+    "humans": 397,
+    "late_fpr": 0.01507537688442211,
+    "late_humans": 199,
+    "n": 1216,
+    "precision": 0.9676470588235294,
+    "recall": 0.4017094017094017
+   },
+   "threshold": 0.71
+  },
+  "shell": {
+   "enabled": false,
+   "reason": "too few distinct repositories in the test split (3 human / 4 ai, need 5 each)",
+   "test": {
+    "ai_repos": 4,
+    "ais": 33,
+    "f1": 0.7222222222222221,
+    "fpr": 0.06735751295336788,
+    "human_repos": 3,
+    "humans": 193,
+    "late_fpr": 0.06578947368421052,
+    "late_humans": 76,
+    "n": 226,
+    "precision": 0.6666666666666666,
+    "recall": 0.7878787878787878
+   },
+   "threshold": 0.63
+  },
+  "tsx": {
+   "enabled": false,
+   "reason": "too few distinct repositories in the test split (2 human / 3 ai, need 5 each)",
+   "test": {
+    "ai_repos": 3,
+    "ais": 96,
+    "f1": 0.8571428571428572,
+    "fpr": 0.0547945205479452,
+    "human_repos": 2,
+    "humans": 73,
+    "late_fpr": 0.057971014492753624,
+    "late_humans": 69,
+    "n": 169,
+    "precision": 0.9493670886075949,
+    "recall": 0.78125
+   },
+   "threshold": 0.81
+  },
+  "typescript": {
+   "enabled": true,
+   "reason": "meets release targets",
+   "test": {
+    "ai_repos": 5,
+    "ais": 1327,
+    "f1": 0.8590774439272112,
+    "fpr": 0.04259634888438134,
+    "human_repos": 5,
+    "humans": 493,
+    "late_fpr": 0.0486322188449848,
+    "late_humans": 329,
+    "n": 1820,
+    "precision": 0.9797297297297297,
+    "recall": 0.7648831951770911
+   },
+   "threshold": 0.84
+  }
+ },
+ "layout": "f16 weights [class][feature] then f32 biases[class]",
+ "nFeatures": 262188,
+ "temperature": 0.9208475269625865,
+ "version": "0.2.1"
+}
