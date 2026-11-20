@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { background, shockwave } from 'asciify-engine/kit';
+import { FeatureBento } from '../components/FeatureBento';
 import { Terminal } from '../components/Terminal';
 import { fetchLandingContent, fetchLandingTerminalLines } from '../services/api';
 import type { LandingContent } from '../types';
@@ -26,7 +27,6 @@ export function Landing() {
   const copyRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<string[]>([]);
   const [content, setContent] = useState<LandingContent | null>(null);
-  const [tab, setTab] = useState(0);
 
   // Wind streaks the visitor can stir; a click sends one ring out. Faint, clear round the headline, still under reduced motion.
   useEffect(() => {
@@ -45,8 +45,6 @@ export function Landing() {
     return () => { active = false; };
   }, []);
 
-  const features = content?.features ?? [];
-  const feat = features[Math.min(tab, Math.max(0, features.length - 1))];
   const integrations = content?.integrations ?? [];
 
   return (
@@ -92,26 +90,7 @@ export function Landing() {
         </div>
       </section>
 
-      {features.length > 0 && feat ? (
-        <section className="section" id="capabilities">
-          <h2>What it does</h2>
-          <div className="tabs">
-            <div className="tab-list" role="tablist" aria-label="Capabilities">
-              {features.map((f, i) => (
-                <button key={f.num} role="tab" aria-selected={i === tab} onClick={() => setTab(i)}>
-                  <span className="num">{f.num}</span>{f.tab}
-                </button>
-              ))}
-            </div>
-            <div className="panel tab-detail">
-              <h3>{feat.title}</h3>
-              <p>{feat.description}</p>
-              <p className="meta">{feat.detail}</p>
-              <Terminal lines={feat.terminalLines} title={feat.tab} />
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <FeatureBento />
 
       <section className="section" id="install">
         <h2>Install it in a minute.</h2>
