@@ -6,6 +6,10 @@ import { isConfigTextFile, isSourceCandidate, scanFiles } from '@athena/core';
 import type { ClassifiedFinding, ScanReport } from '@athena/core';
 import { simpleGit } from 'simple-git';
 import { addScan } from './data.ts';
+import { mkdtemp as mkTmp } from 'node:fs/promises';
+import { mergeConfig } from '@athena/core';
+import { runAiVerify } from '@athena/agents';
+import { scrub, type AiScanRequest } from './ai-scan.ts';
 import type { Finding, ScanSummary } from './data.ts';
 
 const SCAN_TIMEOUT_MS = 120_000;
@@ -37,6 +41,7 @@ export interface UploadedPathScanInput {
   displayName: string;
   userId?: number | string;
   emit?: ScanEmitter;
+  ai?: AiScanRequest;
 }
 
 function createScanId(repoName: string): string {
@@ -234,8 +239,9 @@ async function scanFromPath(input: {
   userId?: number | string;
   lines: string[];
   emit?: ScanEmitter;
+  ai?: AiScanRequest;
 }): Promise<ScanResult> {
-  const { scanId, repoName, repoUrl, rootPath, userId, lines, emit } = input;
+  const { scanId, repoName, repoUrl, rootPath, userId, lines, emit, ai } = input;
   const emitLine = createEmitterLog(emit);
   const log = (line: string, kind: 'output' | 'hint' | 'error' = 'output') => {
     emitLine(line, kind);
@@ -263,8 +269,10 @@ async function scanFromPath(input: {
     log('Running security analyzers (secret detection + hallucination check)');
 
     const report: ScanReport = await runScanFilesInProjectRoot(rootPath, sourceFiles, textFiles);
+    if (ai) await runAiStep(report, rootPath, ai, log, emit);
     const allFindings = report.files.flatMap((file) => file.findings).map(mapFinding);
     const scanSummary = mapScanSummary(report, scanId, repoName, repoUrl, rootPath);
+    if (report.summary.ai) scanSummary.ai = { mode: report.summary.ai.mode, provider: report.summary.ai.provider, model: report.summary.ai.model, costUsd: report.summary.ai.costUsd ?? 0, checked: report.summary.ai.checked, notChecked: report.summary.ai.notChecked.length };
 
     log(`Extracted ${report.summary.totalUnits} code units`);
     log(`Flagged ${report.summary.flaggedUnits} units above threshold`);
@@ -302,6 +310,28 @@ async function scanFromPath(input: {
     const failedScan = createEmptyScan(scanId, repoName, repoUrl, 'FAILED');
     await persistScan(userId, failedScan, []);
     return { scan: failedScan, findings: [], terminalLines: lines };
+  }
+}
+
+/** The optional AI step. The key lives only in this call's in-memory environment; the temp home (cache, ledger) is deleted afterwards. */
+async function runAiStep(report: ScanReport, rootPath: string, ai: AiScanRequest, log: (l: string, k?: 'output' | 'hint' | 'error') => void, emit?: ScanEmitter): Promise<void> {
+  const home = await mkTmp(join(tmpdir(), 'athena-ai-'));
+  try {
+    emit?.status?.('AI verification', 75);
+    log(`AI ${ai.mode} with ${ai.provider} ${ai.model} (cap $${ai.budgetUsd.toFixed(2)})`);
+    const env: NodeJS.ProcessEnv = { ATHENA_AI_API_KEY: ai.key, ANTHROPIC_API_KEY: ai.key, OPENAI_API_KEY: ai.key, GEMINI_API_KEY: ai.key };
+    await runAiVerify(report, {
+      root: rootPath, mode: ai.mode, config: mergeConfig({}), provider: ai.provider, model: ai.model,
+      ...(ai.preset ? { preset: ai.preset } : {}), ...(ai.baseUrl ? { baseUrl: ai.baseUrl } : {}),
+      budget: { runUsd: ai.budgetUsd, dayUsd: ai.budgetUsd }, home, env, confirm: async () => true,
+    });
+    const s = report.summary.ai;
+    if (s) log(`AI checked ${s.checked} findings, ${s.notChecked.length} not checked, cost ${s.costUsd === null ? 'unknown' : `$${s.costUsd.toFixed(4)}`}`);
+  } catch (error) {
+    // The scan still succeeds without AI: say so, never include the key.
+    log(`AI step skipped: ${scrub(error instanceof Error ? error.message : String(error), ai.key)}`, 'hint');
+  } finally {
+    await rm(home, { recursive: true, force: true }).catch(() => {});
   }
 }
 
@@ -375,6 +405,7 @@ export async function runUploadedPathScan(input: UploadedPathScanInput): Promise
     userId: input.userId,
     lines,
     emit: input.emit,
+    ...(input.ai ? { ai: input.ai } : {}),
   });
 }
 
@@ -384,6 +415,7 @@ export async function runUploadScan(input: {
   rootName?: string;
   userId?: number | string;
   emit?: ScanEmitter;
+  ai?: AiScanRequest;
 }): Promise<ScanResult> {
   const workspaceRoot = await mkdtemp(join(tmpdir(), 'athena-upload-'));
 
@@ -399,6 +431,7 @@ export async function runUploadScan(input: {
         displayName: input.rootName?.trim() || 'local-folder-upload',
         userId: input.userId,
         emit: input.emit,
+        ...(input.ai ? { ai: input.ai } : {}),
       });
     }
 
@@ -417,6 +450,7 @@ export async function runUploadScan(input: {
       displayName: input.rootName?.trim() || zipFile.originalname.replace(/\.zip$/i, ''),
       userId: input.userId,
       emit: input.emit,
+      ...(input.ai ? { ai: input.ai } : {}),
     });
   } finally {
     await rm(workspaceRoot, { recursive: true, force: true }).catch(() => {});
@@ -426,7 +460,7 @@ export async function runUploadScan(input: {
 /**
  * Clone repository, run analysis, store results, and return scan summary plus terminal lines.
  */
-export async function runScan(repoUrl: string, userId?: number | string, emit?: ScanEmitter): Promise<ScanResult> {
+export async function runScan(repoUrl: string, userId?: number | string, emit?: ScanEmitter, ai?: AiScanRequest): Promise<ScanResult> {
   const normalizedUrl = repoUrl.trim();
   const repoName = parseRepoName(normalizedUrl);
   const scanId = createScanId(repoName);
@@ -471,6 +505,7 @@ export async function runScan(repoUrl: string, userId?: number | string, emit?: 
       userId,
       lines,
       emit,
+      ...(ai ? { ai } : {}),
     });
   } finally {
     await rm(tmpDir, { recursive: true, force: true }).catch(() => {});

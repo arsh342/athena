@@ -54,6 +54,8 @@ export interface ScanSummary {
   duration: number;
   /** Null for scans saved before provenance was measured. */
   aiProvenance?: AiProvenanceSummary | null;
+  /** Present only on the response of a scan that used the user's AI key; not persisted. */
+  ai?: { mode: string; provider: string; model: string; costUsd: number; checked: number; notChecked: number };
   coverage?: CoverageSummary | null;
 }
 

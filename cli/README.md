@@ -147,6 +147,8 @@ Athena is offline by default: no model is called unless you pass `--ai`. The AI 
 
 **Privacy.** On first use in a repository Athena shows exactly what is sent (short excerpts, the flagged function, its data flow, nearby files) and where, and asks once. Repository text is treated as untrusted: it is delimited, and a verdict is accepted only from structured output, so a comment saying "ignore your instructions" cannot change it.
 
+**On the website** (Settings, "AI key") you can use your own key for scans too: it is kept in your browser tab only, sent as headers with the one scan, held in memory on the server, and never stored or logged. A spend cap (at most $1.00 per scan) is required, you must accept what will be sent first, only one AI scan runs per user at a time, and only hosted providers are allowed (no local models, no arbitrary endpoints).
+
 **What it does not do.** It does not run your code, apply any patch, or decide anything the offline analyzers can decide. Provider adapters are checked against the vendor SDK types and fake providers in tests; the benchmark in `bench/ai-verify` measures precision and recall against 14 known snippets and is run on demand because it spends real money.
 
 ## Review, git gates and AI agents

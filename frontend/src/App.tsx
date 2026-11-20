@@ -11,6 +11,7 @@ import { QuickstartPage } from './pages/Quickstart';
 import { Register } from './pages/Register';
 import { ReportPage } from './pages/ReportPage';
 import { ScanPage } from './pages/ScanPage';
+import { SettingsPage } from './pages/Settings';
 import { SitemapPage } from './pages/Sitemap';
 import { TermsPage } from './pages/Terms';
 
@@ -53,6 +54,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/scan" element={<ScanPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/reports/:scanId" element={<ReportPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -10,6 +10,7 @@
     "test": "node --import tsx --test test/**/*.test.ts"
   },
   "dependencies": {
+    "@athena/agents": "*",
     "@athena/core": "*",
     "@supabase/supabase-js": "^2.105.4",
     "@types/supertest": "^7.2.0",

@@ -5,6 +5,7 @@ import App from './App';
 import { AuthProvider } from './hooks/useAuth';
 import './styles/index.css';
 import './styles/web-terminal.css';
+import './styles/theme.css';
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual';

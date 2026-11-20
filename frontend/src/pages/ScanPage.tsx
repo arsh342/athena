@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { startUploadScan } from '../services/api';
+import { startScan, startUploadScan } from '../services/api';
+import { aiReady, loadAiSettings } from '../utils/ai-settings';
 import { MAX_UPLOAD_BYTES, shouldSkipUploadPath } from '../utils/upload';
 
 type ScanSource = 'repo' | 'upload';
@@ -97,6 +99,24 @@ export function ScanPage() {
   function handleRepoSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!repoUrl.trim()) return;
+    if (aiReady(loadAiSettings())) {
+      // The terminal socket cannot carry the key, so an AI scan goes over HTTP and streams its lines into the terminal session.
+      setUploadError('');
+      setIsUploading(true);
+      void (async () => {
+        try {
+          await startScan(repoUrl.trim(), terminalSessionId);
+          const name = repoUrl.trim().replace(/\/+$/, '').split('/').pop()?.replace(/\.git$/i, '') || 'repository';
+          const queued = buildUploadQueuedCommand(name);
+          if (queued) setQueuedCommand({ id: Date.now(), command: queued });
+        } catch (error) {
+          setUploadError(error instanceof Error ? error.message : 'Scan failed.');
+        } finally {
+          setIsUploading(false);
+        }
+      })();
+      return;
+    }
     setQueuedCommand({ id: Date.now(), command: `scan ${repoUrl.trim()}` });
   }
 
@@ -185,6 +205,7 @@ export function ScanPage() {
 
           {source === 'repo' ? (
             <form className="scan-form-inner" onSubmit={handleRepoSubmit}>
+              {aiReady(loadAiSettings()) ? <p className="ai-status">AI verification is on for this tab. <Link to="/settings">Change</Link></p> : <p className="ai-note">Offline scan. <Link to="/settings">Add your own AI key</Link> to have findings verified.</p>}
               <label htmlFor="repoUrl">Repository URL</label>
               <input
                 id="repoUrl"
@@ -193,8 +214,9 @@ export function ScanPage() {
                 onChange={(event) => setRepoUrl(event.target.value)}
                 placeholder="https://github.com/org/repo"
               />
-              <button className="button button-primary" type="submit" disabled={!repoUrl.trim() || isScanning}>
-                {isScanning ? 'Scanning...' : 'Start scan'}
+              {uploadError ? <p className="auth-error">{uploadError}</p> : null}
+              <button className="button button-primary" type="submit" disabled={!repoUrl.trim() || isScanning || isUploading}>
+                {isScanning || isUploading ? 'Scanning...' : 'Start scan'}
               </button>
               <div className="scan-rules">
                 <span>https repositories only</span>
