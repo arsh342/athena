@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { BrandIcon } from './BrandIcon';
 
 const appLinks = [
   { to: '/dashboard', label: 'Dashboard' },
@@ -61,7 +62,7 @@ export function Navbar() {
     <header className={`nav${hidden ? ' nav-hidden' : ''}`} ref={bar} onFocusCapture={reveal}>
       <div className="nav-fade" aria-hidden="true" />
       <div className="nav-inner">
-        <NavLink className="nav-brand" to="/" aria-label="athena home">athena</NavLink>
+        <NavLink className="nav-brand" to="/" aria-label="athena home"><BrandIcon size={32} />athena</NavLink>
         <nav className="nav-links" aria-label="Primary">
           {links.map((item) => (
             item.to.includes('#')

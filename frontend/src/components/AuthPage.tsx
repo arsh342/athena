@@ -5,6 +5,7 @@ import { getOAuthErrorMessage, getOAuthStartPath, oauthProviders } from '../auth
 import { useAuth } from '../hooks/useAuth';
 import { GitHubIcon, GoogleIcon, LockIcon, MailIcon } from './Icons';
 import { LoadingGlyph } from './LoadingGlyph';
+import { Logo } from './Logo';
 
 type Mode = 'login' | 'register';
 type FieldName = 'email' | 'password';
@@ -76,7 +77,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
       <div className="auth-art" ref={artRef}>
         <img src="/images/athena.png" alt="" />
         <div className="auth-mark" ref={markRef}>
-          <strong>athena</strong>
+          <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><Logo size={26} />athena</strong>
           <span>Know what AI wrote before it ships.</span>
         </div>
       </div>

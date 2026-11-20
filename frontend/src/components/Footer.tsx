@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { BrandIcon } from './BrandIcon';
 
 interface FooterLink { label: string; to?: string; href?: string }
 interface FooterColumn { title: string; links: FooterLink[] }
@@ -15,13 +16,13 @@ function FooterAnchor({ link }: { link: FooterLink }) {
     : <a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>;
 }
 
-/** Description and link columns (folding on phones), a © line, and the name set large, fading into the page. */
+/** The icon, a description and link columns (folding on phones), and a © line. */
 export function Footer() {
   return (
     <footer className="site-footer">
       <div className="site-footer-top">
         <div className="site-footer-about">
-          <span className="site-footer-name">athena</span>
+          <BrandIcon size={64} className="site-footer-icon" />
           <p>Security review for AI-assisted code. It reads your code the way a careful reviewer does, and runs on your machine.</p>
           <p className="site-footer-status"><span className="dot" aria-hidden="true" />Offline by default</p>
         </div>
@@ -53,7 +54,6 @@ export function Footer() {
         <a href="https://github.com/arsh342/athena/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT licence</a>
       </div>
 
-      <p className="site-footer-mark" aria-hidden="true">athena</p>
     </footer>
   );
 }

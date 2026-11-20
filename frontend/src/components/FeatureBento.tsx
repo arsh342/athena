@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { Logo } from './Logo';
 
 /**
  * The features section: a hatched page and a bento of three live diagrams.
@@ -96,12 +97,7 @@ function Brackets() {
 }
 
 function Mark({ size = 18 }: { size?: number }) {
-  // The brand glyph: a folded A.
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3 3 21h4.2l1.6-3.6h6.4l1.6 3.6H21zm0 7.4 2 4.4h-4z" fill="currentColor" fillRule="evenodd" />
-    </svg>
-  );
+  return <Logo size={size} />;
 }
 
 function FileGlyph() {

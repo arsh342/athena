@@ -1,33 +1,57 @@
 import { c } from './colors.js';
 
-const BANNER_LARGE = [
-  '    _  _____ _   _ _____ _   _    _   ',
-  '   / \\|_   _| | | | ____| \\ | |  / \\  ',
-  '  / _ \\ | | | |_| |  _| |  \\| | / _ \\ ',
-  ' / ___ \\| | |  _  | |___| |\\  |/ ___ \\',
-  '/_/   \\_\\_| |_| |_|_____|_| \\_/_/   \\_\\',
+/**
+ * The Athena mark, the round owl face from the sign-in page, as braille dots: a braille cell is a 2 x 4 dot grid, so this is a
+ * true stipple in text. Generated from the same tone map as the website icons by scripts/brand/owl_face.py.
+ */
+export const LOGO = [
+  '⠀⠀⠀⠀⠀⠀⠀⠀⡀⢄⢄⠢⡂⢆⠢⡂⡄⢄',
+  '⠀⠀⠀⠀⠀⡠⠢⡑⡜⢔⢅⢇⢣⢣⢣⢣⢣⠣⡃⡇⣂⢀',
+  '⠀⠀⠀⡠⡊⡢⡃⡇⡎⡎⡎⡎⣎⢎⢮⢪⡪⣪⢣⡣⡣⡣⣂',
+  '⠀⠀⢔⢢⢱⢡⢣⣣⣣⡣⡳⡹⣸⢪⣣⢳⢹⣸⣸⡸⡪⡎⣎⢎⠄',
+  '⠀⢌⢆⢣⡲⣽⡳⠳⠳⢯⣷⣝⢼⡱⣱⣳⡻⠺⠺⢽⣗⣧⢣⢇⢧',
+  '⠠⡱⢸⢰⣻⡇⠰⡶⠀⠀⢿⡾⡮⣚⣞⣞⠠⢶⠂⠀⢹⣾⡗⣝⢜⡄',
+  '⠨⡸⡘⡜⡷⣧⡀⠀⢐⣠⣿⢿⢕⣇⢿⣺⣀⠀⠐⢂⣼⣿⢇⣗⢵⠅',
+  '⠈⡆⡇⡇⣏⢿⣻⣿⢿⣻⢞⢯⡳⣳⢝⡽⣻⡿⣿⡿⣟⢯⡺⣜⢎⠇',
+  '⠀⠕⡜⡜⣜⢜⢦⢳⢝⢮⠫⢓⢽⣕⢛⢪⣗⡵⣳⢵⣳⡳⣝⢎⠧⠁',
+  '⠀⠈⢪⢪⢪⢎⢗⣝⢵⡫⣏⠢⣹⡗⡨⣪⢞⣞⡽⣕⣗⣝⢮⢫⠁',
+  '⠀⠀⠀⠱⡱⢕⢧⢳⠵⣝⢞⡬⢸⡃⢎⢾⢝⣞⢮⡳⡵⡕⡇⠁',
+  '⠀⠀⠀⠀⠈⠊⠮⡪⣫⢪⡳⣕⢕⢵⡹⣝⢵⣓⢗⡝⠎⠊',
+  '⠀⠀⠀⠀⠀⠀⠀⠁⠑⠱⠱⠣⡫⢣⠫⠪⠃⠃⠁',
 ];
 
-const BANNER_COMPACT = [
+/** The name beside the mark. */
+export const WORDMARK = [
   '▄▀█ ▀█▀ █ █ █▀▀ █▄ █ ▄▀█',
   '█▀█  █  █▀█ ██▄ █ ▀█ █▀█',
 ];
 
+const LOGO_WIDTH = Math.max(...LOGO.map((l) => l.length));
+const GAP = 4;
+/** Columns the full banner needs: indent + logo + gap + wordmark. */
+const FULL_WIDTH = 2 + LOGO_WIDTH + GAP + Math.max(...WORDMARK.map((l) => l.length));
+/** Rows the logo is worth showing at: the menu below it is tall. A shorter terminal gets the two-line name. */
+const FULL_ROWS = 52;
+
+/** The banner as lines: the mark with the name beside its middle, or just the name when the terminal is narrow or short. */
+export function bannerLines(cols: number, rows = Infinity): string[] {
+  if (cols < FULL_WIDTH || rows < FULL_ROWS) return [...WORDMARK];
+  const top = Math.floor((LOGO.length - WORDMARK.length) / 2);
+  return LOGO.map((line, i) => {
+    const name = WORDMARK[i - top];
+    return name ? `${line.padEnd(LOGO_WIDTH, ' ')}${' '.repeat(GAP)}${name}` : line;
+  });
+}
+
 /**
- * Print large ASCII art banner to stdout.
+ * Print the logo banner to stdout.
  * Skipped when stdout is not a TTY (CI, piped output).
- * Falls back to compact 2-line version on narrow terminals.
  */
 export function printBanner(): void {
   if (!process.stdout.isTTY) return;
-  const cols = process.stdout.columns ?? 80;
-  const useLarge = cols >= 56;
-  const banner = useLarge ? BANNER_LARGE : BANNER_COMPACT;
-
   console.log('');
-  for (const line of banner) {
-    const style = useLarge ? `${c.accent}${c.bold}` : c.accent;
-    console.log(`  ${style}${line}${c.reset}`);
+  for (const line of bannerLines(process.stdout.columns ?? 80, process.stdout.rows ?? Infinity)) {
+    console.log(`  ${c.accent}${c.bold}${line}${c.reset}`);
   }
 }
 
