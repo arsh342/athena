@@ -74,24 +74,25 @@ core/src/calibration/calibrate-threshold.ts
 frontend/src/components/GridBackground.tsx
 frontend/src/components/ParticleAnimation.tsx
 frontend/src/components/HubDiagram.tsx
-.gitignore
-.gitignore
-.gitignore
 frontend/src/components/ScrollStroke.tsx
 frontend/src/components/SandboxTerminal.tsx
 frontend/src/components/ui/flickering-grid-hero.tsx
 
 docs/superpowers/**
 docs/IMPLEMENTATION_PLAN.md
-# ML data and virtualenv
-ml/data/
-ml/.venv/
 
+# Bend build outputs (regenerable from LAWS.bend / PROOF.bend / TESTS.bend / spec/)
+*.bendtt
+*.gpu
+/tests
+/spec/*.c
+/spec/*.mjs
+
+.superpowers/
 # ML data and virtualenv
 ml/data/
 ml/.venv/
 __pycache__/
 *.pyc
 .pytest_cache/
-
 bench/sast/.cache/
