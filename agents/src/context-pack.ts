@@ -13,6 +13,9 @@ export interface ContextPack {
   tokens: number;
 }
 
+/** `athena review`: which lines the change touched in this file, and what it removed. */
+export interface ChangeNote { changedLines: string; removed: string[] }
+
 export interface Sibling { file: string; line: number; snippet: string }
 
 /** Repository text is data: keep it from closing our wrapper tags or posing as markup. */
@@ -31,7 +34,7 @@ function numbered(source: string, center: number, radius: number): string {
  * Everything the model needs to judge one finding and nothing else: the cited lines +- 20, the source-to-sink trace, what the
  * offline checks found (guards, reachability, impact), conforming siblings for convention findings, and the skill's checklist.
  */
-export function buildContextPack(input: { finding: Pick<ClassifiedFinding, 'id' | 'ruleId' | 'severity' | 'message' | 'file' | 'line' | 'code' | 'confidence' | 'evidence' | 'trace' | 'exposure'>; source: string; siblings: Sibling[]; checklist: string }): ContextPack {
+export function buildContextPack(input: { finding: Pick<ClassifiedFinding, 'id' | 'ruleId' | 'severity' | 'message' | 'file' | 'line' | 'code' | 'confidence' | 'evidence' | 'trace' | 'exposure'>; source: string; siblings: Sibling[]; checklist: string; change?: ChangeNote }): ContextPack {
   const f = input.finding;
   const build = (radius: number, checklistChars: number, siblings: Sibling[]): string => {
     const parts = [
@@ -42,6 +45,7 @@ export function buildContextPack(input: { finding: Pick<ClassifiedFinding, 'id' 
       `code (cited line ${f.line}, +-${radius} lines):`,
       neutralise(numbered(input.source, f.line, radius)),
     ];
+    if (input.change) parts.push(`change: lines ${neutralise(input.change.changedLines)} were changed${input.change.removed.length ? '; removed code:' : ''}`, ...input.change.removed.slice(0, 12).map((l) => `- ${neutralise(l.slice(0, 200))}`));
     if (f.trace?.length) parts.push('data flow:', ...f.trace.map((t) => `- ${neutralise(t.file ?? f.file)}:${t.line} ${neutralise(t.note)}`));
     if (f.evidence?.length) parts.push('offline checks:', ...f.evidence.map((e) => `- ${neutralise(e)}`));
     if (siblings.length) parts.push('conforming siblings:', ...siblings.slice(0, 2).map((s) => `- ${neutralise(s.file)}:${s.line} ${neutralise(s.snippet.slice(0, 300))}`));

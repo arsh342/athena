@@ -40,8 +40,8 @@ export function Dashboard() {
     <div className="page dashboard-page brutalist-page">
       <section className="page-header">
         <div className="br-section-annotation">
-          <span>// SECTION: DASHBOARD_OVERVIEW</span>
-          <span>001</span>
+          <span>001 / Overview</span>
+          <span></span>
         </div>
         <span className="eyebrow">Dashboard</span>
         <div>
@@ -54,8 +54,8 @@ export function Dashboard() {
 
       <section className="dashboard-grid">
         <div className="br-section-annotation">
-          <span>// SECTION: RISK_METRICS</span>
-          <span>002</span>
+          <span>002 / Risk</span>
+          <span></span>
         </div>
         <article className="panel gauge-panel">
           <ScoreGauge score={latest?.aiPercentage ?? 0} />
@@ -80,8 +80,8 @@ export function Dashboard() {
 
       <section className="panel table-panel">
         <div className="br-section-annotation">
-          <span>// SECTION: SCAN_HISTORY</span>
-          <span>003</span>
+          <span>003 / Scan history</span>
+          <span></span>
         </div>
         <div className="panel-title">
           <h2>Recent scans</h2>
@@ -109,8 +109,8 @@ export function Dashboard() {
 
       <section className="severity-row">
         <div className="br-section-annotation">
-          <span>// SECTION: SEVERITY_LEGEND</span>
-          <span>004</span>
+          <span>004 / Severity key</span>
+          <span></span>
         </div>
         <SeverityBadge severity="CRITICAL" />
         <SeverityBadge severity="HIGH" />

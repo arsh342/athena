@@ -127,6 +127,7 @@ function mapFinding(finding: ClassifiedFinding): Finding {
     ...(finding.evidence ? { evidence: finding.evidence } : {}),
     ...(finding.trace ? { trace: finding.trace } : {}),
     ...(finding.exposure ? { exposure: finding.exposure } : {}),
+    ...(finding.aiVerdict ? { aiVerdict: { verdict: finding.aiVerdict.verdict, reason: finding.aiVerdict.reason, provider: finding.aiVerdict.provider, model: finding.aiVerdict.model, citations: finding.aiVerdict.citations } } : {}),
     topSignals: finding.explainedScore.topSignals.slice(0, 5),
   };
 }

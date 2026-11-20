@@ -69,7 +69,7 @@ export async function runScan(args: RunArgs): Promise<number> {
   });
   if (args.review) report.review = applyChangeFilter(report, args.review.changes, root, config, args.review.scope);
   else await attachScanDelta(report, `${mode}:${root}`, root);
-  if (options.ai) await runAiStep(report, config, options.ai, root, shouldShowProgress(options.quiet, process.stderr, process.env));
+  if (options.ai) await runAiStep(report, config, options.ai, root, shouldShowProgress(options.quiet, process.stderr, process.env), args.review?.changes);
   if (config.updates?.auto !== false && !options.deps.offline && options.deps.enabled) startBackgroundUpdate(config.updates?.intervalHours ?? 24);
   for (const w of report.summary.skillWarnings ?? []) writeInfo(`warning: ${w}`);
 

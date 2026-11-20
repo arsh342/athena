@@ -81,8 +81,8 @@ export function ReportPage() {
     <div className="page report-page brutalist-page">
       <section className="page-header">
         <div className="br-section-annotation">
-          <span>// SECTION: REPORT_HEADER</span>
-          <span>001</span>
+          <span>001 / Report</span>
+          <span></span>
         </div>
         <span className="eyebrow">Report</span>
         <div>
@@ -122,8 +122,8 @@ export function ReportPage() {
 
       <section className="report-summary">
         <div className="br-section-annotation">
-          <span>// SECTION: RISK_SUMMARY</span>
-          <span>002</span>
+          <span>002 / Summary</span>
+          <span></span>
         </div>
         <article className="panel">
           <ScoreGauge score={scan?.aiPercentage ?? 0} />
@@ -135,6 +135,13 @@ export function ReportPage() {
             </p>
           ) : null}
         </article>
+        {scan?.ai ? (
+          <article className="panel stat-panel">
+            <span>AI check</span>
+            <strong>{scan.ai.checked}</strong>
+            <p>findings checked with {scan.ai.model} ({scan.ai.mode}), ${scan.ai.costUsd.toFixed(3)} spent{scan.ai.notChecked ? `, ${scan.ai.notChecked} not checked` : ''}.</p>
+          </article>
+        ) : null}
         {scan ? (
           <article className="panel stat-panel">
             <span>Coverage</span>
@@ -145,7 +152,7 @@ export function ReportPage() {
         <article className="panel stat-panel">
           <span>Findings</span>
           <strong>{findings.length}</strong>
-          <p>Classified from secret, ESLint, Semgrep, and hallucination checks.</p>
+          <p>Classified from Athena's own rules, taint, secrets and dependency checks.</p>
         </article>
         <article className="panel stat-panel">
           <span>Risk density</span>

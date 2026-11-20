@@ -68,9 +68,11 @@ Honest limit: Athena's trained detector is enabled for JavaScript only so far (i
 The plugin gives Claude Code Athena's tools and a security-review workflow.
 
 ```bash
-git clone https://github.com/arsh342/athena.git
-claude plugin install ./athena/plugins/athena
+claude plugin marketplace add arsh342/athena
+claude plugin install athena@athena
 ```
+
+Or install it from a clone: `claude plugin install ./athena/plugins/athena`.
 
 It adds:
 

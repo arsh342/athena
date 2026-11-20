@@ -26,7 +26,7 @@ test('plugin manifest, MCP config and hooks are valid JSON pointing at real thin
   const hooks = JSON.parse(read('hooks/hooks.json'));
   for (const entry of hooks.hooks.PostToolUse) {
     for (const h of entry.hooks) {
-      const script = h.command.replace('${CLAUDE_PLUGIN_ROOT}/', '');
+      const script = h.command.replace('${CLAUDE_PLUGIN_ROOT}/', '').replaceAll('"', '');
       assert.ok(statSync(join(plugin, script)).mode & 0o111, `${script} is executable`);
       assert.match(read(script), /^#!\/bin\/sh/);
     }

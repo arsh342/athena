@@ -89,6 +89,8 @@ export async function ensureAuthSchema(): Promise<void> {
 
   await db.query(`ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_provenance JSONB;`);
   await db.query(`ALTER TABLE scans ADD COLUMN IF NOT EXISTS coverage JSONB;`);
+  // What the user's own AI key did on this scan (mode, model, spend). Never the key.
+  await db.query(`ALTER TABLE scans ADD COLUMN IF NOT EXISTS ai_summary JSONB;`);
 
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_scans_user_created_at ON scans(user_id, created_at DESC);
@@ -119,6 +121,7 @@ export async function ensureAuthSchema(): Promise<void> {
   await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS evidence JSONB;`);
   await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS trace JSONB;`);
   await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS exposure TEXT;`);
+  await db.query(`ALTER TABLE scan_findings ADD COLUMN IF NOT EXISTS ai_verdict JSONB;`);
 
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_scan_findings_scan_id ON scan_findings(scan_id);

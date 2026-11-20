@@ -1,0 +1,15 @@
+{
+  "name": "athena",
+  "owner": { "name": "arsh342" },
+  "metadata": { "description": "Athena: offline security review for AI-assisted code." },
+  "plugins": [
+    {
+      "name": "athena",
+      "source": "./plugins/athena",
+      "description": "Offline scanning, taint paths, dependency intelligence, change review and a verification workflow, served over MCP.",
+      "version": "0.1.0",
+      "category": "security",
+      "keywords": ["security", "sast", "dependencies", "review", "mcp"]
+    }
+  ]
+}

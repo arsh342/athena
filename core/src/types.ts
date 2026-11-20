@@ -186,6 +186,8 @@ export interface ClassifiedFinding {
     reason: string;
     lenses: { reachability: string; defenses: string; impact: string };
     citations: string[];
+    /** `athena review`: real, but the change did not introduce it. */
+    predatesChange?: boolean;
     provider: string;
     model: string;
     cached: boolean;

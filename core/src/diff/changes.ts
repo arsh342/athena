@@ -7,6 +7,8 @@ export interface ChangedFile {
   binary: boolean;
   /** Changed line ranges in the new file, 1-based inclusive. Empty for pure renames and deletions. */
   ranges: Array<[number, number]>;
+  /** Text of removed lines (without the leading `-`), capped, for review context. */
+  removed?: string[];
 }
 
 export interface ChangeSet {
@@ -33,7 +35,9 @@ export function parseUnifiedDiff(diff: string): ChangeSet {
       cur.oldPath = line.slice(12);
     } else if (line.startsWith('rename to ')) cur.path = line.slice(10);
     else if (/^Binary files .* differ$/.test(line) || line.startsWith('GIT binary patch')) cur.binary = true;
-    else {
+    else if (line.startsWith('-') && !line.startsWith('---')) {
+      if ((cur.removed ??= []).length < 40) cur.removed.push(line.slice(1));
+    } else {
       const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
       if (hunk) {
         const start = Number(hunk[1]);

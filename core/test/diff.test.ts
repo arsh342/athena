@@ -49,3 +49,9 @@ test('only findings on changed lines count; others in a changed unit are existin
   assert.match(md, /Skipped binary file `img\.png`/);
   assert.match(md, /Renamed `old\/name\.js` → `new\/name\.js`/);
 });
+
+test('parseUnifiedDiff keeps the removed lines, not the --- header', () => {
+  const set = parseUnifiedDiff(['diff --git a/a.js b/a.js', '--- a/a.js', '+++ b/a.js', '@@ -3,2 +3,1 @@', '-old one', '-old two', '+new'].join('\n'));
+  assert.deepEqual(set.files[0]!.removed, ['old one', 'old two']);
+  assert.deepEqual(set.files[0]!.ranges, [[3, 3]]);
+});

@@ -14,3 +14,8 @@ Rules:
 - Answer "confirmed" only if you could not disprove it, "refuted" only if you can name the defense or the unreachable source and its line, and "needs-human" when the context is not enough to decide.
 - Be brief: one sentence per lens and one for the reason.
 - Return exactly one verdict object per finding id, in a JSON document that matches the schema. Return nothing else.`;
+
+/** Appended to the stable prefix in review mode only: the model also says whether this change introduced the flaw. */
+export const REVIEW_ADDENDUM = `This is a CODE REVIEW of a change. Each <finding> block lists the changed lines ("change:") and the code the change removed. Besides the verdict, set predatesChange:
+- true when the flaw is real but the change did not introduce it: the same weakness was already in the removed code, or the changed lines only move, rename or reformat it;
+- false when the change introduced it, or made it reachable, or you cannot tell.`;

@@ -23,8 +23,8 @@ export function ReportView({ findings }: ReportViewProps) {
   return (
     <section className="report-list" aria-label="Security findings">
       <div className="br-section-annotation">
-        <span>// SECTION: FINDINGS</span>
-        <span>003</span>
+        <span>003 / Findings</span>
+        <span></span>
       </div>
       <div className="report-toolbar">
         <label className="report-toggle">
@@ -48,7 +48,7 @@ export function ReportView({ findings }: ReportViewProps) {
               onClick={() => setOpenSeverities((prev) => ({ ...prev, [severity]: !prev[severity] }))}
             >
               <SeverityBadge severity={severity} />
-              <span>{fileKeys.length} files</span>
+              <span>{fileKeys.length} {fileKeys.length === 1 ? 'file' : 'files'}</span>
             </button>
 
             {openSeverities[severity] && fileKeys.map((file) => (
@@ -72,6 +72,12 @@ export function ReportView({ findings }: ReportViewProps) {
                       <span>{finding.source}</span>
                       <span>AI score {finding.aiScore}</span>
                     </div>
+                    {finding.aiVerdict ? (
+                      <p className={`ai-verdict ai-verdict--${finding.aiVerdict.verdict}`}>
+                        <strong>AI {finding.aiVerdict.verdict === 'needs-human' ? 'could not decide' : finding.aiVerdict.verdict}</strong>
+                        {' '}({finding.aiVerdict.model}): {finding.aiVerdict.reason}
+                      </p>
+                    ) : null}
                     <CodeBlock code={showRawSecrets ? finding.code : redactFindingText(finding.code, finding)} />
                   </article>
                 ))}

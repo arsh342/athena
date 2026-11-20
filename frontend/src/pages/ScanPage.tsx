@@ -169,8 +169,8 @@ export function ScanPage() {
     <div className="page brutalist-page">
       <section className="page-header">
         <div className="br-section-annotation">
-          <span>// SECTION: REPOSITORY_INPUT</span>
-          <span>001</span>
+          <span>001 / Repository</span>
+          <span></span>
         </div>
         <span className="eyebrow">New scan</span>
         <div>
@@ -181,8 +181,8 @@ export function ScanPage() {
 
       <section className="scan-layout">
         <div className="br-section-annotation">
-          <span>// SECTION: LIVE_EXECUTION</span>
-          <span>002</span>
+          <span>002 / Live scan</span>
+          <span></span>
         </div>
 
         <div className="scan-form panel">

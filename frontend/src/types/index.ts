@@ -48,6 +48,8 @@ export interface Finding {
   evidence?: string[];
   trace?: Array<{ file: string; line: number; note: string }>;
   exposure?: 'public' | 'authenticated' | 'internal';
+  /** The user's AI verdict, when the scan used their own key. */
+  aiVerdict?: { verdict: 'confirmed' | 'refuted' | 'needs-human'; reason: string; provider: string; model: string; citations: string[] };
   topSignals: SignalContribution[];
 }
 
@@ -85,6 +87,8 @@ export interface ScanSummary {
   duration: number;
   /** Null or missing for scans saved before provenance was measured. */
   aiProvenance?: AiProvenanceSummary | null;
+  /** What the user's own AI key did on this scan (mode, model, spend). Never the key. */
+  ai?: { mode: string; provider: string; model: string; costUsd: number; checked: number; notChecked: number };
   coverage?: CoverageSummary | null;
 }
 

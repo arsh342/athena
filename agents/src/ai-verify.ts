@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { isSecretFinding, loadSkills, selectSkillSection, recomputeGate, type AthenaConfig, type ClassifiedFinding, type ScanReport } from '@athena/core';
+import { relative } from 'node:path';
+import { isSecretFinding, loadSkills, selectSkillSection, recomputeGate, type AthenaConfig, type ChangeSet, type ClassifiedFinding, type ScanReport } from '@athena/core';
 
 import { BudgetTracker } from './budget.js';
 import { fileVerdictCache } from './cache.js';
@@ -43,6 +44,8 @@ export interface AiVerifyOptions {
   /** Send the panel through the provider's batch API (cheaper, slower): for non-interactive runs. */
   useBatch?: boolean;
   config: Pick<AthenaConfig, 'blockOn' | 'updates'>;
+  /** `athena review`: the change under review. The AI also says which flaws it did not introduce; those move to "existing issues". */
+  changes?: ChangeSet;
   provider: ProviderId;
   preset?: string;
   baseUrl?: string;
@@ -73,7 +76,7 @@ export function applyVerdicts(report: ScanReport, result: VerifyResult, config: 
     for (const f of file.findings) {
       const v = result.verdicts.get(f.id);
       if (!v) continue;
-      f.aiVerdict = { verdict: v.verdict, reason: v.reason, lenses: { reachability: v.reachability, defenses: v.defenses, impact: v.impact }, citations: v.citations, provider: v.provider, model: v.model, cached: v.cached, ...(v.votes ? { votes: v.votes } : {}) };
+      f.aiVerdict = { verdict: v.verdict, reason: v.reason, lenses: { reachability: v.reachability, defenses: v.defenses, impact: v.impact }, citations: v.citations, ...(v.predatesChange !== undefined ? { predatesChange: v.predatesChange } : {}), provider: v.provider, model: v.model, cached: v.cached, ...(v.votes ? { votes: v.votes } : {}) };
       if (v.verdict === 'confirmed') {
         f.confidence = 'high';
         f.evidence = [`AI confirmed (${v.model}): ${v.reason}`, ...(f.evidence ?? [])];
@@ -84,6 +87,20 @@ export function applyVerdicts(report: ScanReport, result: VerifyResult, config: 
         f.evidence = [`AI could not decide (${v.model}): ${v.reason}`, ...(f.evidence ?? [])];
       }
     }
+  }
+  recomputeGate(report, config);
+}
+
+/** Review: a confirmed flaw the AI says the change did not introduce is an existing issue, not part of this change's verdict. */
+export function movePredating(report: ScanReport, config: Pick<AthenaConfig, 'blockOn' | 'updates'>): void {
+  if (!report.review) return;
+  for (const file of report.files) {
+    const keep: ClassifiedFinding[] = [];
+    for (const f of file.findings) {
+      if (f.aiVerdict?.verdict === 'confirmed' && f.aiVerdict.predatesChange === true) report.review.existing.push(f);
+      else keep.push(f);
+    }
+    file.findings = keep;
   }
   recomputeGate(report, config);
 }
@@ -162,16 +179,24 @@ export async function runAiVerify(report: ScanReport, o: AiVerifyOptions): Promi
     }
     return sources.get(path)!;
   };
-  const packs = candidates.map((c) => ({
-    id: c.finding.id,
-    pack: buildContextPack({ finding: c.finding, source: read(c.finding.file), siblings: [], checklist: selectSkillSection(skills, c.finding.category)?.text ?? '' }),
-  }));
+  const changeFor = (file: string) => {
+    const changed = o.changes?.files.find((f) => f.path === relative(o.root, file).split('\\').join('/'));
+    return changed ? { changedLines: changed.ranges.map(([a, b]) => (a === b ? `${a}` : `${a}-${b === Number.MAX_SAFE_INTEGER ? 'end' : b}`)).join(', ') || 'none', removed: changed.removed ?? [] } : undefined;
+  };
+  const packs = candidates.map((c) => {
+    const change = o.changes ? changeFor(c.finding.file) : undefined;
+    return {
+      id: c.finding.id,
+      pack: buildContextPack({ finding: c.finding, source: read(c.finding.file), siblings: [], checklist: selectSkillSection(skills, c.finding.category)?.text ?? '', ...(change ? { change } : {}) }),
+    };
+  });
 
-  const verifyInput = { provider: built.provider, providerId: o.provider, model, candidates: packs, guard: tracker, cache: fileVerdictCache(o.home), ...(o.useBatch ? { useBatch: true } : {}) };
+  const verifyInput = { ...(o.changes ? { review: true } : {}), provider: built.provider, providerId: o.provider, model, candidates: packs, guard: tracker, cache: fileVerdictCache(o.home), ...(o.useBatch ? { useBatch: true } : {}) };
   const result = candidates.length > 0
     ? await (mode === 'deep' ? runPanel(verifyInput) : verifyCandidates(verifyInput))
     : { verdicts: new Map(), notChecked: [], usage: { inputTokens: 0, outputTokens: 0 }, requests: 0, cachedHits: 0 } as VerifyResult;
   applyVerdicts(report, result, o.config);
+  if (o.changes) movePredating(report, o.config);
   if (deep) {
     const confirmed = report.files.flatMap((f) => f.findings).filter((f) => f.aiVerdict?.verdict === 'confirmed');
     deep.learnedRules = await learnRules(o.root, confirmed);

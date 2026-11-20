@@ -4,7 +4,7 @@ import type { ContextPack } from './context-pack.js';
 import type { SpendGuard } from './loop.js';
 import { runAgent } from './loop.js';
 import type { ChatRequest, ChatResponse, ModelProvider } from './providers/types.js';
-import { VERIFY_PROMPT_VERSION, VERIFY_SYSTEM } from './prompts.js';
+import { REVIEW_ADDENDUM, VERIFY_PROMPT_VERSION, VERIFY_SYSTEM } from './prompts.js';
 import type { ProviderId, TokenUsage } from './types.js';
 import { createHash } from 'node:crypto';
 
@@ -15,6 +15,8 @@ export interface AiVerdict {
   impact: string;
   citations: string[];
   reason: string;
+  /** Review mode: a real flaw that the change did not introduce. */
+  predatesChange?: boolean;
   provider: ProviderId;
   model: string;
   cached: boolean;
@@ -37,6 +39,7 @@ const VerdictItem = z.object({
   impact: text,
   citations: z.array(z.string().max(300)).max(12),
   reason: text,
+  predatesChange: z.boolean().optional(),
 });
 const VerdictDoc = z.object({ verdicts: z.array(z.unknown()) });
 
@@ -65,6 +68,21 @@ export const VERDICT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+/** The review variant adds one required boolean, so strict-schema providers accept it. */
+export const REVIEW_VERDICT_SCHEMA = {
+  ...VERDICT_SCHEMA,
+  properties: {
+    verdicts: {
+      ...VERDICT_SCHEMA.properties.verdicts,
+      items: {
+        ...VERDICT_SCHEMA.properties.verdicts.items,
+        properties: { ...VERDICT_SCHEMA.properties.verdicts.items.properties, predatesChange: { type: 'boolean' } },
+        required: [...VERDICT_SCHEMA.properties.verdicts.items.required, 'predatesChange'],
+      },
+    },
+  },
+} as const;
+
 export function cacheKey(pack: ContextPack, provider: ProviderId, model: string, voter?: string): string {
   return createHash('sha256').update(JSON.stringify([pack.text, provider, model, VERIFY_PROMPT_VERSION, ...(voter ? [voter] : [])])).digest('hex');
 }
@@ -84,6 +102,8 @@ export interface VerifyInput {
   voter?: { id: string; framing: string };
   /** Send the batches through the provider's asynchronous batch API (cheaper, slower) when it has one. */
   useBatch?: boolean;
+  /** `athena review`: packs carry the change, and verdicts say whether the change introduced the flaw. */
+  review?: boolean;
   signal?: AbortSignal;
 }
 
@@ -119,13 +139,13 @@ export async function verifyCandidates(input: VerifyInput): Promise<VerifyResult
   }
 
   const size = Math.max(1, input.batchSize ?? 5);
-  const stable = `${VERIFY_SYSTEM}${input.mapSummary ? `\n\nCodebase summary:\n${input.mapSummary}` : ''}`;
+  const stable = `${VERIFY_SYSTEM}${input.review ? `\n\n${REVIEW_ADDENDUM}` : ''}${input.mapSummary ? `\n\nCodebase summary:\n${input.mapSummary}` : ''}`;
   const groups: Array<typeof misses> = [];
   for (let i = 0; i < misses.length; i += size) groups.push(misses.slice(i, i + size));
   const requestFor = (group: typeof misses): ChatRequest => ({
     model: input.model,
     system: { stable, ...(input.voter ? { volatile: input.voter.framing } : {}) },
-    output: { name: 'verdicts', schema: VERDICT_SCHEMA },
+    output: { name: 'verdicts', schema: input.review ? REVIEW_VERDICT_SCHEMA : VERDICT_SCHEMA },
     maxTokens: 700 * group.length + 300,
     effort: input.effort ?? 'low',
     messages: [{ role: 'user', content: [{ type: 'text', text: `Verify these findings. Ids: ${group.map((c) => c.id).join(', ')}\n\n${group.map((c) => c.pack.text).join('\n\n')}` }] }],
@@ -147,7 +167,7 @@ export async function verifyCandidates(input: VerifyInput): Promise<VerifyResult
     for (const c of group) {
       const v = got.get(c.id);
       if (!v) { notChecked.push({ id: c.id, reason: 'no valid verdict came back' }); continue; }
-      const verdict: AiVerdict = { verdict: v.verdict, reachability: v.reachability, defenses: v.defenses, impact: v.impact, citations: v.citations, reason: v.reason, provider: input.providerId, model: input.model, cached: false, promptVersion: VERIFY_PROMPT_VERSION };
+      const verdict: AiVerdict = { verdict: v.verdict, reachability: v.reachability, defenses: v.defenses, impact: v.impact, citations: v.citations, reason: v.reason, ...(input.review && v.predatesChange !== undefined ? { predatesChange: v.predatesChange } : {}), provider: input.providerId, model: input.model, cached: false, promptVersion: VERIFY_PROMPT_VERSION };
       verdicts.set(c.id, verdict);
       input.cache?.set(cacheKey(c.pack, input.providerId, input.model, voterId), verdict);
     }

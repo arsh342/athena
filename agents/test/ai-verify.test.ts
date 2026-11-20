@@ -249,3 +249,35 @@ test('deep mode stops at its cap and reports what it did not do', async () => {
   assert.ok(ai.costUsd! <= 0.05, String(ai.costUsd));
   assert.ok(ai.notChecked.length > 0 || ai.hunt!.notExplored.length > 0, 'something was left undone and said so');
 });
+
+test('review mode: packs carry the change, and a confirmed flaw that predates it moves to existing issues and stops blocking', async () => {
+  const s = setup();
+  const report = s.report([s.f('new'), s.f('old')]);
+  report.review = { scope: 'staged', skippedBinary: [], renamed: [], deleted: [], existing: [] };
+  recomputeGate(report, config);
+  const { provider, requests } = fake(() => 'confirmed');
+  // The fake answers without predatesChange: add it per id.
+  const chat = provider.chat.bind(provider);
+  provider.chat = async (request) => {
+    const r = await chat(request);
+    const verdicts = (r.json as { verdicts: Array<{ id: string }> }).verdicts.map((v) => ({ ...v, predatesChange: v.id === 'old' }));
+    return { ...r, json: { verdicts } };
+  };
+  const changes = { files: [{ path: 'src/app.js', status: 'modified' as const, binary: false, ranges: [[28, 31] as [number, number]], removed: ['db.query("select " + id)'] }] };
+  await runAiVerify(report, { ...base(s), providerOverride: provider, model: 'claude-sonnet-5-5', changes });
+  const sent = JSON.stringify(requests[0]);
+  assert.match(sent, /predatesChange/);
+  assert.match(sent, /change: lines 28-31 were changed/);
+  assert.match(sent, /removed code/);
+  assert.deepEqual(report.files[0]!.findings.map((f) => f.id), ['new']);
+  assert.deepEqual(report.review!.existing.map((f) => f.id), ['old']);
+  assert.equal(report.review!.existing[0]!.aiVerdict!.predatesChange, true);
+  assert.equal(report.summary.blocked, true, 'the new flaw still blocks');
+});
+
+test('outside review mode the schema and prompt are unchanged', async () => {
+  const s = setup();
+  const { provider, requests } = fake(() => 'confirmed');
+  await runAiVerify(s.report([s.f('a')]), { ...base(s), providerOverride: provider, model: 'claude-sonnet-5-5' });
+  assert.doesNotMatch(JSON.stringify(requests[0]), /predatesChange/);
+});

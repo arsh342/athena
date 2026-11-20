@@ -28,6 +28,14 @@ export interface AiProvenanceSummary {
   topFiles: Array<{ path: string; lines: number; recordedLines: number; aiLines: number; mixedLines: number; uncertainLines: number }>;
 }
 
+export interface AiVerdict {
+  verdict: 'confirmed' | 'refuted' | 'needs-human';
+  reason: string;
+  provider: string;
+  model: string;
+  citations: string[];
+}
+
 export interface CoverageSummary {
   complete: boolean;
   gaps: string[];
@@ -54,7 +62,7 @@ export interface ScanSummary {
   duration: number;
   /** Null for scans saved before provenance was measured. */
   aiProvenance?: AiProvenanceSummary | null;
-  /** Present only on the response of a scan that used the user's AI key; not persisted. */
+  /** Present only on a scan that used the user's AI key: what the AI step did and spent. Never holds the key. */
   ai?: { mode: string; provider: string; model: string; costUsd: number; checked: number; notChecked: number };
   coverage?: CoverageSummary | null;
 }
@@ -81,6 +89,8 @@ export interface Finding {
   evidence?: string[];
   trace?: Array<{ file: string; line: number; note: string }>;
   exposure?: 'public' | 'authenticated' | 'internal';
+  /** The user's AI verdict on this finding, when the scan used their key. */
+  aiVerdict?: AiVerdict;
   topSignals: Array<{
     signal: string;
     contribution: number;
@@ -131,6 +141,7 @@ interface ScanSummaryRow {
   duration: number;
   ai_provenance?: AiProvenanceSummary | null;
   coverage?: CoverageSummary | null;
+  ai_summary?: ScanSummary['ai'] | null;
 }
 
 interface FindingRow {
@@ -151,6 +162,7 @@ interface FindingRow {
   evidence?: Finding['evidence'] | null;
   trace?: Finding['trace'] | null;
   exposure?: Finding['exposure'] | null;
+  ai_verdict?: AiVerdict | null;
 }
 
 interface TerminalLineRow {
@@ -179,6 +191,7 @@ function mapScanSummaryRow(row: ScanSummaryRow): ScanSummary {
     duration: row.duration,
     aiProvenance: row.ai_provenance ?? null,
     coverage: row.coverage ?? null,
+    ...(row.ai_summary ? { ai: row.ai_summary } : {}),
   };
 }
 
@@ -201,6 +214,7 @@ function mapFindingRow(row: FindingRow): Finding {
     ...(row.evidence ? { evidence: row.evidence } : {}),
     ...(row.trace ? { trace: row.trace } : {}),
     ...(row.exposure ? { exposure: row.exposure } : {}),
+    ...(row.ai_verdict ? { aiVerdict: row.ai_verdict } : {}),
   };
 }
 
@@ -222,7 +236,7 @@ export function getScans(userId?: number | string): ScanSummary[] | Promise<Scan
     `
       SELECT scan_id, repo_name, repo_url, status, created_at, ai_percentage,
              flagged_units, files_scanned, total_units, findings, risk_density, duration,
-             ai_provenance, coverage
+             ai_provenance, coverage, ai_summary
       FROM scans
       WHERE user_id = $1
       ORDER BY created_at DESC
@@ -243,7 +257,7 @@ export function getScan(scanId: string, userId?: number | string): ScanSummary |
     `
       SELECT scan_id, repo_name, repo_url, status, created_at, ai_percentage,
              flagged_units, files_scanned, total_units, findings, risk_density, duration,
-             ai_provenance, coverage
+             ai_provenance, coverage, ai_summary
       FROM scans
       WHERE scan_id = $1 AND user_id = $2
       LIMIT 1
@@ -286,7 +300,7 @@ export function getFindingsByScanId(scanId: string, userId?: number | string): F
     `
       SELECT COALESCE(sf.finding_id, sf.id::text) AS id, sf.severity, sf.type, sf.category, sf.message, sf.file, sf.line,
              sf."column" AS column, sf.source, sf.ai_score, sf.code, sf.rule_id, sf.top_signals,
-             sf.confidence, sf.evidence, sf.trace, sf.exposure
+             sf.confidence, sf.evidence, sf.trace, sf.exposure, sf.ai_verdict
       FROM scan_findings sf
       JOIN scans s ON s.scan_id = sf.scan_id
       WHERE sf.scan_id = $1 AND s.user_id = $2
@@ -365,9 +379,9 @@ export function addScan(
           INSERT INTO scans (
             scan_id, user_id, repo_name, repo_url, status, created_at,
             ai_percentage, flagged_units, files_scanned, total_units,
-            findings, risk_density, duration, ai_provenance, coverage
+            findings, risk_density, duration, ai_provenance, coverage, ai_summary
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14::jsonb, $15::jsonb)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14::jsonb, $15::jsonb, $16::jsonb)
         `,
         [
           scan.scanId,
@@ -385,6 +399,7 @@ export function addScan(
           scan.duration,
           scan.aiProvenance ? JSON.stringify(scan.aiProvenance) : null,
           scan.coverage ? JSON.stringify(scan.coverage) : null,
+          scan.ai ? JSON.stringify(scan.ai) : null,
         ],
       );
 
@@ -393,9 +408,9 @@ export function addScan(
           `
             INSERT INTO scan_findings (
               finding_id, scan_id, severity, type, category, message, file, line, "column",
-              source, ai_score, code, rule_id, top_signals, confidence, evidence, trace, exposure
+              source, ai_score, code, rule_id, top_signals, confidence, evidence, trace, exposure, ai_verdict
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16::jsonb, $17::jsonb, $18)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16::jsonb, $17::jsonb, $18, $19::jsonb)
           `,
           [
             finding.id,
@@ -416,6 +431,7 @@ export function addScan(
             finding.evidence ? JSON.stringify(finding.evidence) : null,
             finding.trace ? JSON.stringify(finding.trace) : null,
             finding.exposure ?? null,
+            finding.aiVerdict ? JSON.stringify(finding.aiVerdict) : null,
           ],
         );
       }

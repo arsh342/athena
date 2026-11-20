@@ -1,6 +1,6 @@
 import { createStatus } from '../utils/scan-progress.js';
 import { createInterface } from 'node:readline/promises';
-import type { AthenaConfig, ScanReport } from '@athena/core';
+import type { AthenaConfig, ChangeSet, ScanReport } from '@athena/core';
 import type { AiRunOptions } from '../utils/run-options.js';
 import { writeInfo } from '../utils/output.js';
 
@@ -35,7 +35,7 @@ async function confirmDeep(estimate: string, yes: boolean): Promise<boolean> {
 }
 
 /** The optional AI step: only medium/low confidence findings, under hard spend caps. Failures here never fail the scan. */
-export async function runAiStep(report: ScanReport, config: Pick<AthenaConfig, 'blockOn' | 'updates'>, ai: AiRunOptions, root: string, showStatus = false): Promise<void> {
+export async function runAiStep(report: ScanReport, config: Pick<AthenaConfig, 'blockOn' | 'updates'>, ai: AiRunOptions, root: string, showStatus = false, changes?: ChangeSet): Promise<void> {
   const label = ai.mode === 'deep' ? 'Running deep analysis' : ai.mode === 'hunt' ? 'Hunting with AI' : 'Verifying with AI';
   let status = { stop: () => undefined as void };
   const begin = () => { status = createStatus({ enabled: showStatus, stream: process.stderr, label }); };
@@ -54,7 +54,7 @@ export async function runAiStep(report: ScanReport, config: Pick<AthenaConfig, '
     if (fake) writeInfo('warning: ATHENA_AGENTS_FAKE is set: using a fake test provider, nothing is sent anywhere');
     begin();
     await agents.runAiVerify(report, {
-      root, config, provider: ai.provider, quality: ai.quality, mode: ai.mode,
+      root, config, ...(changes ? { changes } : {}), provider: ai.provider, quality: ai.quality, mode: ai.mode,
       ...(ai.model ? { model: ai.model } : {}),
       ...(ai.baseUrl ? { baseUrl: ai.baseUrl } : {}),
       ...(ai.preset ? { preset: ai.preset } : {}),

@@ -5,8 +5,8 @@ export function QuickstartPage() {
     <div className="page brutalist-page">
       <section className="page-header">
         <div className="br-section-annotation">
-          <span>// SECTION: QUICKSTART</span>
-          <span>001</span>
+          <span>001 / Quickstart</span>
+          <span></span>
         </div>
         <span className="eyebrow">CLI</span>
         <div>
