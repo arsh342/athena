@@ -82,14 +82,15 @@ def search_ai_repos(gh: GitHub, cfg: dict[str, Any], until: str | None = None, w
     return repos
 
 
-def collect(gh: GitHub, out_dir: Path, max_repos: int = 60) -> int:
+def collect(gh: GitHub, out_dir: Path, max_repos: int = 60, languages: set[str] | None = None, want: int = 400) -> int:
+    """`languages`: only repos whose GitHub primary language is in this set (saves cloning repos we do not need)."""
     cfg = load_yaml("languages.yaml")
     out_dir.mkdir(parents=True, exist_ok=True)
     target = out_dir / "ai.jsonl"
     seen = {json.loads(l)["repo"] for l in target.read_text().split("\n") if l.strip()} if target.exists() else set()
     done = 0
     with target.open("a", encoding="utf-8") as sink:
-        for name in search_ai_repos(gh, cfg):
+        for name in search_ai_repos(gh, cfg, want=want):
             if done >= max_repos:
                 break
             if name in seen:
@@ -99,6 +100,8 @@ def collect(gh: GitHub, out_dir: Path, max_repos: int = 60) -> int:
             except Exception:  # repo vanished or API error: skip it
                 continue
             print(f"  {name}: licence={(info.get('license') or {}).get('spdx_id')} size_kb={info.get('size')}", flush=True)
+            if languages and (info.get("language") or "") not in languages:
+                continue
             if not licence_ok(info) or info.get("size", 0) > cfg["ai"]["max_repo_kb"]:
                 continue
             with tempfile.TemporaryDirectory() as tmp:

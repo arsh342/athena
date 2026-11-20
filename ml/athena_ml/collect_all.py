@@ -16,7 +16,8 @@ def main(argv: list[str]) -> None:
     cfg = collect_human.load_yaml("languages.yaml")
     what = argv[0] if argv else "all"
     if what in ("ai", "all"):
-        n = collect_ai_commits.collect(gh, DATA, max_repos=int(argv[1]) if len(argv) > 1 else 60)
+        langs = set(argv[2].split(",")) if len(argv) > 2 else None  # e.g. TypeScript,JavaScript
+        n = collect_ai_commits.collect(gh, DATA, max_repos=int(argv[1]) if len(argv) > 1 else 60, languages=langs, want=1000 if langs else 400)
         print(f"ai repos collected: {n}", flush=True)
     if what in ("human_late", "all"):
         for language in cfg["languages"]:
