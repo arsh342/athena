@@ -1,316 +1,171 @@
 # Athena
 
-**AI Code Provenance Tracker** — detect AI-generated code and run targeted security analysis on repositories in JavaScript/TypeScript, Python, Java, C#, C/C++, Go, Rust, PHP and Shell.
+**Find out what AI wrote in your repository, and whether it is safe to ship.**
 
-Athena identifies likely AI-generated sections in your codebase using git history and a style heuristic (labelled low confidence) and runs multi-engine security analysis on flagged code. It operates as both a **CLI tool** (pre-commit scanning) and a **web platform** (GitHub repo scanner with live terminal streaming).
+Athena scans your code for security problems and estimates how much of it was written by AI tools. It runs on your machine, needs no account or API key, and works as a command-line tool, a git hook, an MCP server for coding agents, and a Claude Code plugin.
 
----
+Supports JavaScript/TypeScript, Python, Java, C#, C/C++, Go, Rust, PHP and Shell.
 
-## Why Athena?
+## Install
 
-AI-generated code is increasingly committed to production without adequate review. This code frequently contains:
+Requires Node.js 18 or newer.
 
-- Hardcoded secrets and leaked credentials
-- Hallucinated API calls that don't exist
-- Injection vectors and insecure defaults
-- Deprecated patterns that pass syntax checks but fail semantically
+```bash
+npm install -g @arsh342/athena
+```
 
-Athena specifically targets these risks by identifying AI-generated code sections and applying elevated security scrutiny before they enter version control.
+Or run it without installing:
 
----
+```bash
+npx @arsh342/athena scan .
+```
 
-## Supported languages
+## Use it
 
-| Language | Extensions | Today |
-|---|---|---|
-| JavaScript / TypeScript (JSX, TSX) | `.js .mjs .cjs .ts .mts .cts .jsx .tsx` | own rules + taint, secrets, units, AI provenance , hallucinated APIs, external scanners |
-| Python | `.py .pyi`, `#!…python` scripts | own rules + taint, secrets, units, AI provenance  |
-| Java | `.java` | own rules + taint, secrets, units, AI provenance  |
-| C# | `.cs` | own rules + taint, secrets, units, AI provenance  |
-| C / C++ | `.c .h` / `.cc .cpp .cxx .hpp .hh .hxx` | own rules + taint, secrets, units, AI provenance  (C is parsed with the C++ grammar) |
-| Go | `.go` | own rules + taint, secrets, units, AI provenance  |
-| Rust | `.rs` | own rules + taint, secrets, units, AI provenance  |
-| PHP | `.php .phtml` | own rules + taint, secrets, units, AI provenance  |
-| Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | own rules + taint, secrets, units, AI provenance  |
+```bash
+athena scan .                  # scan the current project
+athena review                  # review only your staged changes
+athena explain <finding-id>    # why a finding matters and how to fix it
+athena provenance .            # how much of each file looks AI-written
+athena init                    # block risky commits with a pre-commit hook
+```
 
-Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional ESLint scanner covers JavaScript/TypeScript only.
+A scan prints findings with the file and line, the path from user input to the dangerous call, and a confidence level. Findings Athena cannot confirm are listed as "needs review" and never block.
 
-## How the AI-code estimate is made
+**In CI**, write SARIF or JSON and fail the build on high-severity issues:
 
-- **Recorded** (a floor): lines git history credits to AI tools (co-author trailers, agent bot authors).
-- **Estimated**: Athena's own detector, `athena-detect-fast` — style statistics plus hashed token and character n-grams into a calibrated classifier (under 2 MB, pure TypeScript, runs on any machine). It is enabled **per language, only where it meets the release targets** on Athena-Bench (human false-positive rate <= 5%, F1 >= 0.85). Every other language uses the labelled style heuristic.
-- **Current status (v0.1.0):** trained only on real commits from GitHub (permissively licensed human code from before 2021; AI code from commits that agents marked). No language meets the targets yet — see [`docs/athena-bench/RESULTS.md`](docs/athena-bench/RESULTS.md) for the numbers — so all estimates still use the heuristic and say so. A language is enabled only when it passes the gate on at least 5 distinct test repositories per class; the human side of the current data is from an earlier era than the AI side (an era confound documented in RESULTS.md), so more of the *same* data would not be enough — era-matched human code is needed first. `athena provenance --about` prints the per-language status.
-- **Reproduce:** `npm run build -w @athena/core && cd ml && uv sync && uv run python -m athena_ml.collect_all all 20 && uv run python -m athena_ml.run_train 0.1.0` (needs a GitHub token via `GITHUB_TOKEN` or `gh auth login`; about an hour of network time; results vary with GitHub search). `ml/data/` is not committed; `ml/bench/manifest.jsonl.gz` lists the benchmark units by repository and commit, without any third-party code.
+```bash
+athena scan . --format sarif --output athena.sarif --fail-on high
+```
 
-## What Athena checks (its own analysis engine)
+Exit codes: `0` pass, `1` blocked by findings, `3` incomplete scan (with `--strict`). All options are in [cli/README.md](cli/README.md).
 
-No external scanner is needed for these; they run offline on every supported language.
+## What it checks
 
-- **Rule packs** for each language family: injection, path traversal, SSRF, XSS, unsafe deserialization, open redirect, weak crypto, disabled TLS verification, JWT misuse, risky cookies/CORS, debug mode, stack-trace leaks, ReDoS, mass assignment, memory-unsafe C functions, `unsafe` Rust/Go, shell pitfalls (`curl | sh`, unquoted `rm -rf $VAR`).
-- **Taint analysis**: follows user input (request parameters, command-line arguments, `$_GET`, ...) through variables, helper functions and — for JS/TS and Python — across files, to dangerous calls. A finding shows the path, e.g. `path: app.py:3 → app.py:3 → app.py:4`. Sanitizers, parameterised queries, argument vectors and path-prefix checks stop a flow.
-- **Secrets**: 60+ provider formats (AWS, GitHub, Stripe, OpenAI, Anthropic, ...), connection strings, private keys and generic random-looking credentials, in source files and in config files (`.env`, YAML, JSON, TOML, Dockerfiles). Findings never contain the secret itself; placeholders and `.env.example` files are ignored. Detected keys are not verified with their provider (nothing is sent anywhere).
-- **Investigation engine** — the way a reviewer works, offline:
-  - *Entry points*: finds routes (Express, Fastify, NestJS, Next.js, Flask, FastAPI, Django, Spring, ASP.NET, gin/net/http, actix/axum, Laravel), CLI commands, queue consumers, uploads and websockets, with their authentication guards.
-  - *Siblings*: if 5 of 6 routes in a router require authentication, or 5 of 6 queries on a table filter by `user_id`, the odd one out is reported with two conforming examples cited (needs at least 4 siblings and 75% agreement; test files are ignored; list intentional public routes in `athena.config.json` as `"publicRoutes": ["/health"]`).
-  - *Intent vs code*: validators that can never fail, comments that promise sanitizing/validation the next lines do not do, security TODOs, tests without assertions.
-  - *Lifecycles, error paths and races*: resources never released, cleanup attached only after an `await`, success status written but not the failure status, errors turned into success-looking values, read-then-write races, floating promises, unreachable states.
-- **Confidence**: every finding is checked for reachability from an entry point, defenses on the path and impact (exposure, sensitive data). `high`/`medium` findings count toward the gate; `low` ones are listed as **needs review** and never block. Findings are ordered by severity × exposure × confidence.
+- **Code security.** Injection, path traversal, SSRF, XSS, unsafe deserialization, weak crypto, risky cookies and CORS, memory-unsafe C, shell pitfalls, and more. Athena follows user input through variables, helpers and (for JS/TS and Python) across files, and checks each finding for reachability and defenses.
+- **Secrets.** 60+ provider key formats, private keys and connection strings, in source and config files. Reports never contain the secret itself.
+- **Dependencies.** Known vulnerabilities (OSV), malicious packages, packages that do not exist (often AI-invented names), typosquats, and risky install scripts.
+- **AI provenance.** Lines credited to AI tools in git history, plus a style-based estimate, always shown as a range with its method.
 
-Benchmarks against known-vulnerable apps: [`docs/athena-bench/SAST.md`](docs/athena-bench/SAST.md) (recall against a hand-verified, partial answer key; precision is not yet measured).
+Everything above runs offline. Benchmarks and limits: [docs/athena-bench](docs/athena-bench/SAST.md).
 
-## Dependency checks
+## Claude Code plugin
 
-Athena reads every manifest and lockfile it finds (npm, Yarn, pnpm, pip/poetry/uv/Pipenv, Maven/Gradle, NuGet, Go, Cargo, Composer, vcpkg, Conan) and reports, in a separate **Dependencies** section:
+The plugin gives Claude Code Athena's tools and a security-review workflow.
 
-| Finding | Meaning | What to do |
-|---|---|---|
-| Vulnerable dependency | A known advisory (OSV.dev) affects the exact version. Severity comes from CVSS. If the advisory names the affected functions and your code never imports them, severity drops one level and the report says so. | Upgrade to the fixed version shown. |
-| Malicious package | The version is a known malicious release (`MAL-` advisory). | Remove it and rotate any secrets it could read. |
-| Package does not exist | A declared dependency, or an import that is declared nowhere, is not on the public registry. Often an AI-invented name that anyone could register. | Fix the name or remove it. |
-| Possible typosquat | A direct dependency is one or two edits away from a popular package. | Check you meant the popular one. |
-| Deprecated / yanked / abandoned | The registry says so. | Move to a maintained release or alternative. |
-| Very new release | Published in the last 72 hours. | Wait out the cooldown or review it. |
-| Install script | A direct npm dependency runs `preinstall`/`install`/`postinstall`. | Review it, or install with `--ignore-scripts`. |
-| Hallucinated API call | You call a member that the installed package's type declarations do not contain (`axios.fetchData`). Only checked when the package is installed with types. | Use the real API. |
+```bash
+git clone https://github.com/arsh342/athena.git
+claude plugin install ./athena/plugins/athena
+```
 
-Private packages (`file:`, `git+`, workspace and scoped-registry packages) are never looked up. A registry outage or rate limit is reported as a coverage gap, never as "does not exist". Answers are cached for 24 hours (advisories 6 hours) under `~/.athena/cache/deps`; `--offline` uses only that cache (and reports the cache date or a gap), and `--no-deps` skips the checks. Athena sends package names and versions to OSV.dev and the package registries, never your code. `npm audit` was replaced by these checks; `--no-npm-audit` is accepted for one release and does nothing.
+It adds:
 
-## Optional AI layer (bring your own key)
+- **`/athena-scan`** to scan the project and triage the findings.
+- **`/athena-review`** to review staged or uncommitted changes.
+- **The `athena-security` skill**, which maps the code, traces input to dangerous calls, and verifies each candidate for reachability, defenses and impact.
+- **A researcher and a verifier agent** for deeper investigation.
+- **Hooks** that check each file Claude edits and suggest a review after a commit.
 
-Athena is offline by default: no model is called unless you pass `--ai`. The AI layer never replaces the offline analyzers; it only checks what they were unsure about.
+## MCP server
 
-| Mode | What it does | Needs |
-|---|---|---|
-| `--ai verify` (default for `--ai`) | Reads short excerpts around up to 20 uncertain (medium/low confidence) findings, then confirms (raised to high) or refutes (lowered to "needs review") each, citing the lines it relied on. Secrets and dependency findings are never sent. | a key |
-| `--ai hunt` | Also lets a read-only agent explore the 3 riskiest components (exposure, findings, AI-written share) for missed issues; its findings are cited, low confidence, then verified. | a key |
-| `--ai deep` | Adds a threat model, per-category research, a three-voter verification panel (2 of 3 decided in code), rules learned from confirmed findings (`.athena/learned-rules.json`, reused by every later offline scan) and, with `--suggest-fixes`, patches written to `.athena/patches/` (second-call reviewed, never applied). | a key, `--budget`, and `--yes` when not interactive |
+`athena mcp` serves Athena's tools to any MCP client. It never calls an AI model and needs no key.
 
-**Keys and providers.** `athena keys set|status|remove <provider>`; keys come from the environment, then `~/.athena/credentials.json` (mode 0600), and are never printed or logged. Providers: `anthropic` (default model `claude-sonnet-5-5`; `--quality economy|high` selects Haiku or Opus), `openai`, `google`, and OpenAI-compatible endpoints (`--preset openrouter|deepseek|mistral|groq|xai|together|ollama|lmstudio` or `--base-url`). Local endpoints (Ollama, LM Studio) cost nothing and send nothing off your machine. For providers other than Anthropic pass `--model`.
+```bash
+claude mcp add athena -- npx -y @arsh342/athena mcp      # Claude Code
+```
 
-**Spend is capped.** Defaults: $0.25 per run and $1.00 per day (`--budget`, `--budget-tokens`, or `ai` settings in `athena.config.json`). Before every call Athena reserves the worst case; when the next call could exceed the cap, it stops and the report lists what was not checked. Spend is recorded in `~/.athena/usage.json`. Deep mode refuses to start without an explicit `--budget`, prints an estimate, and asks you to confirm. Non-interactive deep runs on Anthropic use the Message Batches API.
+Cursor (`.cursor/mcp.json`):
 
-**Privacy.** On first use in a repository Athena shows exactly what is sent (short excerpts, the flagged function, its data flow, nearby files) and where, and asks once. Repository text is treated as untrusted: it is delimited, and a verdict is accepted only from structured output, so a comment saying "ignore your instructions" cannot change it.
+```json
+{ "mcpServers": { "athena": { "command": "npx", "args": ["-y", "@arsh342/athena", "mcp"] } } }
+```
 
-**On the website** (Settings, "AI key") you can use your own key for scans too: it is kept in your browser tab only, sent as headers with the one scan, held in memory on the server, and never stored or logged. A spend cap (at most $1.00 per scan) is required, you must accept what will be sent first, only one AI scan runs per user at a time, and only hosted providers are allowed (no local models, no arbitrary endpoints).
+Codex (`~/.codex/config.toml`):
 
-**What it does not do.** It does not run your code, apply any patch, or decide anything the offline analyzers can decide. Provider adapters are checked against the vendor SDK types and fake providers in tests; the benchmark in `bench/ai-verify` measures precision and recall against 14 known snippets and is run on demand because it spends real money.
+```toml
+[mcp_servers.athena]
+command = "npx"
+args = ["-y", "@arsh342/athena", "mcp"]
+```
 
-## Review, git gates and AI agents
-
-- **`athena review`** reviews a change instead of the whole repository: `--staged` (default), `--uncommitted`, `--range origin/main..HEAD` or `--base main`. Only findings on changed lines count and block; issues elsewhere in a function you touched are listed separately as existing issues (not counted). Renames are followed, binary files are skipped with a note, and dependency checks run only when a manifest or lockfile changed. Formats: terminal, `json`, `sarif`, and `markdown` (a PR-comment-ready review, one section per file).
-- **Git gates.** `athena init` installs a pre-commit hook (`athena check --staged`, about one second on a typical commit); `athena init --hooks pre-commit,pre-push` adds a pre-push hook that reviews `@{u}..HEAD`. Both honour `--fail-on` (or `failOn` in `athena.config.json`) and `core.hooksPath`. Husky, lefthook and the pre-commit framework are detected: Athena prints the snippet to add and changes no file. An existing hook that is not Athena's is never overwritten without `--force`. `ATHENA_SKIP=1 git commit` skips the hooks with a note; a missing Athena or a push-hook timeout never blocks. `athena uninstall` removes only Athena's hooks.
-- **MCP server.** `athena mcp` serves Athena's tools over stdio to Claude Code, Cursor, Codex and other MCP clients: scan, check files, review, explain, provenance, dependencies, API existence, codebase map, taint paths, symbol and caller search, skills, and one write tool (`athena_add_learned_rule`, which needs `confirm: true`). Results are compact and paginated, secrets are redacted, paths outside the starting directory are refused, and no AI model is called, so no key is needed. Client setup: `docs/agents/mcp-clients.md`.
-- **Claude Code plugin.** `plugins/athena` bundles the MCP server, the `athena-security` skill (map, trace, verify under reachability/defenses/impact), a researcher and a verifier agent, `/athena-scan` and `/athena-review`, and hooks that check each edited file and suggest a review after a commit. The same skill is published in the open Agent Skills format at `skills/athena-security` (`npx skills add arsh342/athena`); add `docs/agents/AGENTS.md` to your repository for other agents.
-
-## Staying current
-
-- **Advisory data.** `athena update` keeps a local, incrementally updated copy of the OSV vulnerability database (which includes the GitHub Advisory Database) for the ecosystems you use, plus CISA's Known Exploited Vulnerabilities list and FIRST's EPSS scores. The first sync of an ecosystem downloads its full export once (npm is about 220 MB); later syncs fetch only changed records, and withdrawn advisories disappear. Checks then run offline and fast; ecosystems without local data fall back to the OSV API.
-- **Known exploited.** Findings for vulnerabilities that are being exploited in the wild are labelled, listed first, and block at any severity (`updates.blockKnownExploited`, default on). EPSS shows the probability of exploitation.
-- **Automatic, never in your way.** After a scan, if local data is older than 24 hours (`updates.intervalHours`), a background update starts for ecosystems you already synced; the scan never waits for it, and `--offline` disables it. Data older than 7 days is shown as a coverage gap: `advisory data 9 days old — run athena update`.
-- **Rule and skill packs.** `athena update` also fetches the newest signed pack from the project's GitHub releases. A pack is accepted only if its Ed25519 signature and SHA-256 verify, it contains data files only, and every rule passes its own fixtures; otherwise the previous pack stays active. `athena update --rollback` returns to the previous pack. The public key that official packs are verified against ships in the CLI (`PACK_PUBLIC_KEY`); packs are built and signed by the maintainer with `scripts/build-pack.ts`.
-- **Alerts.** Each scan stores its dependency inventory. `athena alerts` re-checks the last scan against the current local data and lists vulnerabilities published since (exit 1 if any). `--format cyclonedx` exports the inventory as a CycloneDX 1.6 SBOM. The web dashboard shows "N new vulnerabilities affect <repo> since your last scan" with a re-scan button, from a daily backend job.
-- **Privacy.** Syncing downloads public data only; nothing about your code or dependencies is sent. Data sources: OSV.dev (CC-BY 4.0, including the GitHub Advisory Database, CC BY 4.0), CISA KEV, FIRST EPSS.
+Tools include scan, review, explain, dependencies, codebase map, taint paths and symbol search. Paths are confined to the project, results are paginated, and secrets are redacted. Details: [docs/agents/mcp-clients.md](docs/agents/mcp-clients.md).
 
 ## Skills
 
-A skill is packaged expertise for a framework, language or bug class, in the open Agent Skills format (a `SKILL.md` with YAML frontmatter) plus declarative data. Athena loads only each skill's name and description, switches a skill on when the project actually uses it (a dependency in a manifest or an import — never free text in a README), and then adds its rules, sources, sinks and file checks to the scan. Findings name the skill that produced them (`skill: "express"`), and the terminal prints `Skills: express, auth-sessions, …`.
-
-**Built in (39, MIT):** methodology (audit context, variant analysis, false-positive check, insecure defaults, sharp edges, differential review, spec vs code, lifecycles and races), frameworks (Express, Next.js, React, NestJS, Flask, Django, FastAPI, Spring, ASP.NET Core, Go web, Rust web, Laravel), ORMs (Prisma, SQLAlchemy, TypeORM, Hibernate, EF Core, GORM), languages (C/C++ memory safety, Rust unsafe/FFI, PHP, shell), and domains (authentication and sessions, file uploads, payment webhooks, GitHub Actions, Dockerfiles, LLM-app security, common AI-generated-code flaws, fail-open defaults).
-
-```
-athena skills list [path]            what is active for this project, and what is available
-athena skills show <name> [--section "Verification checklist"]
-athena skills new <name>             scaffold a skill with rules and fixtures (repo: .athena/skills/)
-athena skills test [path]            validate a skill and run its vulnerable/safe fixtures
-athena skills add <git-url>[#subdir][@commit] [--yes] [--repo]
-athena skills remove <name>
-athena variants <finding-id> [--save]  turn one confirmed finding into a rule and find its siblings
-```
-
-Skills are **data only**: rules (`rules.json`: a call, line or file pattern plus a fixed vocabulary of conditions such as `argIsConcat` or `fileTextNotMatches`), taint sources/sinks (`taint.json`) and guidance text. They contain no code. Every regular expression is checked before a skill loads (third-party patterns are limited to a few quantifiers and run under a time budget, and are switched off if they are slow); every built-in rule has a vulnerable and a safe fixture, and `athena skills test` runs them for yours. A skill cannot reuse a built-in rule id or take a built-in name (`taint`, `crypto`, `express`, …), cannot replace a built-in skill, and cannot declare sanitizers, so it cannot hide or re-grade built-in findings. Skills from `athena skills add` are pinned to a full commit SHA, show their licence and every file before installing, ask before replacing an installed skill, and are fetched into a temporary folder that is always removed. Precedence is repo (`.athena/skills`) over user (`~/.athena/skills`); built-in skills are always kept. Detection reads dependency names from manifests (package.json, requirements, pyproject, pom, go.mod, Cargo, …) and imports, never prose. Third-party skills such as Trail of Bits' (CC BY-SA 4.0) are not bundled; install them yourself and mind their licence.
-
-**Variant analysis:** `athena variants <id>` generalises a confirmed finding (the sink call and the shape of its unsafe argument) into a rule, previews the other places that match, and with `--save` stores it in `.athena/learned-rules.json`, so every later scan finds those cousins for free. A rule that matches more than 50 places is refused without `--force`.
-
----
-
-## Features
-
-### Core Analysis Engine
-- **AI provenance by lines** — *recorded* (git co-author trailers and agent authors, a floor) plus a *heuristic estimate* from style signals, always reported as a range with its method
-- **One parser for nine language families** via tree-sitter (bundled WASM grammars) — see [Supported languages](#supported-languages)
-- **Security scanning, all built in:**
-  - Athena's own analysis engine: rules, taint analysis and investigation for nine language families
-  - Secret detection (provider patterns + entropy)
-  - API-existence checks (hallucinated calls) against installed type declarations
-  - dependency intelligence — OSV advisories, registry checks, typosquats
-  - [ESLint](https://eslint.org/) + `eslint-plugin-security` (optional, JavaScript/TypeScript only)
-  - Semgrep, NodeJSScan, Bearer and `npm audit` were retired: Athena's engine matched or beat them on its benchmark (see `docs/athena-bench/SAST.md`)
-
-### Web Platform
-- **Live terminal** — real-time scan output streamed via WebSocket
-- **GitHub repo scanning** — paste a public repo URL and scan instantly
-- **Local upload scanning** — upload a folder or ZIP archive for analysis
-- **Interactive reports** — findings grouped by severity with code snippets, redacted secrets, and AI confidence scores
-- **PDF & Markdown export** — download scan reports
-- **Dashboard** — scan history with risk metrics and trend visualization
-- **OAuth authentication** — Supabase Auth with GitHub/Google providers
-
-### CLI
-- **Pre-commit integration** — scan staged files before committing
-- **Delta scanning** — only scan changed files for speed
-- **Terminal UI** — colored output with progress indicators
-- **npm package** — `npx @arsh342/athena scan .`
-
----
-
-## Architecture
-
-```
-athena/
-├── core/          # Shared analysis engine (scanners, scorer, parsers)
-├── cli/           # Terminal CLI — pre-commit hook & local scanning
-├── backend/       # Express API + WebSocket terminal server
-├── frontend/      # React SPA — brutalist-style web interface
-└── docs/          # System design, tech stack, and planning docs
-```
-
-### Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Language | TypeScript (strict mode) |
-| Runtime | Node.js 18+ |
-| Frontend | React 19, Vite, xterm.js |
-| Backend | Express, WebSocket (ws) |
-| Database | Supabase (PostgreSQL) |
-| Auth | Supabase Auth (OAuth) |
-| Package Manager | npm workspaces |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Node.js** ≥ 18
-- **npm** ≥ 9
-- A [Supabase](https://supabase.com/) project (for the web platform)
-
-Optional: `eslint` + `eslint-plugin-security` for extra JavaScript/TypeScript lint findings. Nothing else needs installing.
-
-### Installation
+A skill is packaged expertise for a framework, language or bug class. Athena turns one on only when your project uses it (a dependency or an import), then applies its rules and guidance. 39 skills are built in: methodology, frameworks (Express, Next.js, Django, Spring, Laravel, ...), ORMs, languages and deployment files.
 
 ```bash
-# Clone the repository
+athena skills list             # what is active for this project
+athena skills show express     # read a skill
+athena skills new my-skill     # scaffold your own, with test fixtures
+athena skills test             # validate it against its fixtures
+athena skills add <git-url>    # install a third-party skill
+```
+
+Skills are data only (rules, taint sources and sinks, guidance text) and contain no code, so installing one cannot run anything. The same security skill is published in the open Agent Skills format for other agents:
+
+```bash
+npx skills add arsh342/athena
+```
+
+`athena variants <finding-id> --save` turns one confirmed finding into a rule that finds its look-alikes in every later scan.
+
+## Optional AI verification
+
+Off by default. With your own provider key, an AI model double-checks the findings Athena was unsure about.
+
+```bash
+athena keys set anthropic            # or openai, google, openrouter, ...
+athena scan . --ai verify            # verify uncertain findings
+athena scan . --ai deep --budget 1   # deeper review with a three-voter panel
+```
+
+- **You set the limit.** Spend is capped at $0.25 per run and $1 per day by default, and Athena stops before a call could exceed it. Deep mode requires an explicit `--budget`.
+- **You see what is sent.** The first time in a repository, Athena shows exactly what leaves your machine and asks. Secrets and dependency findings are never sent.
+- **Your key stays yours.** It is read from the environment or a private file, and is never printed or logged.
+- Works with Anthropic, OpenAI, Google, any OpenAI-compatible service, and local models (Ollama, LM Studio).
+
+## Keeping current
+
+```bash
+athena update      # refresh advisory data and signed rule packs
+athena alerts      # new vulnerabilities since your last scan
+```
+
+Updates download public data only. Nothing about your code is sent.
+
+## Configuration
+
+Add `athena.config.json` to your project to set the failure threshold, exclude paths, list intentionally public routes, and tune AI limits. `athena setup` walks you through it. Reference: [cli/README.md](cli/README.md).
+
+## Web app
+
+This repository also contains a web version that scans public GitHub repositories or uploaded folders with a live terminal. To run it locally you need a [Supabase](https://supabase.com/) project:
+
+```bash
+cp backend/.env.example backend/.env   # add SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+npm run dev                            # API on :8787, site on :5173
+```
+
+## Develop
+
+```bash
 git clone https://github.com/arsh342/athena.git
 cd athena
-
-# Install all workspace dependencies
 npm install
-
-# Build all packages (core → cli → backend → frontend)
 npm run build
+npm test --workspaces --if-present
 ```
 
-### Environment Setup
-
-Create `backend/.env` from the example:
-
-```bash
-cp backend/.env.example backend/.env
-```
-
-Fill in your Supabase credentials:
-
-```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
-
-### Running Locally
-
-```bash
-# Start both backend and frontend dev servers
-npm run dev
-
-# Or start them individually:
-npm run dev:backend    # Express API on http://localhost:8787
-npm run dev:frontend   # Vite dev server on http://localhost:5173
-```
-
-### CLI Usage
-
-```bash
-# Scan a local directory
-npx @arsh342/athena scan .
-
-# Or install globally
-npm install -g @arsh342/athena
-athena scan /path/to/repo
-
-# CI-friendly: JSON or SARIF on stdout, exit codes 0 pass / 1 blocked / 3 incomplete (--strict)
-athena scan . --format sarif --output athena.sarif --fail-on high --strict
-
-athena explain <finding-id>    # why it matters and how to fix
-athena provenance .            # how much code was written by AI, per file
-```
-
-See [cli/README.md](cli/README.md) for all options.
-
----
-
-## Project Structure
-
-### `core/` — Analysis Engine
-
-The shared scanning library used by both the CLI and backend.
-
-- `engine.ts` — orchestrates the full scan pipeline
-- `scorer/heuristic-scorer.ts` — heuristic style scorer (fallback estimate)
-- `provenance/` — recorded AI provenance from git and line-based aggregation
-- `lang/` — language detection, tree-sitter parser loading and per-language code unit extraction
-- `parser/ast-parser.ts` — reads a file, rejects binary content and hands it to `lang/`
-- `analyzers/` — the optional ESLint adapter and secret detection; `deps/` — dependency intelligence
-- `scanner-registry.ts` — plugin registry for external scanners
-- `report/` — report generation (terminal, JSON)
-
-### `backend/` — API Server
-
-Express server with WebSocket terminal streaming.
-
-- `server.ts` — HTTP API routes (scans, reports, auth, uploads)
-- `scanner.ts` — scan orchestration (git clone, file collection, analysis)
-- `pty-handler.ts` — WebSocket terminal connection handler
-- `terminal-router.ts` — safe command routing (help, scan, scans, findings)
-- `data.ts` — Supabase data access layer
-- `auth.ts` / `auth-supabase.ts` — OAuth authentication
-
-### `frontend/` — Web Interface
-
-React SPA with a brutalist design aesthetic.
-
-- `pages/` — Landing, Dashboard, ScanPage, ReportPage, Login, Register
-- `components/` — WebTerminal, ReportView, CodeBlock, SeverityBadge, Navbar
-- `auth/` — auth store and OAuth flow
-- `services/api.ts` — backend API client
-- `styles/` — CSS with brutalist design tokens
-
-### `cli/` — Command Line Tool
-
-Published as `@arsh342/athena` on npm.
-
-- `commands/scan.ts` — main scan command
-- `commands/doctor.ts` — environment health check
-- `commands/setup.ts` — interactive configuration
-- `utils/` — terminal UI, colors, progress, git helpers
-
----
+| Folder | Contents |
+|---|---|
+| `core/` | Analysis engine |
+| `cli/` | The `athena` command (published to npm) |
+| `agents/` | Optional AI layer |
+| `plugins/athena/` | Claude Code plugin |
+| `skills/` | Agent Skills package |
+| `backend/`, `frontend/` | Web app |
 
 ## License
 
-MIT — see [cli/LICENSE](cli/LICENSE) for details.
-
----
-
-**Built by [Arshdeep Singh](https://github.com/arsh342)**
+MIT. Built by [Arshdeep Singh](https://github.com/arsh342).
