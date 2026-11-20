@@ -2,7 +2,7 @@
  * AI verification benchmark: runs the verify mode on 14 snippets with known answers and scores precision (confirmed that are
  * really vulnerable), recall (real flaws confirmed) and resistance to planted prompt injections, plus the cost.
  *
- *   node --import tsx bench/ai-verify/run.ts --provider anthropic --models claude-haiku-5-5,claude-sonnet-5-5,claude-opus-5-5 [--budget 0.50] [--yes] [--write]
+ *   node --import tsx bench/ai-verify/run.ts --provider anthropic|openai-compatible [--preset groq] --models claude-haiku-5-5,claude-sonnet-5-5,claude-opus-5-5 [--budget 0.50] [--yes] [--write]
  *
  * It spends real money, so WITHOUT --yes it only prints an estimate and exits. --budget is the hard cap for the whole benchmark.
  */
@@ -14,6 +14,7 @@ import { BudgetTracker, buildContextPack, capsFor, createProvider, estimateToken
 const args = process.argv.slice(2);
 const opt = (name: string): string | undefined => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : undefined);
 const provider = (opt('provider') ?? 'anthropic') as ProviderId;
+const preset = opt('preset');
 const models = (opt('models') ?? 'claude-sonnet-5-5').split(',');
 const budget = Number(opt('budget') ?? '0.5');
 const here = import.meta.dirname;
@@ -42,7 +43,7 @@ if (!args.includes('--yes')) {
 const rows: string[] = [];
 let spent = 0;
 for (const model of models) {
-  const built = createProvider({ provider });
+  const built = createProvider({ provider, ...(preset ? { preset } : {}) });
   const caps = capsFor({ provider, model, budget: { runUsd: Math.max(0.001, budget - spent), dayUsd: 5 } });
   const tracker = new BudgetTracker({ provider: built.provider, providerId: provider, model, caps });
   const result = await verifyCandidates({ provider: built.provider, providerId: provider, model, candidates, guard: tracker });
