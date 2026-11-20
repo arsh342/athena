@@ -17,6 +17,14 @@ human:
   min_stars: 50
   repos_per_language: 20
   max_units_per_repo: 200
+# A second human pool closer in era to the AI code: repos created before 2021-09, code as of 2022-06-21 (Copilot's general release;
+# only waitlisted Copilot preview users could have contaminated it). Used for training and, by repository split, for an era-robustness check.
+human_late:
+  created_before: "2021-09-01"
+  checkout_before: "2022-06-21"
+  min_stars: 50
+  repos_per_language: 20
+  max_units_per_repo: 200
 ai:
   committed_since: "2025-01-01"
   min_ai_fraction: 0.95

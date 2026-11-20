@@ -103,7 +103,7 @@ The Anthropic and OpenAI SDKs are built in. Google's is large, so it is not inst
 
 Athena can tune its AI-code estimate to a repository, locally, from trusted labels only: lines git credits to AI-assisted commits (AI), code whose every line was last changed before 2021-06-01 (human), and your own `athena provenance mark` entries. It activates at 30 labels with at least 10 of each class, shifts an estimate by at most 0.25, and is adopted only if it lowers log-loss on a held-out 20% of the labels and does not reduce AI recall or raise the human false-positive rate by more than one point on a bundled check set. State is in `~/.athena/learning/` (mode 0600) and holds hashes and style numbers, never code. A mark applies only while the code is unchanged. The report line reads `learning: tuned with N labels from this repo (changed X of Y units)` or `learning: global model`.
 
-The trained detector is not yet enabled for any language, so estimates still come from the style heuristic and tuning rarely changes a result; the report shows how many units it changed.
+The trained detector is enabled only for JavaScript so far; every other language uses the style heuristic, which rarely scores near the decision boundary, so tuning there seldom changes a result. The report shows how many units tuning changed.
 
 ## What Athena checks
 
@@ -111,7 +111,7 @@ The trained detector is not yet enabled for any language, so estimates still com
 - **Investigation:** entry points and their auth guards, sibling comparison (the one route missing the check its neighbours have), intent versus code, lifecycles, error paths and races. Every finding is checked for reachability, defenses and impact; `low` confidence findings are listed as **needs review** and never block.
 - **Secrets:** 60+ provider formats, connection strings and private keys in source and config files. Findings never contain the secret.
 - **Dependencies:** known vulnerabilities (OSV, with CVSS, EPSS and CISA KEV), malicious packages, non-existent packages, typosquats, deprecated or very new releases, install scripts, and hallucinated API calls. Private packages are never looked up, and a registry outage is a coverage gap, not "does not exist".
-- **AI provenance:** lines credited to AI tools in git history (a floor) plus a style-based estimate, shown as a range with its method. No language yet meets the release targets for the trained detector, so estimates say they are heuristic.
+- **AI provenance:** lines credited to AI tools in git history (a floor) plus a style-based estimate, shown as a range with its method. The trained detector (`athena-detect-fast`) is enabled for a language only when it meets its release targets on a held-out benchmark (human false-positive rate <= 5%, F1 >= 0.85, and the same false-positive limit on 2022-era human code); today that is JavaScript only, and every other language uses a labelled style heuristic. Results: [docs/athena-bench/RESULTS.md](https://github.com/arsh342/athena/blob/main/docs/athena-bench/RESULTS.md).
 
 Syntax-error files are reported as `parse-failed` in coverage and their readable parts are still analyzed.
 

@@ -30,7 +30,7 @@ def tune_threshold(y_true: list[str], p_ai: np.ndarray, max_fpr: float = 0.05, f
 
 
 def gate(metrics: dict, min_samples: int = 50, min_each: int = 10, max_fpr: float = 0.05, min_f1: float = 0.85,
-         min_repos: int = 5) -> tuple[bool, str]:
+         min_repos: int = 5, min_late: int = 20) -> tuple[bool, str]:
     if metrics["n"] < min_samples or metrics["humans"] < min_each or metrics["ais"] < min_each:
         return False, f"too little test data ({metrics['humans']} human / {metrics['ais']} ai)"
     hr, ar = metrics.get("human_repos"), metrics.get("ai_repos")
@@ -40,4 +40,10 @@ def gate(metrics: dict, min_samples: int = 50, min_each: int = 10, max_fpr: floa
         return False, f"human false-positive rate {metrics['fpr']:.1%} > {max_fpr:.0%}"
     if metrics["f1"] < min_f1:
         return False, f"F1 {metrics['f1']:.2f} < {min_f1}"
+    # Era robustness: the model must not flag human code from the later (2022) era either, or it may only be recognising newer syntax.
+    late_n, late_fpr = metrics.get("late_humans"), metrics.get("late_fpr")
+    if late_n is None or late_n < min_late:
+        return False, f"no era-robustness evidence ({late_n or 0} later-era human test units, need {min_late})"
+    if late_fpr > max_fpr:
+        return False, f"later-era (2022) human false-positive rate {late_fpr:.1%} > {max_fpr:.0%}"
     return True, "meets release targets"

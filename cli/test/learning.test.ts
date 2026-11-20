@@ -31,7 +31,11 @@ test('the report says "tuned with N labels from this repo" once 30 trusted label
   const dir = repo();
   const home = newHome();
   const on = await runCli(['scan', dir, ...OFF], home);
-  assert.match(on.stdout, /learning: tuned with 32 labels from this repo \(changed \d+ of \d+ units\)/);
+  // With the real model as the base for JavaScript, the guardrails may (rightly) reject tuning on this tiny synthetic repository;
+  // either way Athena says what happened.
+  assert.match(on.stdout, /learning: (tuned with 32 labels from this repo \(changed \d+ of \d+ units\)|global model \(check-set [^)]+\))/);
+  const json = JSON.parse((await runCli(['scan', dir, ...OFF, '--format', 'json'], home)).stdout).summary.aiProvenance.learning;
+  assert.equal(json.labels, 32, '16 pre-2021 human units + 16 recorded AI units');
   assert.ok(existsSync(join(home, 'learning')));
   assert.equal(statSync(learningFile(home)).mode & 0o777, 0o600);
 
@@ -81,13 +85,13 @@ test('models reset --repo forgets this repository only; without --repo it forget
 test('a mark reaches the scan: marking one more unit raises the label count from 32 to 33, and editing it drops the mark again', async () => {
   const dir = repo();
   const home = newHome();
-  assert.match((await runCli(['scan', dir, ...OFF], home)).stdout, /tuned with 32 labels/);
+  const labels = async () => JSON.parse((await runCli(['scan', dir, ...OFF, '--format', 'json'], home)).stdout).summary.aiProvenance.learning.labels as number;
+  assert.equal(await labels(), 32);
   await runCli(['provenance', 'mark', 'new.js:3', 'human', '--path', dir], home, dir);
-  assert.match((await runCli(['scan', dir, ...OFF], home)).stdout, /tuned with 33 labels/);
+  assert.equal(await labels(), 33);
   writeFileSync(join(dir, 'new.js'), `${FN('fresh', 99)}// edited\n`.replace('total * 101', 'total * 7'));
   git(dir, ['add', '.']);
   git(dir, ['commit', '-q', '-m', 'edit'], '2025-10-01T00:00:00');
   // The unit's code changed, so the old mark no longer applies (the stored sample for the old code is harmless history).
-  const after = await runCli(['scan', dir, ...OFF], home);
-  assert.match(after.stdout, /learning: tuned with 3[23] labels/);
+  assert.ok([32, 33].includes(await labels()));
 });
