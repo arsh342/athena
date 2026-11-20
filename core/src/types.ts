@@ -2,7 +2,7 @@ import type { LanguageId } from './lang/languages.js';
 export type CodeUnitKind = 'function' | 'class' | 'method' | 'arrow';
 export type ConfidenceBand = 'LOW' | 'UNCERTAIN' | 'HIGH';
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-export type FindingSource = 'athena-rules' | 'athena-taint' | 'athena-secrets' | 'athena-investigate' | 'athena-deps' | 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep' | 'eslint' | 'npm-audit' | 'nodejsscan' | 'bearer';
+export type FindingSource = 'athena-rules' | 'athena-taint' | 'athena-secrets' | 'athena-investigate' | 'athena-deps' | 'athena-agent' | 'secret-detector' | 'hallucination-detector' | 'security-analyzer' | 'semgrep' | 'eslint' | 'npm-audit' | 'nodejsscan' | 'bearer';
 
 export interface SemgrepConfig {
   enabled: boolean;
@@ -178,6 +178,18 @@ export interface ClassifiedFinding {
   trace?: Array<{ file: string; line: number; note: string }>;
   /** The package a dependency finding is about (additive). */
   dependency?: { ecosystem: string; name: string; version: string; manifest: string };
+  /** The optional AI layer's verdict on this finding (additive). */
+  aiVerdict?: {
+    verdict: 'confirmed' | 'refuted' | 'needs-human';
+    reason: string;
+    lenses: { reachability: string; defenses: string; impact: string };
+    citations: string[];
+    provider: string;
+    model: string;
+    cached: boolean;
+    /** Deep mode's panel: how each of the three voters voted. */
+    votes?: Array<{ voter: string; verdict: 'confirmed' | 'refuted' | 'needs-human' }>;
+  };
   /** Listed in CISA's Known Exploited Vulnerabilities catalogue. */
   kev?: boolean;
   /** FIRST EPSS probability of exploitation in the next 30 days. */
@@ -205,6 +217,26 @@ export interface ScanReport {
     findings: Record<Severity, number>;
     /** Findings Athena could not confirm (low confidence): shown, never blocking. */
     needsReview?: number;
+    /** What the optional AI layer did in this run. */
+    ai?: {
+      mode: 'verify' | 'hunt' | 'deep';
+      provider: string;
+      model: string;
+      /** Spend this run in USD, or null when the price is unknown (then see `tokens`). */
+      costUsd: number | null;
+      tokens: number;
+      requests: number;
+      cachedHits: number;
+      checked: number;
+      /** Candidates the AI did not settle, with why (budget, refusal, no valid answer). */
+      notChecked: Array<{ id: string; reason: string }>;
+      /** Today's total for this provider, and the caps, for the "AI: $x this run · $y of $z today" line. */
+      today?: { spent: number; cap: number; unit: 'usd' | 'tokens' };
+      /** Hunt mode: the components explored and not explored, and how many findings were added. */
+      hunt?: { explored: string[]; notExplored: Array<{ component: string; reason: string }>; added: number };
+      /** Deep mode: the threat model's summary, rules learned from confirmed findings, patches written for review, and whether the panel ran as a batch. */
+      deep?: { threatModel: string; learnedRules: string[]; patches: string[]; batched: boolean; categories: string[] };
+    };
     /** Skills that were active for this scan and why. */
     skills?: Array<{ name: string; source: string; reason: string }>;
     /** Problems loading skills (overrides refused, invalid skills ignored, slow skills switched off). */

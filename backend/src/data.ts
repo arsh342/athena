@@ -9,6 +9,7 @@ export type FindingSource =
   | 'athena-taint'
   | 'athena-investigate'
   | 'athena-deps'
+  | 'athena-agent'
   | 'hallucination-detector'
   | 'security-analyzer'
   | 'semgrep'

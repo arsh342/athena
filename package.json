@@ -6,12 +6,13 @@
   "workspaces": [
     "backend",
     "core",
+    "agents",
     "cli",
     "frontend"
   ],
   "scripts": {
     "dev": "npm run dev:backend & npm run dev:frontend",
-    "build": "npm run build -w @athena/core && npm run build -w @arsh342/athena && npm run build -w @athena/backend && npm run build -w @athena/frontend",
+    "build": "npm run build -w @athena/core && npm run build -w @athena/agents && npm run build -w @arsh342/athena && npm run build -w @athena/backend && npm run build -w @athena/frontend",
     "build:core": "npm run build -w @athena/core",
     "build:cli": "npm run build -w @arsh342/athena",
     "build:backend": "npm run build -w @athena/backend",

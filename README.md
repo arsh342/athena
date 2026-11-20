@@ -75,6 +75,24 @@ Athena reads every manifest and lockfile it finds (npm, Yarn, pnpm, pip/poetry/u
 
 Private packages (`file:`, `git+`, workspace and scoped-registry packages) are never looked up. A registry outage or rate limit is reported as a coverage gap, never as "does not exist". Answers are cached for 24 hours (advisories 6 hours) under `~/.athena/cache/deps`; `--offline` uses only that cache (and reports the cache date or a gap), and `--no-deps` skips the checks. Athena sends package names and versions to OSV.dev and the package registries, never your code. `npm audit` was replaced by these checks; `--no-npm-audit` is accepted for one release and does nothing.
 
+## Optional AI layer (bring your own key)
+
+Athena is offline by default: no model is called unless you pass `--ai`. The AI layer never replaces the offline analyzers; it only checks what they were unsure about.
+
+| Mode | What it does | Needs |
+|---|---|---|
+| `--ai verify` (default for `--ai`) | Reads short excerpts around up to 20 uncertain (medium/low confidence) findings, then confirms (raised to high) or refutes (lowered to "needs review") each, citing the lines it relied on. Secrets and dependency findings are never sent. | a key |
+| `--ai hunt` | Also lets a read-only agent explore the 3 riskiest components (exposure, findings, AI-written share) for missed issues; its findings are cited, low confidence, then verified. | a key |
+| `--ai deep` | Adds a threat model, per-category research, a three-voter verification panel (2 of 3 decided in code), rules learned from confirmed findings (`.athena/learned-rules.json`, reused by every later offline scan) and, with `--suggest-fixes`, patches written to `.athena/patches/` (second-call reviewed, never applied). | a key, `--budget`, and `--yes` when not interactive |
+
+**Keys and providers.** `athena keys set|status|remove <provider>`; keys come from the environment, then `~/.athena/credentials.json` (mode 0600), and are never printed or logged. Providers: `anthropic` (default model `claude-sonnet-5-5`; `--quality economy|high` selects Haiku or Opus), `openai`, `google`, and OpenAI-compatible endpoints (`--preset openrouter|deepseek|mistral|groq|xai|together|ollama|lmstudio` or `--base-url`). Local endpoints (Ollama, LM Studio) cost nothing and send nothing off your machine. For providers other than Anthropic pass `--model`.
+
+**Spend is capped.** Defaults: $0.25 per run and $1.00 per day (`--budget`, `--budget-tokens`, or `ai` settings in `athena.config.json`). Before every call Athena reserves the worst case; when the next call could exceed the cap, it stops and the report lists what was not checked. Spend is recorded in `~/.athena/usage.json`. Deep mode refuses to start without an explicit `--budget`, prints an estimate, and asks you to confirm. Non-interactive deep runs on Anthropic use the Message Batches API.
+
+**Privacy.** On first use in a repository Athena shows exactly what is sent (short excerpts, the flagged function, its data flow, nearby files) and where, and asks once. Repository text is treated as untrusted: it is delimited, and a verdict is accepted only from structured output, so a comment saying "ignore your instructions" cannot change it.
+
+**What it does not do.** It does not run your code, apply any patch, or decide anything the offline analyzers can decide. Provider adapters are checked against the vendor SDK types and fake providers in tests; the benchmark in `bench/ai-verify` measures precision and recall against 14 known snippets and is run on demand because it spends real money.
+
 ## Review, git gates and AI agents
 
 - **`athena review`** reviews a change instead of the whole repository: `--staged` (default), `--uncommitted`, `--range origin/main..HEAD` or `--base main`. Only findings on changed lines count and block; issues elsewhere in a function you touched are listed separately as existing issues (not counted). Renames are followed, binary files are skipped with a note, and dependency checks run only when a manifest or lockfile changed. Formats: terminal, `json`, `sarif`, and `markdown` (a PR-comment-ready review, one section per file).
