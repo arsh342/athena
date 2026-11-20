@@ -70,6 +70,14 @@ def per_language(model: dict, data: dict[str, tuple[sparse.spmatrix, list[str], 
             idx = [i for i, v in enumerate(data["test"][2]) if v == lang]
             test_metrics["human_repos"] = len({test_repos[i] for i in idx if data["test"][1][i] == "human"})
             test_metrics["ai_repos"] = len({test_repos[i] for i in idx if data["test"][1][i] in ("ai", "adversarial")})
+        eras = data["test"][4] if len(data["test"]) > 4 else None
+        if eras is not None and xt is not None:
+            idx = [i for i, v in enumerate(data["test"][2]) if v == lang]
+            late = [j for j, i in enumerate(idx) if data["test"][1][i] == "human" and eras[i] == "2022"]
+            test_metrics["late_humans"] = len(late)
+            if late:
+                probs = p_ai(predict(xt), model["classes"])
+                test_metrics["late_fpr"] = float(np.mean([probs[j] >= threshold for j in late]))
         enabled, reason = gate(test_metrics)
         out[lang] = {"enabled": enabled, "threshold": threshold, "reason": reason, "test": test_metrics}
     return out

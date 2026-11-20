@@ -86,7 +86,7 @@ flowchart LR
 
 After a scan, `core/src/learning` collects **trusted labels** from the scan itself (units at least 80% recorded as AI-written; units whose every code line predates 2021-06-01 per git blame; units a person marked, matched by code hash), merges them into a per-repository store of numbers (hash, base AI probability, the 35 dense style features), and, when at least 30 labels with 10 of each class exist and the label set changed, trains a small ridge-regularised logistic adjustment on `logit(base probability)` plus repo-standardised style features. The base probability is whatever the scan uses: the fast detector where it is enabled for the language, otherwise the heuristic score. The adjustment is clipped to +-0.25 and is adopted only if it lowers log-loss on a deterministic stratified 20% hold-out and does not reduce AI recall or raise human false positives by more than one point on a bundled 2,000-unit check set (`core/models/check-set.bin`, exported from the benchmark's held-out test split by `core/src/ml/export-check-set.ts`). Partial scans (for example staged files) learn from the accumulated samples, so they never overwrite a better adjustment. State is `~/.athena/learning/<repoKey>.json` (mode 0600, atomic writes), keyed by the canonical path. `--no-learning` and `"learning": false` bypass training and application. The report states whether the estimate was tuned and how many units changed.
 
-Limitations: human labels are code from before mid-2021 and AI labels are recent, so a repository can still teach the model "old style versus new style"; the guardrails limit the damage but do not remove this. With the heuristic as the base (today, for every language) scores rarely approach the decision boundary, so tuning seldom changes a unit's classification.
+Limitations: human labels are code from before mid-2021 and AI labels are recent, so a repository can still teach the model "old style versus new style"; the guardrails limit the damage but do not remove this. With the heuristic as the base (every language except JavaScript) scores rarely approach the decision boundary, so tuning there seldom changes a unit's classification.
 
 ## 5. Skills and learned rules
 
@@ -169,7 +169,7 @@ The CLI prints in the Claude Code style: `⏺` opens a section or finding, `⎿`
 
 ## 11. Known limits
 
-- AI-provenance estimates are heuristic. No language yet meets the release targets of the trained detector (human false-positive rate ≤ 5%, F1 ≥ 0.85), so results are labelled low confidence. See `docs/athena-bench/RESULTS.md`.
+- AI-provenance estimates are probabilistic. The trained detector (`athena-detect-fast` 0.2.0) is enabled for JavaScript only: it met the release targets (human false-positive rate ≤ 5%, F1 ≥ 0.85, at least 5 repositories per class, and the same false-positive limit on 2022-era human code; JavaScript scored F1 0.93, 3.2% and 4.8%). Every other language fails on too few distinct test repositories or too little AI data and uses a labelled low-confidence style heuristic. The human data is from before mid-2022 and the AI data from 2025 onward, so an era effect cannot be fully excluded, and no verified-human recent code exists to test with. See `docs/athena-bench/RESULTS.md`.
 - Static-analysis recall was measured against a hand-verified, partial answer key; precision is not yet measured (`docs/athena-bench/SAST.md`).
 - Detected secrets are not verified with their provider.
 - Hallucinated-API checks need the package installed with type declarations.

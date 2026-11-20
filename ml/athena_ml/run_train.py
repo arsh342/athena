@@ -31,7 +31,8 @@ def load_rows() -> list[dict]:
 
 
 def matrix(rows: list[dict]):
-    return to_matrix(extract(rows)), [r["label"] for r in rows], [r["language"] for r in rows], [r["repo"] for r in rows]
+    eras = [(r.get("era") or "2021") if r["label"] == "human" else "-" for r in rows]
+    return to_matrix(extract(rows)), [r["label"] for r in rows], [r["language"] for r in rows], [r["repo"] for r in rows], eras
 
 
 def main(version: str) -> None:
@@ -74,17 +75,16 @@ def write_results(path: Path, version: str, langs: dict, benchmark: dict, stats:
              "AI = units whose lines git blame credits to AI-assisted commits (>= 95% recorded) from 2025 onward; "
              "refined = units with 30-80% of their lines blamed on AI commits. Splits are by repository; refined units are excluded from the binary metrics. "
              "The `adversarial` class is not present: no real-world source for it was found without generating data locally.", "",
-             "**Read these numbers with two caveats.** (1) *Era confound:* human units come from before 2021 and AI units from 2025 onward, so a classifier can score well "
-             "by recognising newer syntax (optional chaining, type annotations, f-strings) and small-project style rather than authorship; a high F1 here does not show that "
-             "modern human code would be classified as human. (2) *Few repositories:* each language's test split has only a handful of distinct repositories, so figures are noisy; "
-             "the release gate therefore also requires at least 5 distinct repositories per class. No language should be enabled until the human side is era-matched.", "",
+             "**Read these numbers with three caveats.** (1) *Era:* the first human pool is code from before 2021-06 and the AI code is from 2025 onward, so a classifier can score well by recognising newer syntax (optional chaining, type annotations, f-strings) and small-project style rather than authorship. A second human pool (code as of 2022-06-21, Copilot's general release) narrows the gap and feeds an **era-robustness check**: a language is enabled only if its human false-positive rate on 2022-era human test units is also <= 5%. Neither pool can show that code written today by a human is classified as human; no verified-human recent code exists to test with. "
+             "(2) *Few repositories:* each language's test split has only a handful of distinct repositories, so figures are noisy; the release gate therefore also requires at least 5 distinct repositories per class. "
+             "(3) *Contamination:* 2022-era human code may include a little Copilot-preview-assisted code.", "",
              "Release targets per language (test split): human false-positive rate <= 5% and F1 >= 0.85. A language that misses them, or has "
              "too little data, is **disabled**: Athena then uses the labelled style heuristic for it.", "",
-             "| Language | Enabled | Threshold | Test human units | Test AI units | Precision | Recall | F1 | Human FPR | Note |", "|---|---|---|---|---|---|---|---|---|---|"]
+             "| Language | Enabled | Threshold | Test human units | Test AI units | Precision | Recall | F1 | Human FPR | 2022-era human FPR | Note |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for lang, v in sorted(langs.items()):
         t = v["test"]
         lines.append(f"| {lang} | {'yes' if v['enabled'] else 'no'} | {v['threshold']:.2f} | {t['humans']} | {t['ais']} | {t['precision']:.2f} | "
-                     f"{t['recall']:.2f} | {t['f1']:.2f} | {t['fpr']:.1%} | {v['reason']} |")
+                     f"{t['recall']:.2f} | {t['f1']:.2f} | {t['fpr']:.1%} | {('%.1f%% (n=%d)' % (100 * t['late_fpr'], t['late_humans'])) if t.get('late_fpr') is not None else 'n/a (n=%d)' % t.get('late_humans', 0)} | {v['reason']} |")
     if benchmark["newest"]:
         lines += ["", "## Newest split (the most recent 20% of AI repos by commit date, held out of training)", "", "| Language | Units | AI recall |", "|---|---|---|"]
         for lang, v in sorted(benchmark["newest"].items()):

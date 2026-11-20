@@ -34,7 +34,8 @@ def test_language_with_too_little_test_data_is_gated_off():
     tiny = {"n": 20, "humans": 10, "ais": 10, "precision": 1.0, "recall": 1.0, "f1": 1.0, "fpr": 0.0}
     ok, reason = gate(tiny)
     assert not ok and "too little" in reason
-    big = {"n": 400, "humans": 200, "ais": 200, "precision": 0.9, "recall": 0.9, "f1": 0.9, "fpr": 0.04, "human_repos": 9, "ai_repos": 9}
+    big = {"n": 400, "humans": 200, "ais": 200, "precision": 0.9, "recall": 0.9, "f1": 0.9, "fpr": 0.04, "human_repos": 9, "ai_repos": 9,
+           "late_humans": 60, "late_fpr": 0.03}
     assert gate(big)[0]
     assert not gate({**big, "fpr": 0.08})[0]
     assert not gate({**big, "f1": 0.7})[0]
@@ -55,12 +56,13 @@ def test_per_language_applies_gate_on_test_split():
     def split(n_h, n_a, lang):
         x = sparse.vstack([synthetic(n_h, rng, 0.0), synthetic(n_a, rng, 1.5)]).tocsr()
         repos = [f"{lang}-h{i % 6}" for i in range(n_h)] + [f"{lang}-a{i % 6}" for i in range(n_a)]
-        return x, ["human"] * n_h + ["ai"] * n_a, [lang] * (n_h + n_a), repos
+        eras = ["2022" if i % 2 else "2021" for i in range(n_h)] + ["-"] * n_a
+        return x, ["human"] * n_h + ["ai"] * n_a, [lang] * (n_h + n_a), repos, eras
     train_x, train_y = split(150, 150, "python")[:2]
     m = train(train_x, train_y, train_x, train_y, c_grid=(1.0,))
     py, rs = split(100, 100, "python"), split(8, 8, "rust")
     both = lambda i: (sparse.vstack([py[i], rs[i]]).tocsr() if i == 0 else py[i] + rs[i])
-    data = {s: (both(0), both(1), both(2), both(3)) for s in ("dev", "test")}
+    data = {s: (both(0), both(1), both(2), both(3), both(4)) for s in ("dev", "test")}
     w = {"W": m["weights"], "b": m["biases"], "temperature": m["temperature"]}
     out = per_language(m, data, lambda x: predict_proba(w, x))
     assert out["python"]["enabled"] is True
@@ -69,7 +71,7 @@ def test_per_language_applies_gate_on_test_split():
 
 def test_gate_needs_enough_distinct_repos_per_class():
     from athena_ml.evaluate import gate
-    strong = {"n": 400, "humans": 200, "ais": 200, "precision": 0.95, "recall": 0.95, "f1": 0.95, "fpr": 0.02}
+    strong = {"n": 400, "humans": 200, "ais": 200, "precision": 0.95, "recall": 0.95, "f1": 0.95, "fpr": 0.02, "late_humans": 60, "late_fpr": 0.01}
     ok, _ = gate({**strong, "human_repos": 8, "ai_repos": 7})
     assert ok
     ok, reason = gate({**strong, "human_repos": 1, "ai_repos": 7})

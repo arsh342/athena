@@ -44,23 +44,24 @@ def checkout_before(repo_dir: Path, date: str) -> str | None:
     return sha
 
 
-def collect_repo(repo_dir: Path, repo_name: str, cfg: dict[str, Any], seed: int = 7) -> list[dict]:
-    """Units from one already-cloned repo, capped and labelled human."""
-    sha = checkout_before(repo_dir, cfg["human"]["checkout_before"])
+def collect_repo(repo_dir: Path, repo_name: str, cfg: dict[str, Any], seed: int = 7, pool: str = "human") -> list[dict]:
+    """Units from one already-cloned repo, capped and labelled human. `pool` picks the era (`human` or `human_late`)."""
+    sha = checkout_before(repo_dir, cfg[pool]["checkout_before"])
     if sha is None:
         return []
     units = list(extract_units(repo_dir))
     random.Random(seed).shuffle(units)
     out = []
-    for unit in units[: cfg["human"]["max_units_per_repo"]]:
-        out.append({**unit, "label": "human", "repo": repo_name, "commit": sha, "commit_date": "", "source": "github-human"})
+    for unit in units[: cfg[pool]["max_units_per_repo"]]:
+        out.append({**unit, "label": "human", "repo": repo_name, "commit": sha, "commit_date": "",
+                    "source": "github-human" if pool == "human" else "github-human-late", "era": "2021" if pool == "human" else "2022"})
     return out
 
 
-def search_repos(gh: "GitHub", language: str, cfg: dict[str, Any], limit: int) -> list[dict]:
+def search_repos(gh: "GitHub", language: str, cfg: dict[str, Any], limit: int, pool: str = "human") -> list[dict]:
     found: dict[str, dict] = {}
     for spdx in load_yaml("licences.yaml")["allowed"][:5]:
-        q = (f"language:{language} stars:>={cfg['human']['min_stars']} created:<{cfg['human']['created_before']} "
+        q = (f"language:{language} stars:>={cfg[pool]['min_stars']} created:<{cfg[pool]['created_before']} "
              f"license:{spdx} fork:false archived:false")
         data = gh.get("/search/repositories", {"q": q, "sort": "stars", "per_page": 30})
         for item in data.get("items", []):
@@ -71,21 +72,27 @@ def search_repos(gh: "GitHub", language: str, cfg: dict[str, Any], limit: int) -
     return list(found.values())[: limit * 2]
 
 
-def collect_language(gh: "GitHub", language: str, out_dir: Path, limit: int | None = None) -> int:
+def collect_language(gh: "GitHub", language: str, out_dir: Path, limit: int | None = None, pool: str = "human") -> int:
     cfg = load_yaml("languages.yaml")
-    limit = limit or cfg["human"]["repos_per_language"]
+    limit = limit or cfg[pool]["repos_per_language"]
     out_dir.mkdir(parents=True, exist_ok=True)
-    target = out_dir / f"human-{cfg['languages'][language]}.jsonl"
+    prefix = "human" if pool == "human" else "human-late"
+    target = out_dir / f"{prefix}-{cfg['languages'][language]}.jsonl"
+    # Repositories already in the other pool are skipped, so the two pools hold different projects.
+    other = out_dir / f"{'human-late' if pool == 'human' else 'human'}-{cfg['languages'][language]}.jsonl"
+    taken = {json.loads(l)["repo"] for l in other.read_text().split("\n") if l.strip()} if other.exists() else set()
     done = 0
     with target.open("a", encoding="utf-8") as sink:
-        for repo in search_repos(gh, language, cfg, limit):
+        for repo in search_repos(gh, language, cfg, limit, pool):
             if done >= limit:
                 break
+            if repo["full_name"] in taken:
+                continue
             with tempfile.TemporaryDirectory() as tmp:
                 dest = Path(tmp) / "r"
                 try:
                     git(["clone", "-q", "--filter=blob:none", "--no-checkout", repo["clone_url"], str(dest)])
-                    rows = collect_repo(dest, repo["full_name"], cfg)
+                    rows = collect_repo(dest, repo["full_name"], cfg, pool=pool)
                 except (RuntimeError, subprocess.TimeoutExpired):
                     continue
             for row in rows:
