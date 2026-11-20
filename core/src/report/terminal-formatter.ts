@@ -35,6 +35,7 @@ const SEVERITY_COLOR: Record<Severity, string> = {
   LOW: '\x1b[2m',
 };
 const BRAND = '\x1b[38;2;232;122;65m';
+const DIM = '\x1b[2m';
 const RESET = '\x1b[0m';
 
 export function gateLine(
@@ -85,13 +86,22 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
   const rel = (file: string) => (options.root ? relative(options.root, file).split('\\').join('/') || file : file);
   const { summary } = report;
   const out: string[] = [];
+  // Claude Code–style output: `⏺` opens an item, `⎿` hangs its detail underneath.
+  const dot = (code: string = BRAND) => paint(code, '⏺');
+  const tree = () => {
+    let first = true;
+    return (text: string) => {
+      out.push(`${first ? `  ${dim('⎿')}  ` : '     '}${text}`);
+      first = false;
+    };
+  };
 
-  out.push(`${paint(BRAND, 'athena')} ${options.version} · ${options.mode} ${options.target} · ${summary.filesScanned} files${languageBreakdown(summary.languages)} · ${(report.duration / 1000).toFixed(1)}s`);
+  out.push(`${dot()} ${paint(BRAND, 'athena')} ${options.version} · ${options.mode} ${options.target} · ${summary.filesScanned} files${languageBreakdown(summary.languages)} · ${(report.duration / 1000).toFixed(1)}s`);
   out.push('');
 
   const gate = gateLine(report, options.failOn);
   const gateColor = gate.status === 'BLOCKED' ? '\x1b[1;91m' : gate.status === 'PASS' ? '\x1b[1;32m' : '\x1b[1;33m';
-  out.push(` ${paint(gateColor, gate.status)}  ${gate.detail}`);
+  tree()(`${paint(gateColor, gate.status)}  ${gate.detail}`);
   out.push('');
 
   // ── Findings ──
@@ -116,7 +126,7 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
   const shown = visible.slice(0, limit);
 
   if (all.length > 0) {
-    out.push(bold('Findings'));
+    out.push(`${dot()} ${bold('Findings')}`);
     let reviewHeadingShown = false;
     for (const { finding, unit } of shown) {
       if (finding.confidence === 'low' && !reviewHeadingShown) {
@@ -126,14 +136,15 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
       const label = paint(SEVERITY_COLOR[finding.severity], (finding.confidence === 'low' ? 'REVIEW' : finding.severity).padEnd(9));
       const left = ` ${finding.severity.padEnd(9)} ${finding.type}`;
       const location = `${rel(finding.file)}:${finding.line}`;
-      out.push(` ${label} ${finding.type}${' '.repeat(Math.max(2, 60 - left.length))}${dim(location)}`);
+      out.push(`${dot(SEVERITY_COLOR[finding.severity])} ${label} ${finding.type}${' '.repeat(Math.max(2, 60 - left.length))}${dim(location)}`);
+      const detail = tree();
       const aiNote = unit && (unit.provenance === 'ai' || unit.provenance === 'mixed' || unit.recorded) ? ' · in AI-estimated code' : '';
-      out.push(`           ${dim(`${finding.ruleId}${aiNote} · id ${finding.id.slice(0, 6)}${finding.confidence ? ` · ${finding.confidence} confidence` : ''}`)}`);
+      detail(`${dim(`${finding.ruleId}${aiNote} · id ${finding.id.slice(0, 6)}${finding.confidence ? ` · ${finding.confidence} confidence` : ''}`)}`);
       if (finding.trace && finding.trace.length > 0) {
-        out.push(`           ${dim('path:')} ${finding.trace.map((t) => `${rel(t.file)}:${t.line}`).join(dim(' → '))}`);
+        detail(`${dim('path:')} ${finding.trace.map((t) => `${rel(t.file)}:${t.line}`).join(dim(' → '))}`);
       }
-      for (const note of (finding.evidence ?? []).slice(0, 3)) out.push(`           ${dim(`· ${note}`)}`);
-      for (const frameLine of codeFrame(finding, options.readLines)) out.push(`           ${frameLine}`);
+      for (const note of (finding.evidence ?? []).slice(0, 3)) detail(dim(`· ${note}`));
+      for (const frameLine of codeFrame(finding, options.readLines)) detail(frameLine);
     }
     if (visible.length > shown.length) out.push(dim(` … ${visible.length - shown.length} more (use --max-findings all)`));
     if (hiddenLow > 0) out.push(dim(` + ${hiddenLow} low (use --show-low)`));
@@ -143,7 +154,7 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
   if (report.review) {
     const r = report.review;
     if (r.existing.length > 0) {
-      out.push(bold('Existing issues in changed code') + dim(`  (${r.existing.length}, not counted, not blocking)`));
+      out.push(`${dot()} ${bold('Existing issues in changed code')}` + dim(`  (${r.existing.length}, not counted, not blocking)`));
       for (const f of r.existing.slice(0, 10)) out.push(` ${f.severity.padEnd(9)} ${f.type}  ${dim(`${rel(f.file)}:${f.line}`)}`);
       out.push('');
     }
@@ -155,12 +166,13 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
   if (depFindings.length > 0) {
     depFindings.sort((a, b) => Number(!!b.kev) - Number(!!a.kev) || ORDER.indexOf(a.severity) - ORDER.indexOf(b.severity) || a.file.localeCompare(b.file) || a.line - b.line);
     const depVisible = options.showLow ? depFindings : depFindings.filter((f) => f.severity !== 'LOW');
-    out.push(bold('Dependencies'));
+    out.push(`${dot()} ${bold('Dependencies')}`);
     for (const f of depVisible.slice(0, limit)) {
       const label = paint(SEVERITY_COLOR[f.severity], f.severity.padEnd(9));
-      out.push(` ${label} ${f.kev ? paint('\x1b[1;91m', 'KNOWN EXPLOITED ') : ''}${f.type}  ${bold(f.code)}${' '.repeat(2)}${dim(`${rel(f.file)}:${f.line}`)}`);
-      out.push(`           ${f.message}`);
-      for (const note of (f.evidence ?? []).slice(0, 2)) out.push(`           ${dim(`· ${note}`)}`);
+      out.push(`${dot(SEVERITY_COLOR[f.severity])} ${label} ${f.kev ? paint('\x1b[1;91m', 'KNOWN EXPLOITED ') : ''}${f.type}  ${bold(f.code)}${' '.repeat(2)}${dim(`${rel(f.file)}:${f.line}`)}`);
+      const depDetail = tree();
+      depDetail(f.message);
+      for (const note of (f.evidence ?? []).slice(0, 2)) depDetail(dim(`· ${note}`));
     }
     if (depVisible.length > limit) out.push(dim(` … ${depVisible.length - limit} more (use --max-findings all)`));
     if (depFindings.length > depVisible.length) out.push(dim(` + ${depFindings.length - depVisible.length} low (use --show-low)`));
@@ -172,41 +184,43 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
     const money = (n: number): string => `$${n.toFixed(2)}`;
     const spend = ai.costUsd === null ? `${ai.tokens.toLocaleString('en-US')} tokens this run` : `${money(ai.costUsd)} this run`;
     const today = ai.today ? ` · ${ai.today.unit === 'usd' ? `${money(ai.today.spent)} of ${money(ai.today.cap)}` : `${Math.round(ai.today.spent).toLocaleString('en-US')} of ${ai.today.cap.toLocaleString('en-US')} tokens`} today` : '';
-    out.push(bold('AI') + `  ${ai.mode} · ${ai.provider} ${ai.model} · ${ai.checked} checked${ai.cachedHits ? ` (${ai.cachedHits} from cache)` : ''}`);
-    out.push(`  AI: ${spend}${today}`);
-    if (ai.notChecked.length > 0) out.push(dim(`  ${ai.notChecked.length} not checked by AI: ${[...new Set(ai.notChecked.map((n) => n.reason))].slice(0, 2).join('; ')} (offline confidence applies)`));
+    out.push(`${dot()} ${bold('AI')}` + `  ${ai.mode} · ${ai.provider} ${ai.model} · ${ai.checked} checked${ai.cachedHits ? ` (${ai.cachedHits} from cache)` : ''}`);
+    const aiTree = tree();
+    aiTree(`AI: ${spend}${today}`);
+    if (ai.notChecked.length > 0) aiTree(dim(`${ai.notChecked.length} not checked by AI: ${[...new Set(ai.notChecked.map((n) => n.reason))].slice(0, 2).join('; ')} (offline confidence applies)`));
     out.push('');
   }
 
   if (summary.skills && summary.skills.length > 0) {
     const names = summary.skills.map((s) => s.name);
-    out.push(dim(`Skills: ${names.slice(0, 6).join(', ')}${names.length > 6 ? ` (+${names.length - 6})` : ''}`));
+    out.push(`${dot(DIM)} ${dim(`Skills: ${names.slice(0, 6).join(', ')}${names.length > 6 ? ` (+${names.length - 6})` : ''}`)}`);
     out.push('');
   }
 
   // ── AI provenance ──
   const provenance = summary.aiProvenance;
   if (provenance) {
-    out.push(`${bold('AI provenance')}  (by lines)`);
+    out.push(`${dot()} ${bold('AI provenance')}  (by lines)`);
+    const pt = tree();
     if (provenance.totalLines === 0) {
-      out.push('  no code lines measured');
+      pt('no code lines measured');
     } else {
       const pct = (lines: number) => Math.round((100 * lines) / provenance.totalLines);
       const e = provenance.estimated;
-      out.push(provenance.recorded.available
-        ? `  recorded: ${pct(provenance.recorded.lines)}% (floor)`
-        : `  recorded: not available (${provenance.recorded.reason ?? 'unknown'})`);
-      out.push(`  estimated: ${pct(e.aiLines)}–${pct(e.aiLines + e.mixedLines)}%`);
-      out.push(`  uncertain: ${pct(e.uncertainLines)}%`);
-      out.push(`  human (est.): ${pct(e.humanLines)}%`);
-      out.push(dim(e.method === 'fast'
-        ? `  method: ${e.model}${e.heuristicLanguages && e.heuristicLanguages.length > 0 ? ` · heuristic for: ${e.heuristicLanguages.join(', ')}` : ''}`
-        : '  method: heuristic (low confidence)'));
+      pt(provenance.recorded.available
+        ? `recorded: ${pct(provenance.recorded.lines)}% (floor)`
+        : `recorded: not available (${provenance.recorded.reason ?? 'unknown'})`);
+      pt(`estimated: ${pct(e.aiLines)}–${pct(e.aiLines + e.mixedLines)}%`);
+      pt(`uncertain: ${pct(e.uncertainLines)}%`);
+      pt(`human (est.): ${pct(e.humanLines)}%`);
+      pt(dim(e.method === 'fast'
+        ? `method: ${e.model}${e.heuristicLanguages && e.heuristicLanguages.length > 0 ? ` · heuristic for: ${e.heuristicLanguages.join(', ')}` : ''}`
+        : 'method: heuristic (low confidence)'));
       const top = provenance.files
         .filter((file) => file.aiLines > 0)
         .slice(0, 5)
         .map((file) => `${rel(file.path)} ${Math.round((100 * file.aiLines) / Math.max(1, file.lines))}%`);
-      if (top.length > 0) out.push(`  most AI-estimated: ${top.join(' · ')}`);
+      if (top.length > 0) pt(`most AI-estimated: ${top.join(' · ')}`);
     }
     out.push('');
   }
@@ -214,16 +228,17 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
   // ── Coverage ──
   const coverage = summary.coverage;
   if (coverage) {
-    out.push(bold('Coverage'));
+    out.push(`${dot()} ${bold('Coverage')}`);
+    const ct = tree();
     const considered = coverage.files.filter((file) => file.status !== 'skipped-excluded');
     const excluded = coverage.files.length - considered.length;
     const marker = considered.every((file) => file.status === 'analyzed') ? '✓' : '!';
-    out.push(`  ${marker} ${considered.filter((f) => f.status === 'analyzed').length}/${considered.length} files analyzed${excluded > 0 ? ` · ${excluded} excluded by config` : ''}`);
+    ct(`${marker} ${considered.filter((f) => f.status === 'analyzed').length}/${considered.length} files analyzed${excluded > 0 ? ` · ${excluded} excluded by config` : ''}`);
     for (const gap of coverage.gaps.filter((g) => !/ (unavailable|failed)$/.test(g))) {
-      out.push(`  ! ${gap}`);
+      ct(`! ${gap}`);
       const status = gap.includes('not parsed') ? 'parse-failed' : gap.includes('skipped') ? 'skipped-size' : 'missing';
       for (const file of coverage.files.filter((f) => f.status === status).slice(0, 3)) {
-        out.push(dim(`      ${rel(file.path)}${file.reason ? ` (${file.reason})` : ''}`));
+        ct(dim(`   ${rel(file.path)}${file.reason ? ` (${file.reason})` : ''}`));
       }
     }
     const checks = coverage.checks
@@ -233,7 +248,7 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
         if (check.status === 'unavailable') return `! ${check.name} unavailable → athena doctor`;
         return `! ${check.name} failed`;
       });
-    if (checks.length > 0) out.push(`  ${checks.join('   ')}`);
+    if (checks.length > 0) ct(checks.join('   '));
     out.push('');
   }
 
