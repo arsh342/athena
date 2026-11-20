@@ -1,4 +1,5 @@
 import type { RepoAlerts } from '../utils/alerts';
+import { aiHeaders, loadAiSettings } from '../utils/ai-settings';
 import type { AuthUser, Finding, LandingContent, PipelineStage, ScanSummary } from '../types';
 
 interface ScanListResponse {
@@ -56,7 +57,13 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     headers,
   });
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    let detail = '';
+    try {
+      detail = ((await response.json()) as { error?: string }).error ?? '';
+    } catch {
+      /* no body */
+    }
+    throw new Error(detail || `Request failed: ${response.status}`);
   }
   return response.json() as Promise<T>;
 }
@@ -116,20 +123,41 @@ export async function fetchLandingTerminalLines(): Promise<string[]> {
  * Start a real scan by POSTing to /api/scans.
  * Returns the scan summary, findings, and terminal output lines.
  */
-export async function startScan(repoUrl: string): Promise<StartScanResponse> {
+export async function startScan(repoUrl: string, terminalSessionId?: string, ai = loadAiSettings()): Promise<StartScanResponse> {
   return fetchJson<StartScanResponse>('/api/scans', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(terminalSessionId ? { 'X-Terminal-Session': terminalSessionId } : {}), ...aiHeaders(ai) },
     body: JSON.stringify({ repoUrl }),
   });
 }
 
-export async function startUploadScan(formData: FormData, terminalSessionId?: string): Promise<StartScanResponse> {
+export async function startUploadScan(formData: FormData, terminalSessionId?: string, ai = loadAiSettings()): Promise<StartScanResponse> {
   return fetchJson<StartScanResponse>('/api/scans/upload', {
     method: 'POST',
     body: formData,
-    headers: terminalSessionId ? { 'X-Terminal-Session': terminalSessionId } : undefined,
+    headers: { ...(terminalSessionId ? { 'X-Terminal-Session': terminalSessionId } : {}), ...aiHeaders(ai) },
   });
+}
+
+export interface AiOptions {
+  providers: string[];
+  modes: string[];
+  presets: string[];
+  maxBudgetUsd: number;
+  defaults: Record<string, string>;
+  note: string;
+}
+
+export async function fetchAiOptions(): Promise<AiOptions> {
+  return fetchJson<AiOptions>('/api/ai/options');
+}
+
+/** The exact text the user must accept before anything is sent to their provider. */
+export async function fetchAiConsent(ai = loadAiSettings()): Promise<string> {
+  const headers = { ...aiHeaders({ ...ai, consented: true }) };
+  delete (headers as Record<string, string>)['X-AI-Key'];
+  const data = await fetchJson<{ consent: string }>('/api/ai/consent', { method: 'POST', headers });
+  return data.consent;
 }
 
 /**

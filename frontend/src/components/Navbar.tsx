@@ -7,6 +7,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/scan', label: 'Scan' },
   { to: '/reports/latest', label: 'Report' },
+  { to: '/settings', label: 'AI key' },
 ];
 
 /**
@@ -55,11 +56,11 @@ export function Navbar() {
       </nav>
       {isAuthenticated ? (
         <button className="nav-cta" type="button" onClick={handleLogout}>
-          LOGOUT
+          Log out
         </button>
       ) : (
         <NavLink className="nav-cta" to="/login" id="nav-cta-login">
-          LOGIN
+          Log in
         </NavLink>
       )}
     </header>

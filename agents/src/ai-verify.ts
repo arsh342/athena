@@ -54,6 +54,8 @@ export interface AiVerifyOptions {
   pricing?: CapsInput['pricing'];
   maxCandidates?: number;
   home?: string;
+  /** Where keys are looked up instead of the process environment (the hosted backend passes the user's own key here, in memory only). */
+  env?: NodeJS.ProcessEnv;
   /** Shown the consent notice on the first AI run for a repository and provider; false declines. */
   confirm: (notice: string) => Promise<boolean>;
   /** Tests (and the offline fake): use this instead of building a real provider. */
@@ -100,7 +102,7 @@ export async function runAiVerify(report: ScanReport, o: AiVerifyOptions): Promi
   const choice: ProviderChoice = { provider: o.provider, ...(o.preset ? { preset: o.preset } : {}), ...(o.baseUrl ? { baseUrl: o.baseUrl } : {}), ...(o.tools !== undefined ? { tools: o.tools } : {}) };
   const built = o.providerOverride
     ? { provider: o.providerOverride, endpoint: o.providerOverride.endpoint, local: false, key: undefined }
-    : createProvider(choice, o.home ? { home: o.home } : {});
+    : createProvider(choice, { ...(o.home ? { home: o.home } : {}), ...(o.env ? { env: o.env } : {}) });
   const caps = capsFor({ provider: o.provider, model, ...(o.baseUrl ?? built.endpoint ? { baseUrl: o.baseUrl ?? built.endpoint } : {}), ...(o.budget ? { budget: o.budget } : {}), ...(o.pricing ? { pricing: o.pricing } : {}) });
   const tracker = new BudgetTracker({
     provider: built.provider, providerId: o.provider, model, caps,

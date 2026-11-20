@@ -1,0 +1,139 @@
+/* ═══════════════════════════════════════════════════════════════
+   Athena editorial theme (loaded after index.css).
+   Warm paper, near-black ink, Geist + Geist Mono, square corners,
+   numbered sections ("001 / Title"). Quiet, text-led, no glow.
+   ═══════════════════════════════════════════════════════════════ */
+:root,
+.landing.brutalist,
+.app-shell,
+.app-shell--brutalist {
+  --paper: #F1EEE7;
+  --paper-deep: #E8E4DA;
+  --ink: #232323;
+  --ink-soft: #5F5C57;
+  --ink-faint: #8C8882;
+  --rule: #C8C5C0;
+  --rule-soft: rgba(35, 35, 35, 0.12);
+
+  --br-bg: var(--paper);
+  --br-bg-deep: var(--paper-deep);
+  --br-accent: var(--ink);
+  --br-text: var(--ink);
+  --br-text-muted: var(--ink-soft);
+  --br-text-ghost: var(--ink-faint);
+  --br-border: var(--rule-soft);
+  --br-border-strong: var(--rule);
+  --br-font: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--sans);
+  --font-body: var(--sans);
+  --font-mono: var(--br-font);
+}
+
+html, body, body.body--brutalist { background: var(--paper); color: var(--ink); }
+
+body {
+  font-family: var(--sans);
+  text-transform: none;
+  letter-spacing: -0.005em;
+}
+
+/* Sentence case everywhere: the old theme lowercased everything. */
+.app-shell--brutalist h1, .app-shell--brutalist h2, .app-shell--brutalist h3,
+.br-hero-title, .br-cta-button, .br-route-title { text-transform: none; }
+
+h1, h2, h3, .br-hero-title, .br-infra-heading, .br-route-title, .page-header h1 {
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  color: var(--ink);
+}
+
+p, li, label, .br-infra-body, .br-hero-sub, .br-route-body, .page-header p { font-family: var(--br-font); font-size: 14px; line-height: 1.65; color: var(--ink-soft); }
+
+/* ── Navbar: a hairline bar, not a floating card ── */
+.navbar--light {
+  top: 0; left: 0; right: 0; height: 64px; padding: 0 clamp(20px, 4vw, 48px);
+  border: 0; border-bottom: 1px solid var(--rule);
+  background: rgba(241, 238, 231, 0.92);
+  box-shadow: none;
+}
+.navbar--light.navbar--scrolled { border-color: var(--rule); background: rgba(241, 238, 231, 0.96); box-shadow: none; }
+.navbar--light .brand, .navbar--light .brand-mark { color: var(--ink); font-family: var(--sans); font-weight: 600; letter-spacing: -0.02em; text-transform: none; font-size: 20px; }
+.navbar--light .nav-links a { color: var(--ink-soft); font-family: var(--br-font); font-size: 13px; text-transform: none; }
+.navbar--light .nav-links a.active, .navbar--light .nav-links a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 6px; }
+.navbar--light .nav-cta { background: var(--ink); border: 1px solid var(--ink); color: #fff; border-radius: 0; font-family: var(--br-font); font-size: 12px; letter-spacing: 0.04em; }
+.navbar--light .nav-cta:hover { background: #000; }
+
+/* ── Buttons: square, solid ink ── */
+.button, .nav-cta { border-radius: 0; }
+.button-primary { background: var(--ink); color: #fff; }
+.button-primary:hover { background: #000; opacity: 1; transform: none; }
+.button-secondary { background: var(--paper); border-color: var(--ink); color: var(--ink); border-radius: 4px; }
+.button-secondary:hover { background: var(--paper-deep); transform: none; }
+.button-ghost { color: var(--ink-soft); border-color: var(--rule); }
+.br-cta-button { background: var(--ink); color: #fff; height: 48px; font-family: var(--br-font); font-weight: 500; letter-spacing: 0.02em; }
+.br-cta-button:hover { background: #000; }
+.br-cta-arrow { background: transparent; color: #fff; width: 44px; height: 48px; border-right: 1px solid rgba(255,255,255,0.25); }
+.br-route-secondary { color: var(--ink); border: 1px solid var(--ink); border-radius: 0; font-family: var(--br-font); }
+
+/* ── Inputs: transparent, hairline, 8px ── */
+input, textarea, select { background: transparent; color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; font-family: var(--br-font); }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outline-offset: 1px; border-color: var(--ink); }
+
+/* ── Panels and cards: paper, hairline, no shadow ── */
+.panel, .app-shell--brutalist .panel { background: transparent; border: 1px solid var(--rule); border-radius: 0; box-shadow: none; }
+.br-finding-card, .br-infra-render, .br-infra-manifest, .br-bento-detail, .br-bento-terminal, .br-partner-cell, .br-stat-cell { border-radius: 0; box-shadow: none; border-color: var(--rule); }
+
+/* ── Section labels: "002 / About" instead of "// SECTION: ABOUT_SYS.INT" ── */
+.br-section-annotation {
+  background: transparent; border: 0; border-top: 1px solid var(--rule); padding: 14px 0 0; margin-bottom: 48px;
+  font-family: var(--br-font); font-size: 12px; letter-spacing: 0.02em; text-transform: none; color: var(--ink-soft);
+}
+.br-section-annotation::after { display: none; }
+.br-section-annotation span:last-child { font-family: var(--br-font); font-size: 12px; }
+
+/* ── Hero ── */
+.br-hero { align-items: flex-start; text-align: left; justify-content: flex-end; min-height: 92vh; padding: 140px clamp(20px, 6vw, 96px) 72px; }
+.br-hero-kicker { font-family: var(--br-font); font-size: 13px; color: var(--ink-soft); margin: 0 0 28px; }
+.br-hero-title { font-size: clamp(48px, 9vw, 120px); max-width: 14ch; margin: 0 0 32px; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; font-smooth: auto; }
+.br-hero-sub { max-width: 62ch; margin: 0 0 32px; text-align: left; font-size: 15px; }
+.br-hero-diagram { max-width: 760px; margin: 0 0 32px; }
+.br-hero-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.scanline-overlay::before, .scanline-overlay::after { display: none; }
+
+/* ── The "decisions" list: 001 / Title, hairline rules ── */
+.ed-section { padding: 96px clamp(20px, 6vw, 96px); max-width: 1280px; margin: 0 auto; }
+.ed-lede { max-width: 28ch; font-size: clamp(32px, 5vw, 56px); margin: 0 0 56px; }
+.ed-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; border-top: 1px solid var(--rule); }
+.ed-item { display: grid; grid-template-columns: minmax(120px, 220px) 1fr; gap: 24px 48px; padding: 32px 0; border-bottom: 1px solid var(--rule); }
+.ed-item h3 { margin: 0; font-family: var(--br-font); font-size: 13px; font-weight: 500; letter-spacing: 0; line-height: 1.5; color: var(--ink); }
+.ed-item h3 span { color: var(--ink-faint); margin-right: 6px; }
+.ed-item p { margin: 0; max-width: 68ch; color: var(--ink-soft); }
+.ed-cost { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0; border: 1px solid var(--rule); margin-top: 48px; }
+.ed-cost div { padding: 20px; border-right: 1px solid var(--rule); font-family: var(--br-font); font-size: 12px; color: var(--ink-soft); }
+.ed-cost div:last-child { border-right: 0; }
+.ed-cost strong { display: block; font-family: var(--sans); font-size: 32px; letter-spacing: -0.03em; color: var(--ink); margin-bottom: 6px; font-weight: 600; }
+@media (max-width: 720px) { .ed-item { grid-template-columns: 1fr; gap: 8px; } .br-hero { min-height: auto; padding-top: 112px; } }
+
+/* ── Settings page ── */
+.ai-form { display: grid; gap: 20px; max-width: 640px; }
+.ai-form .field { display: grid; gap: 6px; }
+.ai-form input, .ai-form select { min-height: 44px; padding: 0 12px; }
+.ai-form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ai-consent { white-space: pre-wrap; font-family: var(--br-font); font-size: 12px; line-height: 1.6; border: 1px solid var(--rule); padding: 16px; margin: 0; color: var(--ink); }
+.ai-note { font-family: var(--br-font); font-size: 12px; color: var(--ink-soft); }
+.ai-check { display: flex; gap: 10px; align-items: flex-start; font-family: var(--br-font); font-size: 13px; }
+.ai-check input { min-height: 0; width: 16px; height: 16px; margin-top: 3px; accent-color: var(--ink); }
+.ai-status { font-family: var(--br-font); font-size: 13px; padding: 10px 14px; border: 1px solid var(--ink); }
+@media (max-width: 560px) { .ai-form .row { grid-template-columns: 1fr; } }
+
+/* ── Footer ── */
+.br-footer { border-top: 1px solid var(--rule); background: transparent; color: var(--ink-soft); }
+.br-footer a { color: var(--ink-soft); font-family: var(--br-font); text-transform: none; }
+.br-footer a:hover { color: var(--ink); text-decoration: underline; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+.logo-font, .navbar--light .brand.logo-font, .br-footer-brand .logo-font { font-family: var(--sans); font-weight: 600; letter-spacing: -0.03em; }
