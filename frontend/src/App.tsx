@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Dashboard } from './pages/Dashboard';
@@ -17,29 +17,19 @@ import { TermsPage } from './pages/Terms';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [pathname]);
-
   return null;
 }
 
 export default function App() {
   const { pathname } = useLocation();
-  const shellClass = pathname === '/' ? 'app-shell' : 'app-shell app-shell--brutalist';
-
-  useEffect(() => {
-    const isBrutalistRoute = pathname !== '/';
-    document.body.classList.toggle('body--brutalist', isBrutalistRoute);
-
-    return () => {
-      document.body.classList.remove('body--brutalist');
-    };
-  }, [pathname]);
+  // The sign-in pages are a full-height split: no footer.
+  const bare = pathname === '/login' || pathname === '/register';
 
   return (
-    <div className={shellClass}>
+    <div className="shell">
       <ScrollToTop />
       <Navbar />
       <main>
@@ -60,6 +50,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      {bare ? null : <Footer />}
     </div>
   );
 }

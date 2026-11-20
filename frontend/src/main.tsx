@@ -3,9 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './hooks/useAuth';
-import './styles/index.css';
-import './styles/web-terminal.css';
-import './styles/theme.css';
+import './styles/app.css';
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual';

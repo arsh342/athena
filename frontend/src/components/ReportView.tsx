@@ -21,13 +21,9 @@ export function ReportView({ findings }: ReportViewProps) {
   const severities: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
   return (
-    <section className="report-list" aria-label="Security findings">
-      <div className="br-section-annotation">
-        <span>003 / Findings</span>
-        <span></span>
-      </div>
-      <div className="report-toolbar">
-        <label className="report-toggle">
+    <section className="stack" aria-label="Security findings">
+      <div className="toolbar">
+        <label className="check">
           <input
             type="checkbox"
             checked={showRawSecrets}
@@ -41,10 +37,10 @@ export function ReportView({ findings }: ReportViewProps) {
         const files = grouped[severity];
         const fileKeys = Object.keys(files);
         return (
-          <div className="report-severity" key={severity}>
+          <div className="sev-group" key={severity}>
             <button
               type="button"
-              className="report-severity-toggle"
+              className="sev-toggle"
               onClick={() => setOpenSeverities((prev) => ({ ...prev, [severity]: !prev[severity] }))}
             >
               <SeverityBadge severity={severity} />
@@ -52,19 +48,19 @@ export function ReportView({ findings }: ReportViewProps) {
             </button>
 
             {openSeverities[severity] && fileKeys.map((file) => (
-              <div className="report-file" key={file}>
-                <div className="report-file-head">
+              <div className="file-block" key={file}>
+                <div className="file-head">
                   <strong>{shortenPath(file)}</strong>
                   <span>{files[file]?.length ?? 0} findings</span>
                 </div>
                 {files[file]?.map((finding) => (
-                  <article className="finding-card" key={finding.id}>
+                  <article className="finding" key={finding.id}>
                     <div className="finding-head">
                       <div>
                         <SeverityBadge severity={finding.severity} />
                         <h3>{finding.type}</h3>
                       </div>
-                      <span className="finding-id">{finding.id}</span>
+                      <span className="meta">{finding.id}</span>
                     </div>
                     <p>{showRawSecrets ? finding.message : redactFindingText(finding.message, finding)}</p>
                     <div className="finding-meta">

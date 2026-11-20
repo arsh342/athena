@@ -1,19 +1,13 @@
 export function TermsPage() {
   return (
-    <div className="page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation">
-          <span>// LEGAL: TERMS_OF_SERVICE</span>
-          <span>001</span>
-        </div>
-        <span className="eyebrow">Legal</span>
-        <div>
-          <h1>Terms of Service</h1>
-          <p>Terms governing access to and use of athena services, interfaces, and scan endpoints.</p>
-        </div>
+    <div className="page">
+      <section className="page-head">
+        <span className="kicker">Legal</span>
+        <h1>Terms of Service</h1>
+        <p>Terms governing access to and use of athena services, interfaces, and scan endpoints.</p>
       </section>
 
-      <section className="panel" style={{ display: 'grid', gap: '20px' }}>
+      <section className="prose">
         <p><strong>Last updated:</strong> April 20, 2026</p>
 
         <div>
@@ -34,7 +28,7 @@ export function TermsPage() {
 
         <div>
           <h2>3. Account Responsibilities</h2>
-          <ul style={{ display: 'grid', gap: '8px', paddingLeft: '20px' }}>
+          <ul>
             <li>Provide accurate registration information and keep it current.</li>
             <li>Maintain confidentiality of credentials and session access.</li>
             <li>Promptly report suspected unauthorized account activity.</li>
@@ -49,7 +43,7 @@ export function TermsPage() {
 
         <div>
           <h2>5. Prohibited Conduct</h2>
-          <ul style={{ display: 'grid', gap: '8px', paddingLeft: '20px' }}>
+          <ul>
             <li>Scanning repositories without explicit authorization.</li>
             <li>Attempting to bypass authentication, rate limits, or security controls.</li>
             <li>Uploading malicious payloads or attempting to disrupt platform operations.</li>

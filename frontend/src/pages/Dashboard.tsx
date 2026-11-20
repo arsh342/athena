@@ -37,62 +37,50 @@ export function Dashboard() {
   const { isEmpty } = getDashboardEmptyState(scans);
 
   return (
-    <div className="page dashboard-page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation">
-          <span>001 / Overview</span>
-          <span></span>
+    <div className="page">
+      <section className="page-head-row">
+        <div className="page-head">
+          <span className="kicker">Dashboard</span>
+          <h1>Repository risk</h1>
         </div>
-        <span className="eyebrow">Dashboard</span>
-        <div>
-          <h1>Repository risk telemetry</h1>
-          <Link className="button button-primary" to="/scan">Run scan</Link>
-        </div>
+        <Link className="btn btn-solid" to="/scan">Run scan</Link>
       </section>
 
       <AlertsBanner />
 
-      <section className="dashboard-grid">
-        <div className="br-section-annotation">
-          <span>002 / Risk</span>
-          <span></span>
-        </div>
-        <article className="panel gauge-panel">
+      <section className="tiles" aria-label="Latest scan">
+        <article className="tile">
           <ScoreGauge score={latest?.aiPercentage ?? 0} />
-          <p>Latest scan: {latest?.repoName ?? 'No scan data'}</p>
+          <p className="meta" style={{ textAlign: 'center' }}>Latest scan: {latest?.repoName ?? 'no scan data'}</p>
         </article>
-        <article className="panel stat-panel">
-          <span>Critical</span>
-          <strong>{totals.critical}</strong>
-          <p>Secrets and severe issues requiring immediate review.</p>
+        <article className="tile">
+          <span className="tile-label">Critical</span>
+          <strong className="tile-value">{totals.critical}</strong>
+          <p>Secrets and severe issues that need review now.</p>
         </article>
-        <article className="panel stat-panel">
-          <span>High</span>
-          <strong>{totals.high}</strong>
-          <p>AI-linked vulnerabilities likely to block a commit.</p>
+        <article className="tile">
+          <span className="tile-label">High</span>
+          <strong className="tile-value">{totals.high}</strong>
+          <p>Vulnerabilities likely to block a commit.</p>
         </article>
-        <article className="panel stat-panel">
-          <span>Flagged units</span>
-          <strong>{totals.flagged}</strong>
-          <p>Functions, methods, classes, and arrow functions above threshold.</p>
+        <article className="tile">
+          <span className="tile-label">Flagged units</span>
+          <strong className="tile-value">{totals.flagged}</strong>
+          <p>Functions, methods and classes above the threshold.</p>
         </article>
       </section>
 
-      <section className="panel table-panel">
-        <div className="br-section-annotation">
-          <span>003 / Scan history</span>
-          <span></span>
-        </div>
-        <div className="panel-title">
+      <section className="panel">
+        <div className="panel-head">
           <h2>Recent scans</h2>
-          <span>trend + history</span>
+          <span className="meta">newest first</span>
         </div>
         {isEmpty ? (
-          <div className="empty-state">No scans yet. Run your first scan.</div>
+          <div className="empty">No scans yet. Run your first scan.</div>
         ) : (
-          <div className="scan-table">
+          <div className="list">
             {scans.map((scan) => (
-              <Link to={`/reports/${scan.scanId}`} className="scan-row" key={scan.scanId}>
+              <Link to={`/reports/${scan.scanId}`} className="list-row" key={scan.scanId}>
                 <span>
                   <strong>{scan.repoName}</strong>
                   <small>{scan.createdAt}</small>
@@ -100,18 +88,14 @@ export function Dashboard() {
                 <span>{scan.filesScanned} files</span>
                 <span>{formatProvenance(scan)}</span>
                 <span>{scan.flaggedUnits} flagged</span>
-                <span className={`status status-${scan.status.toLowerCase()}`}>{scan.status}</span>
+                <span className={`badge ${scan.status === 'COMPLETED' ? 'badge-ok' : scan.status === 'FAILED' ? 'badge-bad' : 'badge-warn'}`}>{scan.status}</span>
               </Link>
             ))}
           </div>
         )}
       </section>
 
-      <section className="severity-row">
-        <div className="br-section-annotation">
-          <span>004 / Severity key</span>
-          <span></span>
-        </div>
+      <section className="legend" aria-label="Severity key">
         <SeverityBadge severity="CRITICAL" />
         <SeverityBadge severity="HIGH" />
         <SeverityBadge severity="MEDIUM" />

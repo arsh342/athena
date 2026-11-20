@@ -62,37 +62,35 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation"><span>001 / AI settings</span><span /></div>
-        <div>
-          <h1>Bring your own key</h1>
-          <p>
+    <div className="page">
+      <section className="page-head">
+        <span className="kicker">AI settings</span>
+        <h1>Bring your own key</h1>
+        <p>
             Athena works fully offline. If you want an AI model to verify the findings it was unsure about, use your own
             provider key. It is held in this browser tab only, sent with the scan you start, and never stored or logged by Athena.
             Local models (Ollama, LM Studio) need the command-line tool.
-          </p>
-        </div>
+        </p>
       </section>
 
-      <section className="panel" style={{ padding: 28 }}>
-        <form className="ai-form" onSubmit={save}>
-          <label className="ai-check">
+      <section className="panel" style={{ maxWidth: 720 }}>
+        <form className="stack" style={{ gap: 22 }} onSubmit={save}>
+          <label className="check">
             <input type="checkbox" checked={settings.enabled} onChange={(e) => update({ enabled: e.target.checked })} />
             <span>Use AI verification on my scans</span>
           </label>
 
           <div className="field">
-            <label htmlFor="ai-provider">Provider</label>
-            <select id="ai-provider" value={settings.provider} onChange={(e) => update({ provider: e.target.value as AiProvider, model: '' })}>
+            <label className="field-label" htmlFor="ai-provider">Provider</label>
+            <select className="select" id="ai-provider" value={settings.provider} onChange={(e) => update({ provider: e.target.value as AiProvider, model: '' })}>
               {(Object.keys(PROVIDER_LABEL) as AiProvider[]).map((p) => <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>)}
             </select>
           </div>
 
           {settings.provider === 'openai-compatible' ? (
             <div className="field">
-              <label htmlFor="ai-preset">Service</label>
-              <select id="ai-preset" value={settings.preset} onChange={(e) => update({ preset: e.target.value })}>
+              <label className="field-label" htmlFor="ai-preset">Service</label>
+              <select className="select" id="ai-preset" value={settings.preset} onChange={(e) => update({ preset: e.target.value })}>
                 <option value="">Choose a service</option>
                 {(options?.presets ?? []).map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -100,52 +98,52 @@ export function SettingsPage() {
           ) : null}
 
           <div className="field">
-            <label htmlFor="ai-key">API key</label>
-            <input id="ai-key" type="password" autoComplete="off" spellCheck={false} value={settings.key} onChange={(e) => update({ key: e.target.value })} placeholder="paste your key" />
-            <span className="ai-note">Kept for this tab only. Closing the tab removes it.</span>
+            <label className="field-label" htmlFor="ai-key">API key</label>
+            <input className="input" id="ai-key" type="password" autoComplete="off" spellCheck={false} value={settings.key} onChange={(e) => update({ key: e.target.value })} placeholder="paste your key" />
+            <span className="field-hint">Kept for this tab only. Closing the tab removes it.</span>
           </div>
 
-          <div className="row">
+          <div className="cols-2">
             <div className="field">
-              <label htmlFor="ai-model">Model{needsModel ? '' : ' (optional)'}</label>
-              <input id="ai-model" value={settings.model} onChange={(e) => update({ model: e.target.value })} placeholder={needsModel ? 'required' : 'claude-sonnet-5-5'} />
+              <label className="field-label" htmlFor="ai-model">Model{needsModel ? '' : ' (optional)'}</label>
+              <input className="input" id="ai-model" value={settings.model} onChange={(e) => update({ model: e.target.value })} placeholder={needsModel ? 'required' : 'claude-sonnet-5-5'} />
             </div>
             <div className="field">
-              <label htmlFor="ai-budget">Spend cap for one scan (USD)</label>
-              <input id="ai-budget" type="number" min="0.01" max={maxBudget} step="0.01" value={settings.budgetUsd} onChange={(e) => update({ budgetUsd: Number(e.target.value) })} />
-              <span className="ai-note">Required. Athena stops when the next call could exceed it. Most you can set: ${maxBudget.toFixed(2)}.</span>
+              <label className="field-label" htmlFor="ai-budget">Spend cap for one scan (USD)</label>
+              <input className="input" id="ai-budget" type="number" min="0.01" max={maxBudget} step="0.01" value={settings.budgetUsd} onChange={(e) => update({ budgetUsd: Number(e.target.value) })} />
+              <span className="field-hint">Required. Athena stops when the next call could exceed it. Most you can set: ${maxBudget.toFixed(2)}.</span>
             </div>
           </div>
 
           <div className="field">
-            <label htmlFor="ai-mode">Mode</label>
-            <select id="ai-mode" value={settings.mode} onChange={(e) => update({ mode: e.target.value as AiSettings['mode'] })}>
+            <label className="field-label" htmlFor="ai-mode">Mode</label>
+            <select className="select" id="ai-mode" value={settings.mode} onChange={(e) => update({ mode: e.target.value as AiSettings['mode'] })}>
               <option value="verify">Verify: check the findings Athena was unsure about</option>
               <option value="hunt">Hunt: also explore the riskiest components</option>
             </select>
           </div>
 
           <div>
-            <button type="button" className="button button-secondary" onClick={() => void showConsent()} disabled={!aiReady({ ...settings, enabled: true })}>
+            <button type="button" className="btn" onClick={() => void showConsent()} disabled={!aiReady({ ...settings, enabled: true })}>
               Show what will be sent
             </button>
           </div>
           {consent ? (
             <>
-              <pre className="ai-consent">{consent}</pre>
-              <label className="ai-check">
+              <pre className="pre-block">{consent}</pre>
+              <label className="check">
                 <input type="checkbox" checked={settings.consented} onChange={(e) => update({ consented: e.target.checked })} />
                 <span>I understand and accept this.</span>
               </label>
             </>
           ) : null}
 
-          {error ? <p className="auth-error">{error}</p> : null}
-          {message ? <p className="ai-status">{message}</p> : null}
+          {error ? <p className="field-error" role="alert" style={{ textAlign: 'left' }}>{error}</p> : null}
+          {message ? <p className="status-line">{message}</p> : null}
 
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button className="button button-primary" type="submit">Save for this tab</button>
-            <button className="button button-ghost" type="button" onClick={forget}>Remove key</button>
+          <div className="row">
+            <button className="btn btn-solid" type="submit">Save for this tab</button>
+            <button className="btn" type="button" onClick={forget}>Remove key</button>
           </div>
         </form>
       </section>

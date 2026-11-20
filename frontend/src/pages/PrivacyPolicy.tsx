@@ -1,19 +1,13 @@
 export function PrivacyPolicyPage() {
   return (
-    <div className="page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation">
-          <span>// LEGAL: PRIVACY_POLICY</span>
-          <span>001</span>
-        </div>
-        <span className="eyebrow">Legal</span>
-        <div>
-          <h1>Privacy Policy</h1>
-          <p>How athena collects, processes, stores, and protects personal and technical data.</p>
-        </div>
+    <div className="page">
+      <section className="page-head">
+        <span className="kicker">Legal</span>
+        <h1>Privacy Policy</h1>
+        <p>How athena collects, processes, stores, and protects personal and technical data.</p>
       </section>
 
-      <section className="panel" style={{ display: 'grid', gap: '20px' }}>
+      <section className="prose">
         <p><strong>Last updated:</strong> April 20, 2026</p>
 
         <div>
@@ -27,7 +21,7 @@ export function PrivacyPolicyPage() {
         <div>
           <h2>2. Data We Collect</h2>
           <p>We collect data required to operate, secure, and improve the service:</p>
-          <ul style={{ display: 'grid', gap: '8px', paddingLeft: '20px' }}>
+          <ul>
             <li>Account data: email address and password hash.</li>
             <li>Session data: access/refresh token hashes, expiration, revocation timestamps.</li>
             <li>Usage/diagnostic data: authentication failures, lockout events, and basic API error logs.</li>
@@ -37,7 +31,7 @@ export function PrivacyPolicyPage() {
 
         <div>
           <h2>3. How We Use Data</h2>
-          <ul style={{ display: 'grid', gap: '8px', paddingLeft: '20px' }}>
+          <ul>
             <li>Authenticate users and maintain secure sessions.</li>
             <li>Protect platform against abuse, brute-force attempts, and unauthorized access.</li>
             <li>Operate scan workflows and render findings/report interfaces.</li>
@@ -63,7 +57,7 @@ export function PrivacyPolicyPage() {
 
         <div>
           <h2>6. Security Controls</h2>
-          <ul style={{ display: 'grid', gap: '8px', paddingLeft: '20px' }}>
+          <ul>
             <li>Passwords stored as one-way bcrypt hashes.</li>
             <li>Session tokens stored as hashes and revocable server-side.</li>
             <li>Cookie protections using httpOnly/secure/sameSite policies.</li>

@@ -17,23 +17,17 @@ const protectedLinks = [
 
 export function SitemapPage() {
   return (
-    <div className="page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation">
-          <span>// LEGAL: SITEMAP</span>
-          <span>001</span>
-        </div>
-        <span className="eyebrow">Legal</span>
-        <div>
-          <h1>Sitemap</h1>
-          <p>Complete route index for athena web.</p>
-        </div>
+    <div className="page">
+      <section className="page-head">
+        <span className="kicker">Legal</span>
+        <h1>Sitemap</h1>
+        <p>Complete route index for athena web.</p>
       </section>
 
-      <section className="panel" style={{ display: 'grid', gap: '20px' }}>
+      <section className="prose">
         <div>
-          <h2 style={{ marginBottom: '10px' }}>Public Routes</h2>
-          <ul style={{ display: 'grid', gap: '8px', paddingLeft: '20px' }}>
+          <h2>Public Routes</h2>
+          <ul>
             {publicLinks.map((item) => (
               <li key={item.to}>
                 <Link to={item.to}>{item.label}</Link>
@@ -43,8 +37,8 @@ export function SitemapPage() {
         </div>
 
         <div>
-          <h2 style={{ marginBottom: '10px' }}>Authenticated Routes</h2>
-          <ul style={{ display: 'grid', gap: '8px', paddingLeft: '20px' }}>
+          <h2>Authenticated Routes</h2>
+          <ul>
             {protectedLinks.map((item) => (
               <li key={item.to}>
                 <Link to={item.to}>{item.label}</Link>

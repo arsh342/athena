@@ -165,145 +165,99 @@ export function ScanPage() {
     })();
   }
 
+  const aiOn = aiReady(loadAiSettings());
+  const busy = isScanning || isUploading;
+
   return (
-    <div className="page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation">
-          <span>001 / Repository</span>
-          <span></span>
-        </div>
-        <span className="eyebrow">New scan</span>
-        <div>
-          <h1>Submit a repository</h1>
-          <p>Scan public GitHub repositories or upload a local folder or zip archive into a temporary sandbox.</p>
-        </div>
+    <div className="page">
+      <section className="page-head">
+        <span className="kicker">New scan</span>
+        <h1>Submit a repository</h1>
+        <p>Scan a public GitHub repository, or upload a local folder or zip archive into a temporary sandbox.</p>
       </section>
 
-      <section className="scan-layout">
-        <div className="br-section-annotation">
-          <span>002 / Live scan</span>
-          <span></span>
-        </div>
-
-        <div className="scan-form panel">
-          <div className="scan-source-tabs" role="tablist" aria-label="Scan source">
-            <button
-              type="button"
-              className={`scan-source-tab${source === 'repo' ? ' is-active' : ''}`}
-              onClick={() => handleSourceChange('repo')}
-            >
-              Repo URL
-            </button>
-            <button
-              type="button"
-              className={`scan-source-tab${source === 'upload' ? ' is-active' : ''}`}
-              onClick={() => handleSourceChange('upload')}
-            >
-              Local Upload
-            </button>
+      <section className="scan-grid">
+        <div className="panel stack">
+          <div className="seg" role="group" aria-label="Scan source">
+            <button type="button" aria-pressed={source === 'repo'} onClick={() => handleSourceChange('repo')}>Repo URL</button>
+            <button type="button" aria-pressed={source === 'upload'} onClick={() => handleSourceChange('upload')}>Upload</button>
           </div>
 
           {source === 'repo' ? (
-            <form className="scan-form-inner" onSubmit={handleRepoSubmit}>
-              {aiReady(loadAiSettings()) ? <p className="ai-status">AI verification is on for this tab. <Link to="/settings">Change</Link></p> : <p className="ai-note">Offline scan. <Link to="/settings">Add your own AI key</Link> to have findings verified.</p>}
-              <label htmlFor="repoUrl">Repository URL</label>
-              <input
-                id="repoUrl"
-                type="url"
-                value={repoUrl}
-                onChange={(event) => setRepoUrl(event.target.value)}
-                placeholder="https://github.com/org/repo"
-              />
-              {uploadError ? <p className="auth-error">{uploadError}</p> : null}
-              <button className="button button-primary" type="submit" disabled={!repoUrl.trim() || isScanning || isUploading}>
-                {isScanning || isUploading ? 'Scanning...' : 'Start scan'}
+            <form className="stack" onSubmit={handleRepoSubmit}>
+              {aiOn
+                ? <p className="status-line">AI verification is on for this tab. <Link to="/settings">Change</Link></p>
+                : <p className="field-hint">Offline scan. <Link to="/settings">Add your own AI key</Link> to have findings verified.</p>}
+              <div className="field">
+                <div className="field-row">
+                  <label className="field-label" htmlFor="repoUrl">Repository URL</label>
+                  {uploadError ? <span className="field-error" role="alert">{uploadError}</span> : null}
+                </div>
+                <input id="repoUrl" className="input" type="url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} placeholder="https://github.com/org/repo" />
+              </div>
+              <button className="btn btn-solid" type="submit" disabled={!repoUrl.trim() || busy}>
+                {busy ? 'Scanning…' : 'Start scan'}
               </button>
-              <div className="scan-rules">
-                <span>https repositories only</span>
-                <span>120s timeout</span>
-                <span>scan-specific findings</span>
-                <span>interactive sandbox</span>
+              <div className="tags">
+                <span className="tag">https only</span>
+                <span className="tag">120s timeout</span>
+                <span className="tag">interactive sandbox</span>
               </div>
             </form>
           ) : (
-            <form className="scan-form-inner" onSubmit={handleUploadSubmit}>
-              <div className="scan-upload-mode" role="tablist" aria-label="Upload mode">
-                <button
-                  type="button"
-                  className={`scan-upload-pill${uploadMode === 'folder' ? ' is-active' : ''}`}
-                  onClick={() => handleUploadModeChange('folder')}
-                >
-                  Folder
-                </button>
-                <button
-                  type="button"
-                  className={`scan-upload-pill${uploadMode === 'zip' ? ' is-active' : ''}`}
-                  onClick={() => handleUploadModeChange('zip')}
-                >
-                  ZIP
-                </button>
+            <form className="stack" onSubmit={handleUploadSubmit}>
+              <div className="seg" role="group" aria-label="Upload mode">
+                <button type="button" aria-pressed={uploadMode === 'folder'} onClick={() => handleUploadModeChange('folder')}>Folder</button>
+                <button type="button" aria-pressed={uploadMode === 'zip'} onClick={() => handleUploadModeChange('zip')}>ZIP</button>
               </div>
 
-              <label htmlFor="uploadInput">{uploadMode === 'folder' ? 'Choose folder' : 'Choose zip file'}</label>
-              <input
-                id="uploadInput"
-                ref={uploadInputRef}
-                type="file"
-                className="scan-file-input"
-                key={uploadMode}
-                accept={uploadMode === 'zip' ? '.zip,application/zip' : undefined}
-                multiple={uploadMode === 'folder'}
-                onChange={(event) => {
-                  if (uploadMode === 'folder') {
-                    handleFolderSelection(event.currentTarget.files);
-                    return;
-                  }
-                  handleZipSelection(event.currentTarget.files);
-                }}
-              />
+              <div className="field">
+                <div className="field-row">
+                  <label className="field-label" htmlFor="uploadInput">{uploadMode === 'folder' ? 'Choose folder' : 'Choose zip file'}</label>
+                  {uploadError ? <span className="field-error" role="alert">{uploadError}</span> : null}
+                </div>
+                <input
+                  id="uploadInput"
+                  ref={uploadInputRef}
+                  type="file"
+                  className="input"
+                  style={{ paddingTop: 10 }}
+                  key={uploadMode}
+                  accept={uploadMode === 'zip' ? '.zip,application/zip' : undefined}
+                  multiple={uploadMode === 'folder'}
+                  onChange={(event) => {
+                    if (uploadMode === 'folder') {
+                      handleFolderSelection(event.currentTarget.files);
+                      return;
+                    }
+                    handleZipSelection(event.currentTarget.files);
+                  }}
+                />
+              </div>
 
-              {uploadFiles.length > 0 && (
-                <section className="scan-upload-status panel">
-                  <div className="scan-upload-status-head">
-                    <strong>Upload status</strong>
-                    <span>{uploadMode}</span>
-                  </div>
-                  <div className="scan-upload-status-grid">
-                    <span>Root</span>
-                    <span>{uploadLabel}</span>
-                    <span>Files</span>
-                    <span>{uploadFiles.length}</span>
-                    <span>Size</span>
-                    <span>{formatBytes(uploadBytes)}</span>
-                  </div>
-                </section>
-              )}
+              {uploadFiles.length > 0 ? (
+                <div className="kv">
+                  <span>Root</span><span>{uploadLabel}</span>
+                  <span>Files</span><span>{uploadFiles.length}</span>
+                  <span>Size</span><span>{formatBytes(uploadBytes)}</span>
+                </div>
+              ) : null}
 
-              {uploadError ? <p className="auth-error">{uploadError}</p> : null}
-
-              <button className="button button-primary" type="submit" disabled={uploadFiles.length === 0 || isUploading || isScanning}>
-                {isUploading && !isScanning ? 'Uploading...' : isScanning ? 'Scanning...' : 'Start upload scan'}
+              <button className="btn btn-solid" type="submit" disabled={uploadFiles.length === 0 || busy}>
+                {isUploading && !isScanning ? 'Uploading…' : isScanning ? 'Scanning…' : 'Start upload scan'}
               </button>
-
-              <div className="scan-rules">
-                <span>folder and zip supported</span>
-                <span>200MB max payload</span>
-                <span>ignored dirs skipped</span>
-                <span>temporary workspace</span>
+              <div className="tags">
+                <span className="tag">200MB max</span>
+                <span className="tag">ignored dirs skipped</span>
+                <span className="tag">temporary workspace</span>
               </div>
             </form>
           )}
         </div>
 
-        <div className="scan-output-stack">
-          <Suspense fallback={null}>
-            <WebTerminal
-              queuedCommand={queuedCommand}
-              onSessionId={setTerminalSessionId}
-              onScanningStateChange={setIsScanning}
-            />
-          </Suspense>
-        </div>
+        <Suspense fallback={null}>
+          <WebTerminal queuedCommand={queuedCommand} onSessionId={setTerminalSessionId} onScanningStateChange={setIsScanning} />
+        </Suspense>
       </section>
     </div>
   );

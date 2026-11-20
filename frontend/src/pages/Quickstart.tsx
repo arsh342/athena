@@ -1,52 +1,33 @@
 import { Link } from 'react-router-dom';
 
+const STEPS: Array<[string, string, string]> = [
+  ['1. Install', 'npm install -g @arsh342/athena', ''],
+  ['2. Scan this repository', 'athena scan .', 'Scans every supported language, traces untrusted input, estimates AI provenance and prints the findings.'],
+  ['3. Review a change', 'athena review', 'Reviews staged changes and reports only what they introduced.'],
+  ['4. Enable the commit gate', 'athena init', 'Installs a pre-commit hook that blocks critical and high-risk commits.'],
+  ['Useful flags', 'athena scan . --format json\nathena check --max-findings all\nathena scan . --ai --budget 0.25', ''],
+];
+
 export function QuickstartPage() {
   return (
-    <div className="page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation">
-          <span>001 / Quickstart</span>
-          <span></span>
-        </div>
-        <span className="eyebrow">CLI</span>
-        <div>
-          <h1>Quickstart</h1>
-          <p>Install athena, run first scan, and enable pre-commit gating in under 3 minutes.</p>
-        </div>
+    <div className="page">
+      <section className="page-head">
+        <span className="kicker">CLI</span>
+        <h1>Quickstart</h1>
+        <p>Install athena, run a first scan and turn on commit gating in a few minutes.</p>
       </section>
 
-      <section className="panel" style={{ display: 'grid', gap: '18px' }}>
-        <div>
-          <h2>1. Install</h2>
-          <pre className="quickstart-code">npm install -g @arsh342/athena</pre>
-        </div>
-
-        <div>
-          <h2>2. Scan Current Repository</h2>
-          <pre className="quickstart-code">athena scan .</pre>
-          <p>Runs recursive JS/TS scan, scores AI provenance, and prints full findings report.</p>
-        </div>
-
-        <div>
-          <h2>3. Check Staged Files</h2>
-          <pre className="quickstart-code">athena check</pre>
-          <p>Fast pre-commit style check on staged files only.</p>
-        </div>
-
-        <div>
-          <h2>4. Enable Commit Gate</h2>
-          <pre className="quickstart-code">athena init</pre>
-          <p>Installs local pre-commit hook to block critical/high risk commits.</p>
-        </div>
-
-        <div>
-          <h2>Useful Flags</h2>
-          <pre className="quickstart-code">athena scan . --format json\nathena check --max-findings all\nathena scan . --threshold 12</pre>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <Link className="button button-primary" to="/scan">Open Web Scanner</Link>
-          <a className="button" href="https://www.npmjs.com/package/@arsh342/athena" target="_blank" rel="noopener noreferrer">Open npm page</a>
+      <section className="panel stack" style={{ gap: 28 }}>
+        {STEPS.map(([title, code, note]) => (
+          <div className="stack" style={{ gap: 10 }} key={title}>
+            <h2 style={{ fontSize: 20 }}>{title}</h2>
+            <pre className="code">{code}</pre>
+            {note ? <p>{note}</p> : null}
+          </div>
+        ))}
+        <div className="row">
+          <Link className="btn btn-solid" to="/scan">Open the web scanner</Link>
+          <a className="btn" href="https://www.npmjs.com/package/@arsh342/athena" target="_blank" rel="noopener noreferrer">npm page</a>
         </div>
       </section>
     </div>

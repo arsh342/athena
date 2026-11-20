@@ -1,9 +1,5 @@
 import type { Severity } from '../types';
 
-interface SeverityBadgeProps {
-  severity: Severity;
-}
-
-export function SeverityBadge({ severity }: SeverityBadgeProps) {
-  return <span className={`severity-badge severity-${severity.toLowerCase()}`}>{severity}</span>;
+export function SeverityBadge({ severity }: { severity: Severity }) {
+  return <span className={`badge badge-${severity.toLowerCase()}`}>{severity}</span>;
 }

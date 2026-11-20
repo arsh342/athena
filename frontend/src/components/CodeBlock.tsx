@@ -1,7 +1,3 @@
-interface CodeBlockProps {
-  code: string;
-}
-
-export function CodeBlock({ code }: CodeBlockProps) {
-  return <pre className="code-block"><code>{code}</code></pre>;
+export function CodeBlock({ code }: { code: string }) {
+  return <pre className="code"><code>{code}</code></pre>;
 }

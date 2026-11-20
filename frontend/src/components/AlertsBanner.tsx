@@ -22,9 +22,9 @@ export function AlertsBanner() {
 
   if (repos.length === 0) return null;
   return (
-    <section className="panel alerts-banner" role="alert" aria-label="New vulnerabilities">
+    <section className="banner" role="alert" aria-label="New vulnerabilities">
       {repos.map((repo) => (
-        <div key={repo.scanId} className="alerts-banner-row">
+        <div key={repo.scanId} className="banner-row">
           <strong>{alertHeadline(repo)}</strong>
           <ul>
             {repo.alerts.slice(0, 3).map((a) => (
@@ -33,7 +33,7 @@ export function AlertsBanner() {
               </li>
             ))}
           </ul>
-          <Link className="button button-primary" to={rescanPath(repo)}>Re-scan</Link>
+          <Link className="btn btn-sm btn-solid" to={rescanPath(repo)}>Re-scan</Link>
         </div>
       ))}
     </section>

@@ -78,21 +78,17 @@ export function ReportPage() {
   }, [scanId]);
 
   return (
-    <div className="page report-page brutalist-page">
-      <section className="page-header">
-        <div className="br-section-annotation">
-          <span>001 / Report</span>
-          <span></span>
-        </div>
-        <span className="eyebrow">Report</span>
-        <div>
+    <div className="page">
+      <section className="page-head-row">
+        <div className="page-head">
+          <span className="kicker">Report</span>
           <h1>{scan?.repoName ?? 'Unknown repository'}</h1>
-          <p>{scan?.repoUrl ?? 'No repository URL available'}</p>
+          <p className="meta">{scan?.repoUrl ?? 'No repository URL available'}</p>
         </div>
-        <div className="report-actions">
+        <div className="stack" style={{ justifyItems: 'end' }}>
           <button
             type="button"
-            className="button button-primary"
+            className="btn btn-solid"
             disabled={!resolvedId || pdfLoading}
             onClick={async () => {
               if (!resolvedId) return;
@@ -107,8 +103,7 @@ export function ReportPage() {
                 link.click();
                 URL.revokeObjectURL(url);
               } catch (error) {
-                const message = error instanceof Error ? error.message : 'PDF download failed.';
-                setPdfError(message);
+                setPdfError(error instanceof Error ? error.message : 'PDF download failed.');
               } finally {
                 setPdfLoading(false);
               }
@@ -116,67 +111,63 @@ export function ReportPage() {
           >
             {pdfLoading ? 'Generating…' : 'Download PDF'}
           </button>
-          {pdfError ? <p className="auth-error">{pdfError}</p> : null}
+          {pdfError ? <span className="field-error" role="alert">{pdfError}</span> : null}
         </div>
       </section>
 
-      <section className="report-summary">
-        <div className="br-section-annotation">
-          <span>002 / Summary</span>
-          <span></span>
-        </div>
-        <article className="panel">
+      <section className="tiles" aria-label="Summary">
+        <article className="tile">
           <ScoreGauge score={scan?.aiPercentage ?? 0} />
           {scan ? (
-            <p>
+            <p className="meta" style={{ textAlign: 'center' }}>
               AI provenance: {formatProvenance(scan)}
               <br />
-              <small>Recorded is what git history credits to AI tools (a floor). Estimated is a heuristic estimate, low confidence.</small>
+              Recorded is what git history credits to AI tools (a floor). Estimated is a model, low confidence.
             </p>
           ) : null}
         </article>
         {scan?.ai ? (
-          <article className="panel stat-panel">
-            <span>AI check</span>
-            <strong>{scan.ai.checked}</strong>
+          <article className="tile">
+            <span className="tile-label">AI check</span>
+            <strong className="tile-value">{scan.ai.checked}</strong>
             <p>findings checked with {scan.ai.model} ({scan.ai.mode}), ${scan.ai.costUsd.toFixed(3)} spent{scan.ai.notChecked ? `, ${scan.ai.notChecked} not checked` : ''}.</p>
           </article>
         ) : null}
         {scan ? (
-          <article className="panel stat-panel">
-            <span>Coverage</span>
-            <strong>{coverageLabel(scan)}</strong>
+          <article className="tile">
+            <span className="tile-label">Coverage</span>
+            <strong className="tile-value small">{coverageLabel(scan)}</strong>
             {coverageGaps(scan).map((gap) => <p key={gap}>{gap}</p>)}
           </article>
         ) : null}
-        <article className="panel stat-panel">
-          <span>Findings</span>
-          <strong>{findings.length}</strong>
-          <p>Classified from Athena's own rules, taint, secrets and dependency checks.</p>
+        <article className="tile">
+          <span className="tile-label">Findings</span>
+          <strong className="tile-value">{findings.length}</strong>
+          <p>From Athena's rules, taint, secrets and dependency checks.</p>
         </article>
-        <article className="panel stat-panel">
-          <span>Risk density</span>
-          <strong>{scan?.riskDensity.findingsPer1kLoc ?? 0}</strong>
+        <article className="tile">
+          <span className="tile-label">Risk density</span>
+          <strong className="tile-value">{scan?.riskDensity.findingsPer1kLoc ?? 0}</strong>
           <p>Findings per 1k lines of code.</p>
         </article>
-        <article className="panel stat-panel">
-          <span>Flagged ratio</span>
-          <strong>{Math.round((scan?.riskDensity.flaggedRatio ?? 0) * 100)}%</strong>
-          <p>Scored code units crossing threshold 65.</p>
+        <article className="tile">
+          <span className="tile-label">Flagged ratio</span>
+          <strong className="tile-value">{Math.round((scan?.riskDensity.flaggedRatio ?? 0) * 100)}%</strong>
+          <p>Scored code units crossing the threshold.</p>
         </article>
       </section>
 
       <ReportView findings={findings} />
 
-      <section className="panel report-markdown">
-        <div className="panel-title">
-          <h2>Report (Markdown)</h2>
-          <span>redacted snapshot</span>
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Report</h2>
+          <span className="meta">redacted snapshot</span>
         </div>
         {markdown ? (
-          <div className="report-markdown-body" dangerouslySetInnerHTML={{ __html: markdownHtml }} />
+          <div className="markdown" dangerouslySetInnerHTML={{ __html: markdownHtml }} />
         ) : (
-          <p className="report-markdown-empty">No markdown snapshot available yet.</p>
+          <p className="empty">No markdown snapshot available yet.</p>
         )}
       </section>
     </div>

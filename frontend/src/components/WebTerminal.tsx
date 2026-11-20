@@ -473,7 +473,7 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
         </div>
         <strong className="web-terminal-title" style={{ fontFamily: 'var(--font-mono)' }}>
           {isScanning ? (
-            <span className="web-terminal-scanning-text" style={{ color: 'var(--orange, #ff7a45)' }}>
+            <span className="web-terminal-scanning-text" style={{ color: 'var(--text)' }}>
               <span style={{ marginRight: '8px', display: 'inline-block' }}>{SPINNER_FRAMES[spinnerFrame]}</span>
               {scanStatus.toLowerCase().startsWith('upload') ? scanStatus.toLowerCase() : `scanning: ${scanStatus.toLowerCase()}...`}
             </span>
@@ -483,7 +483,7 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
         </strong>
         <div
           className="web-terminal-status"
-          style={{ color: isScanning ? 'var(--orange, #ff7a45)' : statusColor[status] }}
+          style={{ color: isScanning ? 'var(--text)' : statusColor[status] }}
           aria-live="polite"
         >
           {isScanning ? `${scanProgress}%` : statusLabel[status]}
