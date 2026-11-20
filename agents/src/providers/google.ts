@@ -1,5 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
-
 import { parseJson, type Capabilities, type ChatRequest, type ChatResponse, type Message, type ModelProvider, type StopReason } from './types.js';
 
 export interface GoogleLike {
@@ -78,7 +76,30 @@ export class GoogleProvider implements ModelProvider {
   }
 }
 
+/**
+ * Google's SDK is large (protobuf, auth libraries), so the CLI does not install it by default: it is loaded the first time a Google
+ * request is made, and a missing SDK produces an instruction instead of a crash. Nothing else loads it.
+ */
 export function createGoogle(options: { apiKey?: string } = {}): GoogleProvider {
-  const client = new GoogleGenAI({ ...(options.apiKey ? { apiKey: options.apiKey } : {}) });
-  return new GoogleProvider(client as unknown as GoogleLike);
+  let loaded: Promise<GoogleLike> | undefined;
+  const load = (): Promise<GoogleLike> => {
+    loaded ??= import('@google/genai').then(
+      (m) => new m.GoogleGenAI({ ...(options.apiKey ? { apiKey: options.apiKey } : {}) }) as unknown as GoogleLike,
+      (error: unknown) => {
+        loaded = undefined;
+        const code = (error as { code?: string } | null)?.code;
+        if (code === 'MODULE_NOT_FOUND' || code === 'ERR_MODULE_NOT_FOUND') {
+          throw new Error('The Google provider needs its SDK, which is not installed by default. Install it with: npm install -g @google/genai');
+        }
+        throw error;
+      },
+    );
+    return loaded;
+  };
+  return new GoogleProvider({
+    models: {
+      generateContent: async (params) => (await load()).models.generateContent(params),
+      countTokens: async (params) => (await load()).models.countTokens(params),
+    },
+  });
 }

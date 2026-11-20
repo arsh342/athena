@@ -15,7 +15,7 @@ export default defineConfig({
   minify: false,
   // core uses import.meta.url (createRequire for the grammar package); shim it in the CJS bundle.
   shims: true,
-  noExternal: ['@athena/core', '@athena/agents', 'commander'],
+  noExternal: ['@athena/core', '@athena/agents', 'commander', '@anthropic-ai/sdk', 'openai'],
   external: [
     // Optional scanner dependencies should resolve at runtime, not from bundle shims.
     'eslint',
@@ -24,9 +24,8 @@ export default defineConfig({
     'jiti/package.json',
     // Grammar .wasm files are resolved from node_modules at runtime.
     '@vscode/tree-sitter-wasm',
-    // Provider SDKs for the optional AI layer: loaded only when --ai is used.
-    '@anthropic-ai/sdk',
-    'openai',
+    // Google's SDK is heavy (protobuf, auth libraries), so it is an optional peer: installed only by people who use Google with --ai.
+    // The Anthropic and OpenAI SDKs are bundled above, so a default install pulls in neither.
     '@google/genai',
   ],
   // The fast detector's weights ship next to the bundle (dist/models/fast).

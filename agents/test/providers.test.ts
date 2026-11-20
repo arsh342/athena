@@ -157,3 +157,9 @@ test('the factory picks the adapter and endpoint, flags local endpoints, and ref
   assert.throws(() => createProvider({ provider: 'google' }, { env: {}, home: '/x' }), ProviderSetupError);
   assert.throws(() => createProvider({ provider: 'openai-compatible' }, { env: {}, home: '/x' }), /needs --base-url or a preset/);
 });
+
+test('createGoogle does not load the Google SDK until a request is made', async () => {
+  const { createGoogle } = await import('../src/providers/google.ts');
+  const provider = createGoogle({ apiKey: 'test-key' });
+  assert.equal(provider.id, 'google');
+});

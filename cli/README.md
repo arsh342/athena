@@ -4,7 +4,7 @@ Find out what AI wrote in your repository, and whether it is safe to ship. Athen
 
 ## Install
 
-Requires Node.js 18 or newer.
+Requires Node.js 18 or newer. The optional ESLint scanner needs Node 20.19 or newer; on older Node it is skipped and Athena's own engine does the work.
 
 ```bash
 npm install -g @arsh342/athena
@@ -93,6 +93,8 @@ athena scan . --ai deep --budget 1 --suggest-fixes
 ```
 
 Keys come from the environment, then `~/.athena/credentials.json` (mode 0600), and are never printed or logged. Athena reserves the worst-case cost before every call and stops when the next call could exceed a cap; the report lists what was not checked. The first time in a repository it shows exactly what is sent and asks. Secrets and dependency findings are never sent, and repository text is treated as data, never as instructions. Local models (Ollama, LM Studio) cost nothing and send nothing off your machine.
+
+The Anthropic and OpenAI SDKs are built in. Google's is large, so it is not installed by default: for `--provider google`, run `npm install -g @google/genai` once.
 
 ## What Athena checks
 

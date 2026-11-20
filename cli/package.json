@@ -1,6 +1,6 @@
 {
   "name": "@arsh342/athena",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "AI code provenance tracker and terminal scanner for JavaScript/TypeScript, Python, Java, C#, C/C++, Go, Rust, PHP and Shell repositories.",
   "type": "module",
   "bin": {
@@ -46,21 +46,28 @@
     "access": "public"
   },
   "optionalDependencies": {
-    "eslint": "^9.0.0",
-    "eslint-plugin-security": "^3.0.0"
+    "eslint": "^10.15.0",
+    "eslint-plugin-security": "^4.2.1"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^1.11.0",
     "@athena/agents": "file:../agents",
     "@athena/core": "file:../core",
     "commander": "^14.0.0",
+    "openai": "^7.62.0",
     "tsx": "^4.19.0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.11.0",
-    "@google/genai": "^3.6.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@vscode/tree-sitter-wasm": "0.3.1",
-    "openai": "^7.62.0",
     "zod": "^4.6.7"
+  },
+  "peerDependencies": {
+    "@google/genai": "^3.6.1"
+  },
+  "peerDependenciesMeta": {
+    "@google/genai": {
+      "optional": true
+    }
   }
 }

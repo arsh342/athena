@@ -123,7 +123,7 @@ athena scan . --ai deep --budget 1   # deeper review with a three-voter panel
 - **You set the limit.** Spend is capped at $0.25 per run and $1 per day by default, and Athena stops before a call could exceed it. Deep mode requires an explicit `--budget`.
 - **You see what is sent.** The first time in a repository, Athena shows exactly what leaves your machine and asks. Secrets and dependency findings are never sent.
 - **Your key stays yours.** It is read from the environment or a private file, and is never printed or logged.
-- Works with Anthropic, OpenAI, Google, any OpenAI-compatible service, and local models (Ollama, LM Studio).
+- Works with Anthropic, OpenAI, Google, any OpenAI-compatible service, and local models (Ollama, LM Studio). Google needs a one-time `npm install -g @google/genai`; the others are built in.
 
 ## Keeping current
 

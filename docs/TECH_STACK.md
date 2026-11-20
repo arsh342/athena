@@ -23,7 +23,7 @@
 | Advisory data | Local incrementally synced OSV copy, CISA KEV, FIRST EPSS; signed (Ed25519) rule and skill packs |
 | AI provenance | Recorded lines from git history plus `athena-detect-fast` (a small pure-TypeScript classifier, under 2 MB) with a labelled style heuristic as fallback |
 | Skills | Agent Skills format (`SKILL.md` + declarative `rules.json` / `taint.json`), 39 built in, activated by detected dependencies |
-| Optional lint | ESLint with `eslint-plugin-security` (JavaScript/TypeScript only) |
+| Optional lint | ESLint 10 with `eslint-plugin-security` 4 (JavaScript/TypeScript only; needs Node 20.19+, skipped on older Node) |
 | Output | Terminal, JSON, JSONL, SARIF, Markdown, CycloneDX 1.6 |
 
 Semgrep, NodeJSScan, Bearer and `npm audit` were retired; nothing external is required.
@@ -32,7 +32,7 @@ Semgrep, NodeJSScan, Bearer and `npm audit` were retired; nothing external is re
 
 | Concern | Technology |
 |---|---|
-| Providers | Anthropic (`@anthropic-ai/sdk`), OpenAI (`openai`), Google (`@google/genai`), and any OpenAI-compatible endpoint (OpenRouter, DeepSeek, Mistral, Groq, xAI, Together, Ollama, LM Studio) |
+| Providers | Anthropic (`@anthropic-ai/sdk`) and OpenAI (`openai`), both bundled into the CLI; Google (`@google/genai`), an optional peer loaded on first use; and any OpenAI-compatible endpoint (OpenRouter, DeepSeek, Mistral, Groq, xAI, Together, Ollama, LM Studio) |
 | Structured output | `zod` schemas; verdicts are accepted only from structured output |
 | Cost control | Worst-case reservation per call, per-run and per-day caps, a daily ledger in `~/.athena/usage.json` |
 | Cheaper paths | Prompt caching of the stable prefix, a per-candidate result cache, the Anthropic Message Batches API for non-interactive deep runs |
