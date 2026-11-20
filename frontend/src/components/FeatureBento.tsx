@@ -11,7 +11,6 @@ import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode }
 export interface FeatureCopy { title: string; description: string }
 
 const COPY = {
-  tag: 'Features',
   title: 'Review that reads\nlike a *person* did',
   review: { title: 'Review a change, not the repo', description: 'Staged, uncommitted or ranged changes go through the same analysis, and only what the change introduced can block the commit.' },
   reports: { title: 'Reports with the path to the sink', description: 'Each finding carries the route from an entry point to the dangerous call, what defends it, and what an attacker gains.' },
@@ -355,7 +354,6 @@ export function FeatureBento() {
         <section className="fx-sec" aria-labelledby={`${uid}t`}>
           <div className="fx-reveal" ref={ref as never} data-in={inView}>
             <div className="fx-head" id={`${uid}t`}>
-              <span className="fx-tag">{COPY.tag}</span>
               <Title text={COPY.title} />
             </div>
             <div className="fx-bento">
