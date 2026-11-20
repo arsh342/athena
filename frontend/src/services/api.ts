@@ -1,6 +1,6 @@
 import type { RepoAlerts } from '../utils/alerts';
 import { aiHeaders, loadAiSettings } from '../utils/ai-settings';
-import type { AuthUser, Finding, LandingContent, PipelineStage, ScanSummary } from '../types';
+import type { AuthUser, Finding, ScanSummary } from '../types';
 
 interface ScanListResponse {
   scans: ScanSummary[];
@@ -16,14 +16,6 @@ interface FindingsResponse {
 
 interface TerminalResponse {
   lines: string[];
-}
-
-interface LandingContentResponse {
-  content: LandingContent;
-}
-
-interface PipelineResponse {
-  stages: PipelineStage[];
 }
 
 interface StartScanResponse {
@@ -114,11 +106,6 @@ export async function downloadReportPdf(scanId: string): Promise<Blob> {
   return response.blob();
 }
 
-export async function fetchLandingTerminalLines(): Promise<string[]> {
-  const data = await fetchJson<TerminalResponse>('/api/terminal/landing');
-  return data.lines;
-}
-
 /**
  * Start a real scan by POSTing to /api/scans.
  * Returns the scan summary, findings, and terminal output lines.
@@ -170,15 +157,6 @@ export async function fetchScanTerminalLines(repoUrl: string): Promise<string[]>
   return data.lines;
 }
 
-export async function fetchLandingContent(): Promise<LandingContent> {
-  const data = await fetchJson<LandingContentResponse>('/api/content/landing');
-  return data.content;
-}
-
-export async function fetchPipelineStages(): Promise<PipelineStage[]> {
-  const data = await fetchJson<PipelineResponse>('/api/content/pipeline');
-  return data.stages;
-}
 
 export async function register(email: string, password: string): Promise<AuthUser> {
   const data = await fetchJson<{ user: AuthUser; accessToken?: string; refreshToken?: string }>('/api/auth/register', {

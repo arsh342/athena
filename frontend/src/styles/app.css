@@ -306,8 +306,6 @@ ul, ol { margin: 0; padding: 0; }
 
 .install { display: flex; align-items: center; gap: 12px; padding: 0 22px; height: 52px; width: fit-content; max-width: 100%; background: var(--surface-2); border-radius: var(--r-control); font: 400 14px/1 var(--font-mono); color: var(--text); overflow-x: auto; white-space: nowrap; }
 .install span { color: var(--text-3); }
-.tools { display: flex; flex-wrap: wrap; gap: 8px; }
-.tools span { height: 34px; padding: 0 16px; display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-control); font: 400 12.5px/1 var(--font-mono); color: var(--text-2); }
 
 /* ── Footer ── */
 .site-footer { position: relative; overflow: hidden; background: transparent; }

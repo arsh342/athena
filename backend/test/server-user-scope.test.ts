@@ -59,9 +59,6 @@ test('GET /api/scans passes authenticated user id to getScans', async () => {
       getScan: async () => undefined,
       getFindings: async () => [],
       getFindingsByScanId: async () => [],
-      getLandingContent: () => ({ integrations: [], features: [], stats: [] }),
-      getPipelineStages: () => [],
-      landingPipelineLines: [],
     },
     scan: {
       runScan: async () => {

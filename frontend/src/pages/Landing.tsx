@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { background, shockwave } from 'asciify-engine/kit';
 import { Advantages } from '../components/Advantages';
 import { FeatureBento } from '../components/FeatureBento';
-import { fetchLandingContent } from '../services/api';
-import type { LandingContent } from '../types';
 
 const PRINCIPLES = [
   { title: 'Offline first', body: 'The tree-sitter engine, taint tracking, secret detection, dependency intelligence and skills all run on your machine. Nothing is sent anywhere unless you turn AI on.' },
@@ -18,7 +16,6 @@ const PRINCIPLES = [
 export function Landing() {
   const heroRef = useRef<HTMLElement>(null);
   const copyRef = useRef<HTMLDivElement>(null);
-  const [content, setContent] = useState<LandingContent | null>(null);
 
   // Wind streaks the visitor can stir; a click sends one ring out. Faint, clear round the headline, still under reduced motion.
   useEffect(() => {
@@ -27,15 +24,7 @@ export function Landing() {
     return () => bg.destroy();
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    fetchLandingContent()
-      .then((c) => { if (active) setContent(c); })
-      .catch(() => { if (active) setContent(null); });
-    return () => { active = false; };
-  }, []);
 
-  const integrations = content?.integrations ?? [];
 
   return (
     <>
@@ -75,12 +64,6 @@ export function Landing() {
         </div>
       </section>
 
-      {integrations.length > 0 ? (
-        <section className="section" id="integrations">
-          <p className="kicker">Works with</p>
-          <div className="tools">{integrations.map((tool, i) => <span key={`${tool}-${i}`}>{tool}</span>)}</div>
-        </section>
-      ) : null}
     </>
   );
 }

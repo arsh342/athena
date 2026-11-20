@@ -20,12 +20,9 @@ import {
 import {
   getFindings,
   getFindingsByScanId,
-  getLandingContent,
-  getPipelineStages,
   getScanReport,
   getScan,
   getScans,
-  landingPipelineLines,
 } from './data.ts';
 import { validateRepoUrl } from './repo-url.js';
 import { AI_MODES, AI_PROVIDERS, MAX_RUN_BUDGET_USD, acquireAiSlot, hostedPresets, parseAiHeaders, scrub, type AiScanRequest } from './ai-scan.ts';
@@ -67,9 +64,6 @@ export interface ServerDeps {
     getFindings: typeof getFindings;
     getFindingsByScanId: typeof getFindingsByScanId;
     getScanReport: typeof getScanReport;
-    getLandingContent: typeof getLandingContent;
-    getPipelineStages: typeof getPipelineStages;
-    landingPipelineLines: typeof landingPipelineLines;
   };
   report: {
     renderPdfFromMarkdown: typeof renderPdfFromMarkdown;
@@ -102,9 +96,6 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
       getFindings,
       getFindingsByScanId,
       getScanReport,
-      getLandingContent,
-      getPipelineStages,
-      landingPipelineLines,
       ...(overrides.data ?? {}),
     },
     report: {
@@ -270,18 +261,6 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     const user = await requireAuth(req, res);
     if (!user) return;
     res.json({ findings: await deps.data.getFindings(user.id) });
-  });
-
-  app.get('/api/content/landing', (_req: Request, res: Response) => {
-    res.json({ content: deps.data.getLandingContent() });
-  });
-
-  app.get('/api/content/pipeline', (_req: Request, res: Response) => {
-    res.json({ stages: deps.data.getPipelineStages() });
-  });
-
-  app.get('/api/terminal/landing', (_req: Request, res: Response) => {
-    res.json({ lines: deps.data.landingPipelineLines });
   });
 
   /** Returns the validated AI request, null when the scan has no AI, or undefined after having answered the client. */

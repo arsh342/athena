@@ -92,30 +92,3 @@ export interface ScanSummary {
   coverage?: CoverageSummary | null;
 }
 
-export interface LandingStat {
-  value: number;
-  label: string;
-  suffix: string;
-}
-
-export interface LandingFeature {
-  num: string;
-  tab: string;
-  title: string;
-  description: string;
-  detail: string;
-  terminalLines: string[];
-}
-
-export interface LandingContent {
-  integrations: string[];
-  features: LandingFeature[];
-  stats: LandingStat[];
-}
-
-export interface PipelineStage {
-  id: string;
-  title: string;
-  detail: string;
-  metric: string;
-}

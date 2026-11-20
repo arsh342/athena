@@ -65,9 +65,6 @@ test('OAuth routes delegate to auth handlers', async () => {
       getScan: async () => undefined,
       getFindings: async () => [],
       getFindingsByScanId: async () => [],
-      getLandingContent: () => ({ integrations: [], features: [], stats: [] }),
-      getPipelineStages: () => [],
-      landingPipelineLines: [],
     },
     scan: {
       runScan: async () => {

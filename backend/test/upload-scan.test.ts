@@ -74,9 +74,6 @@ test('POST /api/scans/upload rejects unsupported mode', async () => {
       getScan: async () => undefined,
       getFindings: async () => [],
       getFindingsByScanId: async () => [],
-      getLandingContent: () => ({ integrations: [], features: [], stats: [] }),
-      getPipelineStages: () => [],
-      landingPipelineLines: [],
     },
     scan: {
       runScan: async () => {
@@ -143,9 +140,6 @@ test('upload route uses terminal session when header present', async () => {
       getScan: async () => undefined,
       getFindings: async () => [],
       getFindingsByScanId: async () => [],
-      getLandingContent: () => ({ integrations: [], features: [], stats: [] }),
-      getPipelineStages: () => [],
-      landingPipelineLines: [],
     },
     scan: {
       runScan: async () => {
