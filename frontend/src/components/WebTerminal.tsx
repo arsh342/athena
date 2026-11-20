@@ -1,7 +1,6 @@
 import { scanVerdict } from '../utils/gate';
 import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
-import { OWL_ART, WORDMARK_ART } from '../utils/brand-art';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { decodeEvent, encodeCommand } from './web-terminal-protocol';
@@ -190,23 +189,13 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
     });
     resizeObserver.observe(container);
 
-    /** The welcome banner: the Athena owl in braille dots with the name beside it (just the name on a narrow terminal). */
+    /** The welcome banner: the Athena name in block letters. */
     function printWelcomeBanner() {
       const ink = '\x1b[38;2;236;235;231m';
       const dim = '\x1b[2m';
       const reset = '\x1b[0m';
-      const logoWidth = Math.max(...OWL_ART.map((l) => l.length));
-      const full = term.cols >= 2 + logoWidth + 4 + 24;
       term.writeln('');
-      if (full) {
-        const top = Math.floor((OWL_ART.length - WORDMARK_ART.length) / 2);
-        OWL_ART.forEach((line, i) => {
-          const name = WORDMARK_ART[i - top];
-          term.writeln(`  ${ink}${line.padEnd(logoWidth, ' ')}${name ? `    ${name}` : ''}${reset}`);
-        });
-      } else {
-        WORDMARK_ART.forEach((line) => term.writeln(`  ${ink}${line}${reset}`));
-      }
+      ['▄▀█ ▀█▀ █ █ █▀▀ █▄ █ ▄▀█', '█▀█  █  █▀█ ██▄ █ ▀█ █▀█'].forEach((line) => term.writeln(`  ${ink}${line}${reset}`));
       term.writeln('');
       term.writeln(`  ${dim}Security review for AI-assisted code${reset}   ${ink}active sandbox${reset}`);
       term.writeln(`  ${dim}parse → score → analyze → report${reset}`);

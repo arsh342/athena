@@ -1,56 +1,24 @@
 import { c } from './colors.js';
 
-/**
- * The Athena mark, the round owl face from the sign-in page, as braille dots: a braille cell is a 2 x 4 dot grid, so this is a
- * true stipple in text. Generated from the same tone map as the website icons by scripts/brand/owl_face.py.
- */
-export const LOGO = [
-  '⠀⠀⠀⠀⠀⠀⠀⠀⡀⢄⢄⠢⡂⢆⠢⡂⡄⢄',
-  '⠀⠀⠀⠀⠀⡠⠢⡑⡜⢔⢅⢇⢣⢣⢣⢣⢣⠣⡃⡇⣂⢀',
-  '⠀⠀⠀⡠⡊⡢⡃⡇⡎⡎⡎⡎⣎⢎⢮⢪⡪⣪⢣⡣⡣⡣⣂',
-  '⠀⠀⢔⢢⢱⢡⢣⣣⣣⡣⡳⡹⣸⢪⣣⢳⢹⣸⣸⡸⡪⡎⣎⢎⠄',
-  '⠀⢌⢆⢣⡲⣽⡳⠳⠳⢯⣷⣝⢼⡱⣱⣳⡻⠺⠺⢽⣗⣧⢣⢇⢧',
-  '⠠⡱⢸⢰⣻⡇⠰⡶⠀⠀⢿⡾⡮⣚⣞⣞⠠⢶⠂⠀⢹⣾⡗⣝⢜⡄',
-  '⠨⡸⡘⡜⡷⣧⡀⠀⢐⣠⣿⢿⢕⣇⢿⣺⣀⠀⠐⢂⣼⣿⢇⣗⢵⠅',
-  '⠈⡆⡇⡇⣏⢿⣻⣿⢿⣻⢞⢯⡳⣳⢝⡽⣻⡿⣿⡿⣟⢯⡺⣜⢎⠇',
-  '⠀⠕⡜⡜⣜⢜⢦⢳⢝⢮⠫⢓⢽⣕⢛⢪⣗⡵⣳⢵⣳⡳⣝⢎⠧⠁',
-  '⠀⠈⢪⢪⢪⢎⢗⣝⢵⡫⣏⠢⣹⡗⡨⣪⢞⣞⡽⣕⣗⣝⢮⢫⠁',
-  '⠀⠀⠀⠱⡱⢕⢧⢳⠵⣝⢞⡬⢸⡃⢎⢾⢝⣞⢮⡳⡵⡕⡇⠁',
-  '⠀⠀⠀⠀⠈⠊⠮⡪⣫⢪⡳⣕⢕⢵⡹⣝⢵⣓⢗⡝⠎⠊',
-  '⠀⠀⠀⠀⠀⠀⠀⠁⠑⠱⠱⠣⡫⢣⠫⠪⠃⠃⠁',
-];
-
-/** The name beside the mark. */
+/** The Athena name in block characters, two rows tall. */
 export const WORDMARK = [
   '▄▀█ ▀█▀ █ █ █▀▀ █▄ █ ▄▀█',
   '█▀█  █  █▀█ ██▄ █ ▀█ █▀█',
 ];
 
-const LOGO_WIDTH = Math.max(...LOGO.map((l) => l.length));
-const GAP = 4;
-/** Columns the full banner needs: indent + logo + gap + wordmark. */
-const FULL_WIDTH = 2 + LOGO_WIDTH + GAP + Math.max(...WORDMARK.map((l) => l.length));
-/** Rows the logo is worth showing at: the menu below it is tall. A shorter terminal gets the two-line name. */
-const FULL_ROWS = 52;
-
-/** The banner as lines: the mark with the name beside its middle, or just the name when the terminal is narrow or short. */
-export function bannerLines(cols: number, rows = Infinity): string[] {
-  if (cols < FULL_WIDTH || rows < FULL_ROWS) return [...WORDMARK];
-  const top = Math.floor((LOGO.length - WORDMARK.length) / 2);
-  return LOGO.map((line, i) => {
-    const name = WORDMARK[i - top];
-    return name ? `${line.padEnd(LOGO_WIDTH, ' ')}${' '.repeat(GAP)}${name}` : line;
-  });
+/** The banner as lines. */
+export function bannerLines(): string[] {
+  return [...WORDMARK];
 }
 
 /**
- * Print the logo banner to stdout.
+ * Print the banner to stdout.
  * Skipped when stdout is not a TTY (CI, piped output).
  */
 export function printBanner(): void {
   if (!process.stdout.isTTY) return;
   console.log('');
-  for (const line of bannerLines(process.stdout.columns ?? 80, process.stdout.rows ?? Infinity)) {
+  for (const line of bannerLines()) {
     console.log(`  ${c.accent}${c.bold}${line}${c.reset}`);
   }
 }

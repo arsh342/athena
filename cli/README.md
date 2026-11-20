@@ -25,7 +25,15 @@ athena init                    # install the pre-commit hook (athena uninstall r
 athena doctor                  # check Node, npm, git and ESLint
 ```
 
-Running `athena` with no arguments opens an interactive menu. On a tall terminal (52 rows or more) it opens with the Athena owl, drawn in braille dots; on a shorter one it shows the compact name instead.
+Running `athena` with no arguments opens an interactive menu, so you can pick what to do instead of typing commands and flags. Move with the arrow keys (or press a number), Enter selects, Esc goes back. Each screen shows the command it is equivalent to.
+
+- **Scan:** this folder offline, with the AI check (pick a service, mode, model and spend cap), a different folder, or custom options (what blocks, the output format, dependency checks).
+- **Review my changes:** what is staged, everything uncommitted, everything since a branch, or a commit range, with the AI check if you want it.
+- **AI keys:** add, see or remove a key for Anthropic, OpenAI, Google, Groq, OpenRouter, DeepSeek, Mistral, xAI or Together. The key is typed hidden and saved privately on your machine.
+- **Git hooks:** install the commit gate (and the push gate) or remove them.
+- **Vulnerability data, Explain a finding, Skills and provenance, Project settings** (what blocks a commit, saved to `athena.config.json`), **Doctor** and **All commands**.
+
+Without a terminal (CI, a pipe) it prints the command help instead.
 
 ## Commands
 
