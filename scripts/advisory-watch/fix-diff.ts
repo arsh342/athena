@@ -30,7 +30,7 @@ export function parseDiff(diff: string): DiffFile[] {
   return files;
 }
 
-export interface FixMaterial { sha: string; parent: string; diff: string; files: Array<{ path: string; removed: number[]; before: string; after: string }> }
+export interface FixMaterial { sha: string; parent: string; diff: string; files: Array<{ path: string; removed: number[]; added?: number[]; before: string; after: string }> }
 
 /** Fetch the fix commit's diff and the before/after text of each changed source file (GitHub API; token optional). */
 export async function fetchFix(owner: string, repo: string, sha: string, options: { token?: string; fetchImpl?: typeof fetch } = {}): Promise<FixMaterial> {
@@ -50,7 +50,7 @@ export async function fetchFix(owner: string, repo: string, sha: string, options
   const files: FixMaterial['files'] = [];
   for (const file of parseDiff(diff).filter((x) => /\.(?:[cm]?[jt]sx?|py)$/.test(x.path) && x.removed.length > 0).slice(0, 8)) {
     const [before, after] = await Promise.all([raw(parent, file.path), raw(commit.sha, file.path)]);
-    if (before !== null && after !== null) files.push({ path: file.path, removed: file.removed, before, after });
+    if (before !== null && after !== null) files.push({ path: file.path, removed: file.removed, added: file.added, before, after });
   }
   return { sha: commit.sha, parent, diff, files };
 }

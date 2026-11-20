@@ -45,9 +45,6 @@ export async function runScan(args: RunArgs): Promise<number> {
   });
   config.eslint = { ...config.eslint!, enabled: options.scanners.eslint };
   config.dependencies = { enabled: options.deps.enabled, offline: options.deps.offline, registryChecks: true };
-  config.nodejsscan = { ...config.nodejsscan!, enabled: options.scanners.nodejsscan };
-  config.bearer = { ...config.bearer!, enabled: options.scanners.bearer };
-  config.semgrep.enabled = options.scanners.semgrep;
 
   for (const warning of options.warnings) writeInfo(`warning: ${warning}`);
 

@@ -13,6 +13,19 @@ export interface Proposal {
   derivedFrom: { file: string; line: number; code: string };
 }
 
+/** The concrete upstream fix: the removed line and the nearest line the fix added, with a link to the commit. */
+export function fixAdvice(candidate: Candidate, file: FixMaterial['files'][number], removedLine: number): string {
+  const removed = file.before.split('\n')[removedLine - 1]?.trim().slice(0, 140) ?? '';
+  const afterLines = file.after.split('\n');
+  const nearest = (file.added ?? []).reduce<number | null>((best, n) => (best === null || Math.abs(n - removedLine) < Math.abs(best - removedLine) ? n : best), null);
+  const added = nearest !== null ? afterLines[nearest - 1]?.trim().slice(0, 140) : undefined;
+  const link = `${candidate.fix.owner}/${candidate.fix.repo}@${candidate.fix.sha.slice(0, 10)}`;
+  const upgrade = candidate.pkg ? ` Upgrade ${candidate.pkg} to a release that includes this fix.` : '';
+  return added && added !== removed
+    ? `Upstream fixed this in ${link} by replacing \`${removed}\` with \`${added}\`. Apply the same change in your code.${upgrade}`
+    : `Upstream fixed this in ${link} by removing \`${removed}\`. Remove or guard the same call in your code.${upgrade}`;
+}
+
 export interface Rejected { reason: string }
 
 const nameFor = (id: string): string => `cve-${id.toLowerCase().replace(/^ghsa-/, 'ghsa-').replace(/[^a-z0-9-]/g, '-')}`;
@@ -35,7 +48,7 @@ export async function deriveProposal(candidate: Candidate, fix: FixMaterial): Pr
       if (!derived) continue;
       const ruleId = `${name}.variant`;
       const cwe = candidate.cwe.map((c) => Number(c.replace(/\D/g, ''))).filter((n) => n > 0);
-      const rule: SkillRuleDef = { ...derived, id: ruleId, ...(cwe.length > 0 ? { cwe } : {}), title: `${candidate.pkg}: ${candidate.summary}`.slice(0, 120), confidence: 'medium' };
+      const rule: SkillRuleDef = { ...derived, id: ruleId, fix: fixAdvice(candidate, file, line), ...(cwe.length > 0 ? { cwe } : {}), title: `${candidate.pkg}: ${candidate.summary}`.slice(0, 120), confidence: 'medium' };
       const marked = lines.map((l, i) => (i === line - 1 ? `${l} ${commentFor(file.path)} EXPECT ${ruleId}` : l)).join('\n');
       const ext = extname(file.path);
       const fixtureName = `${basename(file.path, ext)}${ext}`;

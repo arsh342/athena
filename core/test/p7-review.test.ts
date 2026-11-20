@@ -18,7 +18,7 @@ async function run(files: ProjectFile[], root = '/p') {
   const r = await analyzeProject(files, { root });
   return { r, found: [...r.findings].flatMap(([path, list]) => list.map((f) => ({ path, ...f }))) };
 }
-const noExternal = { semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' }, eslint: { enabled: false, timeoutMs: 1000 }, npmAudit: { enabled: false, timeoutMs: 1000 }, nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false }, bearer: { enabled: false, timeoutMs: 1000 } };
+const noExternal = { eslint: { enabled: false, timeoutMs: 1000 }, npmAudit: { enabled: false, timeoutMs: 1000 }, };
 
 // ── C1: request-sourced findings are never demoted by reachability heuristics ───────────
 test('C1: Django view, member-expression controller and wrapped handler stay high confidence', async () => {

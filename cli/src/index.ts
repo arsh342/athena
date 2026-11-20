@@ -13,7 +13,7 @@ import { reviewCommand, type ReviewFlags } from './commands/review.js';
 import { updateCommand } from './commands/update.js';
 import { mcpCommand } from './commands/mcp.js';
 import { alertsCommand } from './commands/alerts.js';
-import { setupAllCommand, setupSemgrepCommand } from './commands/setup.js';
+import { setupAllCommand } from './commands/setup.js';
 import { uninstallCommand } from './commands/uninstall.js';
 import { EXIT } from './utils/exit-codes.js';
 import { CLI_VERSION } from './version.js';
@@ -43,9 +43,9 @@ function addRunFlags(command: Command): Command {
     .option('--no-npm-audit', 'deprecated no-op: npm audit was replaced by dependency checks')
     .option('--no-deps', 'skip dependency checks (vulnerabilities, missing and typosquatted packages)')
     .option('--offline', 'dependency checks use only cached data')
-    .option('--no-nodejsscan', 'disable nodejsscan scanner')
-    .option('--no-bearer', 'disable Bearer scanner')
-    .option('--no-semgrep', 'disable Semgrep scanner');
+    .option('--no-nodejsscan', 'deprecated no-op: NodeJSScan was retired')
+    .option('--no-bearer', 'deprecated no-op: Bearer was retired')
+    .option('--no-semgrep', 'deprecated no-op: Semgrep was retired');
 }
 
 addRunFlags(
@@ -147,22 +147,16 @@ program.command('init').description('install Athena git hooks (pre-commit by def
   .option('--force', 'replace an existing hook that is not Athena\'s')
   .action(initCommand);
 program.command('uninstall').description('remove Athena git hooks').action(uninstallCommand);
-program.command('doctor').description('check local toolchain health (node, npm, semgrep, trivy)').action(doctorCommand);
+program.command('doctor').description('check local toolchain health (node, npm, git, eslint)').action(doctorCommand);
 
 const setupCommand = program
   .command('setup')
-  .description('setup optional external scanners');
-
-setupCommand
-  .command('semgrep')
-  .option('--auto', 'run install command automatically')
-  .description('install or print install command for semgrep')
-  .action(setupSemgrepCommand);
+  .description('show setup requirements');
 
 setupCommand
   .command('all')
   .option('--auto', 'run supported install commands automatically')
-  .description('print/setup all scanner dependencies (included + external)')
+  .description('print what Athena needs installed (nothing beyond Node for the core engine)')
   .action(setupAllCommand);
 
 program.command('menu').description('open interactive terminal selector').action(() => menuCommand(program));

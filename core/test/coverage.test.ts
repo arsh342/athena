@@ -9,12 +9,9 @@ import { scanFiles } from '../src/engine.ts';
 import { ScannerRegistry } from '../src/scanner-registry.ts';
 
 const noExternal = {
-  semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' },
   eslint: { enabled: false, timeoutMs: 1000 },
   npmAudit: { enabled: false, timeoutMs: 1000 },
-  nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false },
-  bearer: { enabled: false, timeoutMs: 1000 },
-};
+  };
 
 const VALID = 'function ok() {\n  const a = 1;\n  return a;\n}\n';
 

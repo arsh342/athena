@@ -40,7 +40,7 @@ export interface RunOptions {
   threshold?: number;
   exclude: string[];
   publicRoutes: string[];
-  scanners: { eslint: boolean; nodejsscan: boolean; bearer: boolean; semgrep: boolean };
+  scanners: { eslint: boolean };
   deps: { enabled: boolean; offline: boolean };
   warnings: string[];
 }
@@ -73,6 +73,9 @@ export function resolveRunOptions(
 
   const warnings: string[] = [];
   let threshold: number | undefined;
+  for (const [flag, tool] of [['nodejsscan', 'NodeJSScan'], ['bearer', 'Bearer'], ['semgrep', 'Semgrep']] as const) {
+    if (flags[flag] === false) warnings.push(`--no-${flag} is deprecated and does nothing: ${tool} was retired (Athena's own engine replaced it)`);
+  }
   if (flags.npmAudit === false) warnings.push('--no-npm-audit is deprecated and does nothing: npm audit was replaced by Athena\'s own dependency checks (use --no-deps to skip them)');
   if (flags.threshold !== undefined) {
     threshold = Number(flags.threshold);
@@ -104,9 +107,6 @@ export function resolveRunOptions(
     publicRoutes: config.publicRoutes ?? [],
     scanners: {
       eslint: flags.eslint !== false,
-      nodejsscan: flags.nodejsscan !== false,
-      bearer: flags.bearer !== false,
-      semgrep: flags.semgrep !== false,
     },
     deps: { enabled: flags.deps !== false, offline: flags.offline ?? false },
     warnings,

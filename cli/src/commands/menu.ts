@@ -4,7 +4,6 @@ import { checkCommand } from './check.js';
 import { doctorCommand } from './doctor.js';
 import { initCommand } from './init.js';
 import { scanCommand } from './scan.js';
-import { setupSemgrepCommand } from './setup.js';
 import { uninstallCommand } from './uninstall.js';
 import { dashedLine, printBanner, truncate } from '../utils/banner.js';
 import { c } from '../utils/colors.js';
@@ -69,17 +68,10 @@ export async function menuCommand(program: Command): Promise<void> {
     },
     {
       label: 'Doctor toolchain',
-      desc: 'Check node/npm/semgrep/trivy availability.',
+      desc: 'Check node, npm, git and ESLint availability.',
       command: 'athena doctor',
-      detail: 'Useful for debugging missing external scanner dependencies.',
+      detail: 'Useful for debugging a missing toolchain.',
       run: doctorCommand,
-    },
-    {
-      label: 'Setup Semgrep',
-      desc: 'Print Semgrep install command for this OS.',
-      command: 'athena setup semgrep',
-      detail: 'Install helper for optional Semgrep integration in scan pipeline.',
-      run: () => setupSemgrepCommand(),
     },
     {
       label: 'Exit',

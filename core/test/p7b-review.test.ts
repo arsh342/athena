@@ -19,7 +19,7 @@ import { compileSafeRegex } from '../src/skills/regex-safety.ts';
 import { deriveVariantRule, saveVariant } from '../src/skills/variants.ts';
 import { validateSkill } from '../src/skills/validate.ts';
 
-const noExternal = { semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' }, eslint: { enabled: false, timeoutMs: 1000 }, npmAudit: { enabled: false, timeoutMs: 1000 }, nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false }, bearer: { enabled: false, timeoutMs: 1000 } };
+const noExternal = { eslint: { enabled: false, timeoutMs: 1000 }, npmAudit: { enabled: false, timeoutMs: 1000 }, };
 const SKILL_MD = (name: string) => `---\nname: ${name}\ndescription: A skill used by the review tests to check hostile behaviour.\nversion: 1.0.0\nlicense: MIT\nappliesTo:\n  detect:\n    always: true\ncategories: []\n---\n\n## Verification checklist\n\n- check\n`;
 const rules = (id: string, match: unknown, extra: Record<string, unknown> = {}) => JSON.stringify({ rules: [{ id, title: 'T', severity: 'LOW', cwe: [1], category: 'style', why: 'w', fix: 'f', match, ...extra }] });
 function dirWith(name: string, files: Record<string, string>): string {

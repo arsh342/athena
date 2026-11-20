@@ -65,6 +65,10 @@ function tick(scope: Scope): void {
   if ((scope.steps & 255) === 0 && Date.now() > scope.deadline) throw new AnalysisTimeout();
 }
 
+/** Marker on taint that comes from exception text rather than directly from a request. */
+const EXCEPTION_NOTE = 'exception text (raised while handling request data)';
+const EXCEPTION_SINKS = /^taint\.(?:template-injection|code-injection)$/;
+
 function collectScope(root: TSNode, family: LanguageFamily): TSNode[] {
   const out: TSNode[] = [];
   const stack: TSNode[] = [root];
@@ -198,6 +202,8 @@ function checkSinks(node: TSNode, env: Map<string, Taint>, scope: Scope, fnText:
       if ((sink.ruleId === 'taint.command-injection' || sink.ruleId === 'taint.sql-injection') && /^(?:list|array|array_creation_expression|array_expression|slice_literal|composite_literal|collection_expression|array_initializer)$/.test(arg.type)) continue;
       const t = taintOf(arg, env, scope);
       if (!t) continue;
+      // Exception text can echo request input, but only template/code construction is dangerous enough to report from it.
+      if (t[0]?.note === EXCEPTION_NOTE && !EXCEPTION_SINKS.test(sink.ruleId)) continue;
       if (sink.fnGuard && sink.fnGuard.test(fnText)) continue;
       if (sink.guard && guardedVariable(arg, sink.guard, fnText)) continue;
       hits.push({ ruleId: sink.ruleId, line, code, trace: [...t, { line, note: `reaches ${call.callee}()` }].slice(-MAX_TRACE) });
@@ -250,6 +256,17 @@ function analyzeScope(scopeNode: TSNode, isFunction: boolean, initial: Map<strin
         if (call && (scope.pack.sanitizers.some((r) => r.test(call.callee)) || scope.pack.cleanCalls.test(call.callee))) {
           for (const target of a.targets) scope.kills.set(target, Math.max(scope.kills.get(target) ?? 0, a.node.startIndex));
         }
+      }
+    }
+    if (family === 'python') {
+      // `except E as e:` binds exception text; it may contain what the `try` body was handling, so it carries that taint.
+      for (const n of nodes) {
+        if (n.type !== 'except_clause') continue;
+        const name = /^except\b[^\n:]*?\bas\s+(\w+)/.exec(n.text)?.[1];
+        const body = n.parent?.type === 'try_statement' ? n.parent.childForFieldName('body') ?? n.parent.namedChildren.find((c) => c?.type === 'block') ?? null : null;
+        if (!name || !body || env.has(name) || !taintOf(body, env, scope)) continue;
+        env.set(name, [{ line: n.startPosition.row + 1, note: EXCEPTION_NOTE }]);
+        changed = true;
       }
     }
     for (const f of fors) {

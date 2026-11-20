@@ -291,7 +291,8 @@ export interface AthenaConfig {
   exclude: string[];
   secretDetection: boolean;
   hallucinationDetection: boolean;
-  semgrep: SemgrepConfig;
+  /** Deprecated and ignored: Semgrep, NodeJSScan and Bearer were retired (Athena's own engine replaced them). */
+  semgrep?: SemgrepConfig;
   eslint?: ESLintConfig;
   /** Deprecated and ignored: `npm audit` was replaced by dependency intelligence (`dependencies`). */
   npmAudit?: NpmAuditConfig;

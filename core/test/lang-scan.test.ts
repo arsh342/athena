@@ -12,12 +12,9 @@ import { __setGrammarDirForTests } from '../src/lang/parser-pool.ts';
 import { ScannerRegistry } from '../src/scanner-registry.ts';
 
 const noExternal = {
-  semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' },
   eslint: { enabled: false, timeoutMs: 1000 },
   npmAudit: { enabled: false, timeoutMs: 1000 },
-  nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false },
-  bearer: { enabled: false, timeoutMs: 1000 },
-};
+  };
 const options = (root: string) => ({ root, recordedProvenance: false, registry: new ScannerRegistry() });
 
 const fixtures = join(import.meta.dirname, 'fixtures', 'lang');

@@ -75,3 +75,15 @@ test('each run gets its own branch name, and the advisory CWE ends up on the der
   assert.ok(!('reason' in proposal));
   if (!('reason' in proposal)) assert.deepEqual(proposal.rule.cwe, [78]);
 });
+
+test('the proposed rule carries the concrete upstream fix instead of a generic sentence', async () => {
+  const candidate = toCandidate(record(), ['npm']) as never;
+  const proposal = await deriveProposal(candidate, { sha: '0123456789abcdef0123456789abcdef01234567', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [1, 4], added: [1, 4], before: BEFORE, after: AFTER }] });
+  assert.ok(!('reason' in proposal));
+  if ('reason' in proposal) return;
+  assert.match(proposal.rule.fix, /acme\/netutil@0123456789/);
+  assert.match(proposal.rule.fix, /exec\('ping -c 1 ' \+ host\)/);
+  assert.match(proposal.rule.fix, /execFile\('ping'/);
+  assert.doesNotMatch(proposal.rule.fix, /same fix as the confirmed finding/);
+  assert.match(proposal.rule.fix, /Upgrade netutil/);
+});

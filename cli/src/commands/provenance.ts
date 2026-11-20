@@ -57,11 +57,8 @@ export async function provenanceCommand(
   const project = await loadProjectConfig(root);
   const { files } = await findSourceFilesWithExclusions(given, [...defaultConfig.exclude, ...(project.exclude ?? [])]);
   const config = mergeConfig({
-    semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' },
     eslint: { enabled: false, timeoutMs: 1000 },
     npmAudit: { enabled: false, timeoutMs: 1000 },
-    nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false },
-    bearer: { enabled: false, timeoutMs: 1000 },
   });
   const report = await scanFiles(files, config, {}, { root });
   const provenance = report.summary.aiProvenance!;

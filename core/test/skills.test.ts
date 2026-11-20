@@ -196,7 +196,7 @@ test('a skill rule that is slow at run time cannot be loaded (checked when the s
 });
 
 // ── engine integration ──────────────────────────────────────────────────────────────────
-const noExternal = { semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' }, eslint: { enabled: false, timeoutMs: 1000 }, npmAudit: { enabled: false, timeoutMs: 1000 }, nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false }, bearer: { enabled: false, timeoutMs: 1000 } };
+const noExternal = { eslint: { enabled: false, timeoutMs: 1000 }, npmAudit: { enabled: false, timeoutMs: 1000 }, };
 
 test('a scan activates matching skills, attributes findings to them and lists them in the report', async () => {
   const p = project({ 'package.json': '{"dependencies":{"express":"4"}}', 'app.js': "const express = require('express');\nconst session = require('express-session');\nconst app = express();\napp.use(session({ secret: process.env.S, cookie: { secure: false } }));\n" });

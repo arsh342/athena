@@ -33,7 +33,7 @@ Athena specifically targets these risks by identifying AI-generated code section
 | PHP | `.php .phtml` | own rules + taint, secrets, units, AI provenance  |
 | Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | own rules + taint, secrets, units, AI provenance  |
 
-Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional ESLint scanner covers JavaScript/TypeScript only.
 
 ## How the AI-code estimate is made
 
@@ -119,14 +119,13 @@ Skills are **data only**: rules (`rules.json`: a call, line or file pattern plus
 ### Core Analysis Engine
 - **AI provenance by lines** — *recorded* (git co-author trailers and agent authors, a floor) plus a *heuristic estimate* from style signals, always reported as a range with its method
 - **One parser for nine language families** via tree-sitter (bundled WASM grammars) — see [Supported languages](#supported-languages)
-- **Multi-engine security scanning:**
-  - Secret detection (regex + Shannon entropy)
-  - Hallucination detection (invalid API call validation)
-  - [Semgrep](https://semgrep.dev/) — SAST rule-based scanning
-  - [ESLint](https://eslint.org/) + `eslint-plugin-security`
-  - dependency intelligence — OSV advisories, registry checks, typosquats (replaces `npm audit`)
-  - [NodeJSScan](https://github.com/ajinabraham/nodejsscan) — Node.js security scanner (Docker)
-  - [Bearer](https://www.bearer.com/) — data flow security analysis
+- **Security scanning, all built in:**
+  - Athena's own analysis engine: rules, taint analysis and investigation for nine language families
+  - Secret detection (provider patterns + entropy)
+  - API-existence checks (hallucinated calls) against installed type declarations
+  - dependency intelligence — OSV advisories, registry checks, typosquats
+  - [ESLint](https://eslint.org/) + `eslint-plugin-security` (optional, JavaScript/TypeScript only)
+  - Semgrep, NodeJSScan, Bearer and `npm audit` were retired: Athena's engine matched or beat them on its benchmark (see `docs/athena-bench/SAST.md`)
 
 ### Web Platform
 - **Live terminal** — real-time scan output streamed via WebSocket
@@ -178,10 +177,7 @@ athena/
 - **npm** ≥ 9
 - A [Supabase](https://supabase.com/) project (for the web platform)
 
-Optional (for extended scanning):
-- [Semgrep](https://semgrep.dev/docs/getting-started/) — `pip install semgrep`
-- [Docker](https://www.docker.com/) — for NodeJSScan
-- [Bearer](https://docs.bearer.com/reference/installation/) — `brew install bearer/tap/bearer`
+Optional: `eslint` + `eslint-plugin-security` for extra JavaScript/TypeScript lint findings. Nothing else needs installing.
 
 ### Installation
 
@@ -256,7 +252,7 @@ The shared scanning library used by both the CLI and backend.
 - `provenance/` — recorded AI provenance from git and line-based aggregation
 - `lang/` — language detection, tree-sitter parser loading and per-language code unit extraction
 - `parser/ast-parser.ts` — reads a file, rejects binary content and hands it to `lang/`
-- `analyzers/` — security scanner adapters (Semgrep, ESLint, Bearer, NodeJSScan, secret detection); `deps/` — dependency intelligence
+- `analyzers/` — the optional ESLint adapter and secret detection; `deps/` — dependency intelligence
 - `scanner-registry.ts` — plugin registry for external scanners
 - `report/` — report generation (terminal, JSON)
 

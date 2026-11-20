@@ -36,9 +36,11 @@ test('formats and defaults', () => {
   assert.equal(o.maxFindings, Number.POSITIVE_INFINITY);
   assert.equal(o.showLow, false);
   assert.equal(resolve({ maxFindings: '5' }).maxFindings, 5);
-  assert.deepEqual(o.scanners, { eslint: true, nodejsscan: true, bearer: true, semgrep: true });
+  assert.deepEqual(o.scanners, { eslint: true });
   assert.deepEqual(o.deps, { enabled: true, offline: false });
-  assert.equal(resolve({ semgrep: false }).scanners.semgrep, false);
+  assert.ok(resolve({ semgrep: false }).warnings.some((w) => /--no-semgrep is deprecated/.test(w)));
+  assert.ok(resolve({ bearer: false }).warnings.some((w) => /--no-bearer is deprecated/.test(w)));
+  assert.ok(resolve({ nodejsscan: false }).warnings.some((w) => /--no-nodejsscan is deprecated/.test(w)));
 });
 
 test('--threshold is deprecated and warns', () => {
