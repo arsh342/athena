@@ -50,3 +50,12 @@ test('a key passed as an argument is not accepted', async () => {
   assert.notEqual(r.code, 0);
   assert.ok(!(r.stdout + r.stderr).includes('SECRETVALUE'), 'the rejected argument is not echoed');
 });
+
+test('a hosted service can be named directly: keys set groq stores the groq preset key', async () => {
+  const home = newHome();
+  const set = await run(['keys', 'set', 'groq'], home, 'gsk-test-SECRETVALUE-wxyz\n');
+  assert.equal(set.code, 0, set.stderr);
+  assert.match(set.stderr + set.stdout, /openai-compatible \(groq\)/);
+  assert.ok(!(set.stdout + set.stderr).includes('SECRETVALUE'));
+  assert.equal((await run(['keys', 'remove', 'groq'], home)).code, 0);
+});

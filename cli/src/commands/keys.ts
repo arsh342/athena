@@ -4,6 +4,12 @@ import { credentialsFileExists, keyStatus, PROVIDERS, removeKey, setKey, type Pr
 import { writeInfo, writeResult } from '../utils/output.js';
 import { UsageError } from '../utils/run-options.js';
 
+/** Hosted OpenAI-compatible services can be named directly: `athena keys set groq` means `set openai-compatible --preset groq`. */
+const PRESET_NAMES = ['openrouter', 'deepseek', 'mistral', 'groq', 'xai', 'together'];
+function resolve(name: string, opts: { preset?: string }): { name: string; opts: { preset?: string } } {
+  return PRESET_NAMES.includes(name) && !opts.preset ? { name: 'openai-compatible', opts: { preset: name } } : { name, opts };
+}
+
 function provider(name: string): ProviderId {
   if (!(PROVIDERS as readonly string[]).includes(name)) throw new UsageError(`unknown provider "${name}" (use ${PROVIDERS.join(', ')})`);
   return name as ProviderId;
@@ -28,7 +34,8 @@ async function readSecret(): Promise<string> {
 }
 
 /** `athena keys set <provider>`: the key comes from stdin or a hidden prompt, never from an argument (shell history). */
-export async function keysSet(name: string, opts: { preset?: string } = {}): Promise<number> {
+export async function keysSet(rawName: string, rawOpts: { preset?: string } = {}): Promise<number> {
+  const { name, opts } = resolve(rawName, rawOpts);
   const p = provider(name);
   const key = await readSecret();
   if (!key) {
@@ -51,7 +58,8 @@ export function keysStatus(): number {
   return 0;
 }
 
-export function keysRemove(name: string, opts: { preset?: string } = {}): number {
+export function keysRemove(rawName: string, rawOpts: { preset?: string } = {}): number {
+  const { name, opts } = resolve(rawName, rawOpts);
   const p = provider(name);
   const removed = removeKey(p, opts.preset ? { preset: opts.preset } : {});
   writeInfo(removed ? `removed the stored ${p} key` : `no stored ${p} key`);

@@ -23,7 +23,7 @@ const program = new Command();
 
 program
   .name('athena')
-  .description('AI code provenance tracker and security scanner for JavaScript and TypeScript')
+  .description('security review for AI-assisted code: offline scanning, change review, git gates and an MCP toolbox')
   .version(CLI_VERSION)
   .exitOverride();
 
