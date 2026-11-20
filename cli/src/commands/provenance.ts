@@ -1,6 +1,6 @@
-import { stat } from 'node:fs/promises';
+import { realpath, stat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
-import { defaultConfig, loadFastModel, mergeConfig, scanFiles, type AiProvenance } from '@athena/core';
+import { addMarks, defaultConfig, loadFastModel, mergeConfig, parseFileDetailed, resetLearning, scanFiles, unitSha, type AiProvenance, type Mark } from '@athena/core';
 import { shouldUseColor } from '../utils/colors.js';
 import { findSourceFilesWithExclusions } from '../utils/file-filter.js';
 import { writeResult } from '../utils/output.js';
@@ -57,6 +57,7 @@ export async function provenanceCommand(
   const project = await loadProjectConfig(root);
   const { files } = await findSourceFilesWithExclusions(given, [...defaultConfig.exclude, ...(project.exclude ?? [])]);
   const config = mergeConfig({
+    learning: project.learning !== false,
     eslint: { enabled: false, timeoutMs: 1000 },
     npmAudit: { enabled: false, timeoutMs: 1000 },
   });
@@ -87,6 +88,11 @@ function renderTerminal(p: AiProvenance, root: string, sort: SortKey, color: boo
   out.push(`  estimated: ${pct(e.aiLines, p.totalLines)}–${pct(e.aiLines + e.mixedLines, p.totalLines)}`);
   out.push(`  uncertain: ${pct(e.uncertainLines, p.totalLines)}`);
   out.push(`  human (est.): ${pct(e.humanLines, p.totalLines)}`);
+  if (p.learning) {
+    out.push(p.learning.state === 'tuned'
+      ? `  learning: tuned with ${p.learning.labels} labels from this repo (changed ${p.learning.unitsChanged} of ${p.learning.units} units)`
+      : `  learning: global model${p.learning.reason ? ` (${p.learning.reason})` : ''}`);
+  }
   out.push(e.method === 'fast'
     ? `  method: ${e.model}${e.heuristicLanguages && e.heuristicLanguages.length > 0 ? ` · heuristic for: ${e.heuristicLanguages.join(', ')}` : ''}`
     : '  method: heuristic (low confidence)', '');
@@ -101,4 +107,43 @@ function renderTerminal(p: AiProvenance, root: string, sort: SortKey, color: boo
     out.push(`${names[i].slice(-width).padEnd(width)}  ${String(f.lines).padStart(6)}  ${pct(f.recordedLines, f.lines).padStart(8)}  ${pct(f.aiLines, f.lines).padStart(7)}  ${pct(f.uncertainLines, f.lines).padStart(9)}`);
   });
   return out.join('\n');
+}
+
+const LABELS = ['human', 'ai', 'mixed'];
+
+/**
+ * `athena provenance mark <path>[:line] <human|ai|mixed>`: tell Athena who wrote a unit. The mark is stored by the unit's code hash
+ * (never the code), so it stops applying if the code changes. `mixed` is kept but cannot be learned from.
+ */
+export async function markCommand(target: string, label: string, opts: { path?: string } = {}): Promise<number> {
+  if (!LABELS.includes(label)) throw new UsageError(`unknown label "${label}" (use human, ai or mixed)`);
+  const m = /^(.*?)(?::(\d+))?$/.exec(target);
+  const filePart = m?.[1] ?? target;
+  const line = m?.[2] ? Number(m[2]) : undefined;
+  // Learning is keyed by the canonical directory a scan uses, so a symlinked spelling finds the same state.
+  const root = await realpath(resolve(process.cwd(), opts.path ?? '.')).catch(() => resolve(process.cwd(), opts.path ?? '.'));
+  const file = await realpath(resolve(process.cwd(), filePart)).catch(() => resolve(process.cwd(), filePart));
+  if (!(await stat(file).catch(() => null))?.isFile()) throw new UsageError(`${filePart} is not a file`);
+  const { units, language } = await parseFileDetailed(file);
+  if (!language) throw new UsageError(`${filePart} is not a supported source file`);
+  const chosen = line === undefined
+    ? units
+    : [...units].filter((u) => line >= u.startLine && line <= u.endLine).sort((a, b) => (a.endLine - a.startLine) - (b.endLine - b.startLine)).slice(0, 1);
+  if (chosen.length === 0) throw new UsageError(line === undefined ? `no functions or methods found in ${filePart}` : `no function or method contains line ${line} of ${filePart}`);
+  const at = new Date().toISOString();
+  const rel = relative(root, file).split('\\').join('/');
+  const marks: Mark[] = chosen.map((u) => ({ sha: unitSha(u.code), label: label as Mark['label'], path: rel, startLine: u.startLine, endLine: u.endLine, at }));
+  addMarks(root, marks);
+  writeResult(`marked ${marks.length} unit${marks.length === 1 ? '' : 's'} in ${rel} as ${label}${label === 'mixed' ? ' (kept, but not used for learning)' : ''}\nAthena learns from marks once a repository has 30 labels with at least 10 human and 10 AI. Use --path if you scan a different directory than this one.`);
+  return 0;
+}
+
+/** `athena models reset [--repo]`: forget what Athena learned from labels (marks included). */
+export async function resetCommand(opts: { repo?: boolean; path?: string } = {}): Promise<number> {
+  const root = await realpath(resolve(process.cwd(), opts.path ?? '.')).catch(() => resolve(process.cwd(), opts.path ?? '.'));
+  const removed = resetLearning(opts.repo ? root : undefined);
+  writeResult(opts.repo
+    ? (removed ? `forgot what Athena learned for ${root}` : `nothing learned yet for ${root}`)
+    : `forgot learning for ${removed} repositor${removed === 1 ? 'y' : 'ies'}`);
+  return 0;
 }

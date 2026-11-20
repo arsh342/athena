@@ -42,6 +42,8 @@ export type { RecordedFile, RecordedRepo } from './provenance/git-recorded.js';
 export { isAiCommit, AI_BOT_LOGINS, AI_EMAIL_PATTERNS, AI_TOOL_NAME, AI_TRAILER_KEYS } from './provenance/ai-markers.js';
 export type { CommitMeta } from './provenance/ai-markers.js';
 export { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
+export { addMarks, loadLearning, resetLearning } from './learning/store.js';
+export { unitSha, type Mark } from './learning/labels.js';
 export { isSecretFinding, redactSecrets, redactKnownSecrets, redactFrameLine } from './report/redact.js';
 export { getRuleInfo } from './rules/catalog.js';
 export type { RuleInfo } from './rules/catalog.js';

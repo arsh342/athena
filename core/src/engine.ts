@@ -8,7 +8,9 @@ import { generateReport } from './report/report-generator.js';
 import { scoreUnit } from './scorer/heuristic-scorer.js';
 import { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
 import { recordedAiLines, type RecordedRepo } from './provenance/git-recorded.js';
-import { classifyUnit, loadFastModel, type FastModel } from './provenance/fast-model.js';
+import { classifyUnit, loadFastModel, type FastModel, type Probabilities } from './provenance/fast-model.js';
+import { baseProbability } from './learning/apply.js';
+import type { CheckSet } from './learning/guardrails.js';
 import { analyzeProject, isVendoredOrGenerated, loadProjectFiles } from './analysis/project.js';
 import { ruleMeta } from './rules/registry.js';
 import type { RawFinding } from './rules/types.js';
@@ -20,7 +22,8 @@ import { clean, learnedAsSkill, loadSkills } from './skills/loader.js';
 import { redactKnownSecrets } from './report/redact.js';
 import { createHash } from 'node:crypto';
 import { scannerRegistry, type ScannerRegistry } from './scanner-registry.js';
-import type { AthenaConfig, CheckCoverage, ExplainedScore, FileCoverage, FileReport, ScanCoverage, ScoredUnit, ScanReport, Severity } from './types.js';
+import type { AiProvenance, AthenaConfig, CheckCoverage, ExplainedScore, FileCoverage, FileReport, ScanCoverage, ScoredUnit, ScanReport, Severity, UnitProvenance } from './types.js';
+import { learnFromRepository } from './learning/index.js';
 
 export interface ScanProgressEvent {
   phase:
@@ -51,6 +54,8 @@ export interface ScanFilesOptions {
   registry?: ScannerRegistry;
   /** Override the bundled fast detector (tests). `null` forces the heuristic. */
   fastModel?: FastModel | null;
+  /** Where local-learning state lives and the check set to guard it with (tests). */
+  learning?: { home?: string; checkSet?: CheckSet | null };
   /** Config-style text files (.env, YAML, JSON, ...) searched for secrets only. */
   textFiles?: string[];
   /** `false` disables skills; a compiled set overrides discovery (tests). Default: built-in, user and repo skills that apply to the project. */
@@ -79,6 +84,7 @@ export async function scanFiles(
   const languages: Partial<Record<LanguageId, { files: number; units: number; lines: number }>> = {};
   const unavailableParsers = new Set<LanguageId>();
   const fastModel = options.fastModel === undefined ? loadFastModel() : options.fastModel;
+  const learnInfo = new Map<ScoredUnit, { language: LanguageId; pBase: number; baseProvenance: UnitProvenance; fast: { probabilities: Probabilities; threshold: number } | null }>();
   const languagesWithUnits = new Set<LanguageId>();
   await warmParsers([...new Set(filePaths.map((p) => detectLanguage(p)).filter((l): l is LanguageId => l !== null))]);
 
@@ -165,6 +171,9 @@ export async function scanFiles(
           scored.provenance = result.provenance;
           scored.flagged = result.provenance === 'ai' || result.provenance === 'mixed';
         }
+        learnInfo.set(scored, { language, pBase: baseProbability(scored, result?.probabilities ?? null), baseProvenance: scored.provenance, fast: result ? { probabilities: result.probabilities, threshold: fastModel.meta.languages[language]!.threshold } : null });
+      } else if (language && !parserUnavailable) {
+        learnInfo.set(scored, { language, pBase: baseProbability(scored, null), baseProvenance: scored.provenance, fast: null });
       }
       return scored;
     });
@@ -307,6 +316,9 @@ export async function scanFiles(
     ? { available: false, reason: 'disabled', files: new Map() }
     : await recordedAiLines(projectRoot, files.map((file) => file.path));
   markRecordedUnits(files, recorded);
+  const learning = config.learning === false
+    ? { state: 'global' as const, labels: 0, unitsChanged: 0, units: learnInfo.size, reason: 'learning disabled' }
+    : learnFromRepository(files, learnInfo, recorded, projectRoot, fastModel, config.threshold, options.learning);
 
   // Run external scanners using the scanner registry
   const scannerOutcome = new Map<string, CheckCoverage['status']>();
@@ -433,7 +445,7 @@ export async function scanFiles(
       };
   const coverage = buildCoverage(fileCoverage, config, registry, scannerOutcome, recorded, unavailableParsers, method, analysisFamilies, skippedMinified, depsOutcome);
 
-  const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, buildAiProvenance(files, recorded, method));
+  const report = generateReport(startedAt, files, totalLoc, skippedFiles, config, coverage, { ...buildAiProvenance(files, recorded, method), learning });
   if (inventory.length > 0) report.inventory = inventory;
   if (Object.keys(languages).length > 0) report.summary.languages = languages;
   if (skillNotes.length > 0) report.summary.skills = skillNotes.sort((a, b) => b.rules - a.rules || a.name.localeCompare(b.name)).map(({ rules: _rules, ...rest }) => rest);

@@ -34,6 +34,8 @@ Running `athena` with no arguments opens an interactive menu.
 | `review` | Review a change: `--staged` (default), `--uncommitted`, `--range a..b`, `--base main`. Only findings on changed lines block. |
 | `explain <id>` | Explain a finding from the last scan. |
 | `provenance [path]` | How much code looks AI-written, per file. |
+| `provenance mark <file[:line]> <human\|ai\|mixed>` | Tell Athena who wrote a function (stored by code hash). Athena learns from marks. |
+| `models reset [--repo]` | Forget what Athena learned from labels and marks (this repository with `--repo`, otherwise all). |
 | `variants <id> [--save]` | Turn a confirmed finding into a rule and find its look-alikes. |
 | `skills list\|show\|new\|test\|add\|remove` | Work with skills (see below). |
 | `keys set\|status\|remove <provider>` | Manage API keys for the optional AI layer. |
@@ -56,6 +58,7 @@ Running `athena` with no arguments opens an interactive menu.
 | `-m, --max-findings <n\|all>`, `--show-low` | Control how many findings are listed. |
 | `--no-eslint` | Skip the optional ESLint scanner. |
 | `--no-deps` | Skip dependency checks. |
+| `--no-learning` | Do not train on or apply this repository's trusted labels (also `"learning": false` in the project config). |
 | `--offline` | Dependency checks use only cached data (a cold cache is reported as a gap). |
 
 Deprecated and ignored: `--no-semgrep`, `--no-nodejsscan`, `--no-bearer`, `--no-npm-audit` (those tools were retired), and `-t, --threshold`.
@@ -95,6 +98,12 @@ athena scan . --ai deep --budget 1 --suggest-fixes
 Keys come from the environment, then `~/.athena/credentials.json` (mode 0600), and are never printed or logged. Athena reserves the worst-case cost before every call and stops when the next call could exceed a cap; the report lists what was not checked. The first time in a repository it shows exactly what is sent and asks. Secrets and dependency findings are never sent, and repository text is treated as data, never as instructions. Local models (Ollama, LM Studio) cost nothing and send nothing off your machine.
 
 The Anthropic and OpenAI SDKs are built in. Google's is large, so it is not installed by default: for `--provider google`, run `npm install -g @google/genai` once.
+
+## Local learning
+
+Athena can tune its AI-code estimate to a repository, locally, from trusted labels only: lines git credits to AI-assisted commits (AI), code whose every line was last changed before 2021-06-01 (human), and your own `athena provenance mark` entries. It activates at 30 labels with at least 10 of each class, shifts an estimate by at most 0.25, and is adopted only if it lowers log-loss on a held-out 20% of the labels and does not reduce AI recall or raise the human false-positive rate by more than one point on a bundled check set. State is in `~/.athena/learning/` (mode 0600) and holds hashes and style numbers, never code. A mark applies only while the code is unchanged. The report line reads `learning: tuned with N labels from this repo (changed X of Y units)` or `learning: global model`.
+
+The trained detector is not yet enabled for any language, so estimates still come from the style heuristic and tuning rarely changes a result; the report shows how many units it changed.
 
 ## What Athena checks
 

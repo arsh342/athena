@@ -18,6 +18,7 @@ export interface RunFlags {
   showLow?: boolean;
   threshold?: string;
   eslint?: boolean;
+  learning?: boolean;
   npmAudit?: boolean;
   deps?: boolean;
   offline?: boolean;
@@ -64,6 +65,8 @@ export interface RunOptions {
   threshold?: number;
   exclude: string[];
   publicRoutes: string[];
+  /** Local learning from this repository's trusted labels (`--no-learning` or `learning: false` turns it off). */
+  learning: boolean;
   scanners: { eslint: boolean };
   deps: { enabled: boolean; offline: boolean };
   /** The optional AI layer; null unless `--ai` was given. */
@@ -131,6 +134,7 @@ export function resolveRunOptions(
     ...(threshold !== undefined ? { threshold } : {}),
     exclude: [...defaultConfig.exclude, ...(config.exclude ?? [])],
     publicRoutes: config.publicRoutes ?? [],
+    learning: flags.learning !== false && config.learning !== false,
     scanners: {
       eslint: flags.eslint !== false,
     },

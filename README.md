@@ -45,9 +45,23 @@ Exit codes: `0` pass, `1` blocked by findings, `3` incomplete scan (with `--stri
 - **Code security.** Injection, path traversal, SSRF, XSS, unsafe deserialization, weak crypto, risky cookies and CORS, memory-unsafe C, shell pitfalls, and more. Athena follows user input through variables, helpers and (for JS/TS and Python) across files, and checks each finding for reachability and defenses.
 - **Secrets.** 60+ provider key formats, private keys and connection strings, in source and config files. Reports never contain the secret itself.
 - **Dependencies.** Known vulnerabilities (OSV), malicious packages, packages that do not exist (often AI-invented names), typosquats, and risky install scripts.
-- **AI provenance.** Lines credited to AI tools in git history, plus a style-based estimate, always shown as a range with its method.
+- **AI provenance.** Lines credited to AI tools in git history, plus a style-based estimate, always shown as a range with its method. Athena can also learn from your repository's trusted labels (see below).
 
 Everything above runs offline. Benchmarks and limits: [docs/athena-bench](docs/athena-bench/SAST.md).
+
+## Learning from your repository
+
+Athena can tune its AI-code estimate to your codebase, on your machine, from **trusted labels only**: code git history credits to an AI tool (AI), code untouched since before June 2021 (human), and anything you mark yourself.
+
+```bash
+athena provenance mark src/billing.ts:42 human   # the function containing line 42 is human-written
+athena scan . --no-learning                      # ignore learning for one run (or "learning": false in athena.config.json)
+athena models reset --repo                       # forget what was learned here (without --repo: everywhere)
+```
+
+It starts after 30 labels with at least 10 of each kind, keeps only numbers (code hashes and style statistics, never code, in a private file), can shift an estimate by at most 0.25, and is adopted only if it improves on held-out labels and does not make a bundled check set worse. The report says what happened, for example `learning: tuned with 37 labels from this repo (changed 4 of 120 units)`.
+
+Honest limit: Athena's trained detector does not yet meet its release targets for any language, so the estimate still comes from the style heuristic, which rarely scores near the decision boundary. Until a language is enabled, tuning rarely changes a result, and the report shows how many units it changed.
 
 ## Claude Code plugin
 

@@ -216,6 +216,12 @@ export function formatTerminalReport(report: ScanReport, options: TerminalReport
       pt(dim(e.method === 'fast'
         ? `method: ${e.model}${e.heuristicLanguages && e.heuristicLanguages.length > 0 ? ` · heuristic for: ${e.heuristicLanguages.join(', ')}` : ''}`
         : 'method: heuristic (low confidence)'));
+      const lr = provenance.learning;
+      if (lr) {
+        pt(dim(lr.state === 'tuned'
+          ? `learning: tuned with ${lr.labels} labels from this repo (changed ${lr.unitsChanged} of ${lr.units} units)`
+          : `learning: global model${lr.reason ? ` (${lr.reason})` : lr.labels > 0 ? ` (${lr.labels} labels so far, need 30 with 10 of each)` : ''}`));
+      }
       const top = provenance.files
         .filter((file) => file.aiLines > 0)
         .slice(0, 5)
