@@ -16,8 +16,10 @@ export interface LoadedSkills {
 
 export function builtinSkillsDir(): string | null {
   const here = dirname(fileURLToPath(import.meta.url));
-  for (const candidate of [join(here, '..', '..', 'skills'), join(here, 'skills'), join(here, '..', 'skills')]) {
-    if (existsSync(candidate)) return candidate;
+  // The built-in folder is the one carrying the marker file. Path guessing is not enough: from a bundle `../../skills` is the
+  // repository's top-level agent-skills folder, and from source `../skills` is this module's own directory.
+  for (const candidate of [join(here, 'skills'), join(here, '..', 'skills'), join(here, '..', '..', 'skills')]) {
+    if (existsSync(join(candidate, '.athena-builtin'))) return candidate;
   }
   return null;
 }

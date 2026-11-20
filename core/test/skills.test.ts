@@ -227,3 +227,12 @@ test('skill guidance sections are selected by category, capped for prompts', () 
   assert.equal(selectSkillSection(builtin.skills, 'no-such-category'), null);
   assert.ok(builtinSkillsDir());
 });
+
+test('built-in skills come from core/skills, never from the repository-level agent skills folder', async () => {
+  const { builtinSkillsDir, loadSkills } = await import('../src/skills/loader.ts');
+  const dir = builtinSkillsDir();
+  assert.ok(dir && /core[\\/]skills$/.test(dir), String(dir));
+  const loaded = loadSkills('/nonexistent', { userDir: '/nonexistent', repoDir: '/nonexistent', packDir: null });
+  assert.ok(!loaded.warnings.some((w) => /athena-security/.test(w)), loaded.warnings.join('|'));
+  assert.ok(!loaded.skills.some((s) => s.meta.name === 'athena-security'));
+});
