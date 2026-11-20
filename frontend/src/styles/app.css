@@ -272,7 +272,8 @@ ul, ol { margin: 0; padding: 0; }
   position: relative; isolation: isolate; min-height: calc(100vh - var(--nav-h)); background: var(--bg);
   display: flex; align-items: center; overflow: hidden;
 }
-.hero-inner { position: relative; width: min(1120px, 100% - 48px); margin: 0 auto; padding: 96px 0 72px; display: grid; gap: 28px; }
+.hero::after { content: ''; position: absolute; z-index: 0; left: 0; right: 0; bottom: 0; height: 38%; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--bg) 92%); }
+.hero-inner { position: relative; z-index: 1; width: min(1120px, 100% - 48px); margin: 0 auto; padding: 96px 0 72px; display: grid; gap: 28px; }
 .hero-copy { position: relative; isolation: isolate; display: grid; gap: 24px; max-width: 760px; }
 .hero-copy::before {
   content: ''; position: absolute; z-index: -1; inset: -36px -64px; pointer-events: none;
