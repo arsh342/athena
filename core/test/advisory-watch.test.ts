@@ -4,7 +4,7 @@ import test from 'node:test';
 import { deriveProposal } from '../../scripts/advisory-watch/derive-rule.ts';
 import { findNew, fixCommitOf, toCandidate, type OsvRecord } from '../../scripts/advisory-watch/find-new.ts';
 import { parseDiff } from '../../scripts/advisory-watch/fix-diff.ts';
-import { branchName, prBody } from '../../scripts/advisory-watch/open-pr.ts';
+import { branchName, prBody, prCreateArgs } from '../../scripts/advisory-watch/open-pr.ts';
 
 const record = (over: Partial<OsvRecord> = {}): OsvRecord => ({
   id: 'GHSA-aaaa-bbbb-cccc', aliases: ['CVE-2026-1111'], summary: 'Command injection in netutil ping', modified: '2026-11-19T00:00:00Z',
@@ -86,4 +86,9 @@ test('the proposed rule carries the concrete upstream fix instead of a generic s
   assert.match(proposal.rule.fix, /execFile\('ping'/);
   assert.doesNotMatch(proposal.rule.fix, /same fix as the confirmed finding/);
   assert.match(proposal.rule.fix, /Upgrade netutil/);
+});
+
+test('the PR command can be built with and without the label', () => {
+  assert.deepEqual(prCreateArgs('t', 'b', true).slice(-2), ['--label', 'advisory-watch']);
+  assert.ok(!prCreateArgs('t', 'b', false).includes('--label'));
 });

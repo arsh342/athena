@@ -24,6 +24,10 @@ export function prBody(items: Array<{ candidate: Candidate; proposal: Proposal }
   return lines.join('\n');
 }
 
+export function prCreateArgs(title: string, body: string, withLabel: boolean): string[] {
+  return ['pr', 'create', '--title', title, '--body', body, ...(withLabel ? ['--label', 'advisory-watch'] : [])];
+}
+
 /** One branch per run, so a re-run (or a second run the same day) never collides with an earlier branch. */
 export function branchName(date: string, runId?: string): string {
   return `advisory-watch/${date}${runId ? `-${runId.replace(/[^\w.-]/g, '')}` : ''}`;
@@ -45,9 +49,19 @@ export function openPr(repoRoot: string, items: Array<{ candidate: Candidate; pr
   }
   run(['commit', '-m', `feat(skills): advisory watch ${date} — ${items.length} proposed rule(s)`]);
   run(['push', '-u', 'origin', branch]);
+  const title = `Advisory watch ${date}: ${items.length} proposed rule(s)`;
+  const body = prBody(items, skipped);
+  const attempt = (withLabel: boolean): string => execFileSync('gh', prCreateArgs(title, body, withLabel), { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   try {
-    return execFileSync('gh', ['pr', 'create', '--title', `Advisory watch ${date}: ${items.length} proposed rule(s)`, '--body', prBody(items, skipped), '--label', 'advisory-watch'], { cwd: repoRoot, encoding: 'utf8' }).trim();
-  } catch {
+    try {
+      return attempt(true);
+    } catch (error) {
+      // The label may not exist in the repository (creating labels needs more permission than opening a PR): retry without it.
+      if (!/label/i.test(String((error as { stderr?: unknown }).stderr ?? error))) throw error;
+      return attempt(false);
+    }
+  } catch (error) {
+    console.log(`gh pr create failed: ${String((error as { stderr?: unknown }).stderr ?? error).trim().slice(0, 300)}`);
     // Opening a PR needs "Allow GitHub Actions to create pull requests" in the repository settings. The branch is pushed either way.
     const repo = process.env.GITHUB_REPOSITORY ?? '';
     console.log(`Branch ${branch} was pushed but the pull request could not be opened (check Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests").`);
