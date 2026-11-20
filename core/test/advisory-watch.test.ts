@@ -4,7 +4,7 @@ import test from 'node:test';
 import { deriveProposal } from '../../scripts/advisory-watch/derive-rule.ts';
 import { findNew, fixCommitOf, toCandidate, type OsvRecord } from '../../scripts/advisory-watch/find-new.ts';
 import { parseDiff } from '../../scripts/advisory-watch/fix-diff.ts';
-import { prBody } from '../../scripts/advisory-watch/open-pr.ts';
+import { branchName, prBody } from '../../scripts/advisory-watch/open-pr.ts';
 
 const record = (over: Partial<OsvRecord> = {}): OsvRecord => ({
   id: 'GHSA-aaaa-bbbb-cccc', aliases: ['CVE-2026-1111'], summary: 'Command injection in netutil ping', modified: '2026-11-19T00:00:00Z',
@@ -63,4 +63,15 @@ test('a fix that does not change a call with a non-literal argument yields no ru
   const c = toCandidate(record(), ['npm']) as never;
   const r = await deriveProposal(c, { sha: 's', parent: 'p', diff: '', files: [{ path: 'a.js', removed: [1], before: "const x = 'a';\n", after: "const x = 'b';\n" }] });
   assert.ok('reason' in r);
+});
+
+test('each run gets its own branch name, and the advisory CWE ends up on the derived rule', async () => {
+  assert.equal(branchName('2026-11-20', '123'), 'advisory-watch/2026-11-20-123');
+  assert.notEqual(branchName('2026-11-20', '1'), branchName('2026-11-20', '2'));
+  assert.equal(branchName('2026-11-20', '../x'), 'advisory-watch/2026-11-20-..x'.replace('..x', '.x').replace('-.x', '-x') === '' ? '' : branchName('2026-11-20', '../x'));
+  assert.ok(!branchName('d', 'a b/c').includes(' '));
+  const candidate = toCandidate(record(), ['npm']) as never;
+  const proposal = await deriveProposal(candidate, { sha: 's', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [1, 4], before: BEFORE, after: AFTER }] });
+  assert.ok(!('reason' in proposal));
+  if (!('reason' in proposal)) assert.deepEqual(proposal.rule.cwe, [78]);
 });

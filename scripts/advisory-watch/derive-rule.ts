@@ -34,7 +34,8 @@ export async function deriveProposal(candidate: Candidate, fix: FixMaterial): Pr
       const derived = await deriveVariantRule({ ruleId: 'taint.advisory', file: file.path, line, code, severity: candidate.severity, category: 'vulnerable-api', title: candidate.summary }, file.before, lang);
       if (!derived) continue;
       const ruleId = `${name}.variant`;
-      const rule: SkillRuleDef = { ...derived, id: ruleId, title: `${candidate.pkg}: ${candidate.summary}`.slice(0, 120), confidence: 'medium' };
+      const cwe = candidate.cwe.map((c) => Number(c.replace(/\D/g, ''))).filter((n) => n > 0);
+      const rule: SkillRuleDef = { ...derived, id: ruleId, ...(cwe.length > 0 ? { cwe } : {}), title: `${candidate.pkg}: ${candidate.summary}`.slice(0, 120), confidence: 'medium' };
       const marked = lines.map((l, i) => (i === line - 1 ? `${l} ${commentFor(file.path)} EXPECT ${ruleId}` : l)).join('\n');
       const ext = extname(file.path);
       const fixtureName = `${basename(file.path, ext)}${ext}`;

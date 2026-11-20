@@ -24,10 +24,15 @@ export function prBody(items: Array<{ candidate: Candidate; proposal: Proposal }
   return lines.join('\n');
 }
 
+/** One branch per run, so a re-run (or a second run the same day) never collides with an earlier branch. */
+export function branchName(date: string, runId?: string): string {
+  return `advisory-watch/${date}${runId ? `-${runId.replace(/[^\w.-]/g, '')}` : ''}`;
+}
+
 /** Write each proposal under core/skills and open one PR with the GitHub CLI (needs GH_TOKEN). */
 export function openPr(repoRoot: string, items: Array<{ candidate: Candidate; proposal: Proposal }>, skipped: Skipped[], date: string): string | null {
   if (items.length === 0) return null;
-  const branch = `advisory-watch/${date}`;
+  const branch = branchName(date, process.env.GITHUB_RUN_ID);
   const run = (args: string[]) => execFileSync('git', args, { cwd: repoRoot, stdio: 'inherit' });
   run(['checkout', '-b', branch]);
   for (const { proposal } of items) {
@@ -40,5 +45,12 @@ export function openPr(repoRoot: string, items: Array<{ candidate: Candidate; pr
   }
   run(['commit', '-m', `feat(skills): advisory watch ${date} — ${items.length} proposed rule(s)`]);
   run(['push', '-u', 'origin', branch]);
-  return execFileSync('gh', ['pr', 'create', '--title', `Advisory watch ${date}: ${items.length} proposed rule(s)`, '--body', prBody(items, skipped), '--label', 'advisory-watch'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  try {
+    return execFileSync('gh', ['pr', 'create', '--title', `Advisory watch ${date}: ${items.length} proposed rule(s)`, '--body', prBody(items, skipped), '--label', 'advisory-watch'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  } catch {
+    // Opening a PR needs "Allow GitHub Actions to create pull requests" in the repository settings. The branch is pushed either way.
+    const repo = process.env.GITHUB_REPOSITORY ?? '';
+    console.log(`Branch ${branch} was pushed but the pull request could not be opened (check Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests").`);
+    return repo ? `https://github.com/${repo}/compare/${branch}?expand=1` : branch;
+  }
 }
