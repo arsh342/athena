@@ -1,6 +1,6 @@
 {
   "name": "@arsh342/athena",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "AI code provenance tracker and terminal scanner for JavaScript/TypeScript, Python, Java, C#, C/C++, Go, Rust, PHP and Shell repositories.",
   "type": "module",
   "bin": {
