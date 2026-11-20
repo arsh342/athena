@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { deriveProposal } from '../../scripts/advisory-watch/derive-rule.ts';
+import { belongsToPackage, calleeOfRule, dedupeProposals, deriveProposal, referencesPackage } from '../../scripts/advisory-watch/derive-rule.ts';
 import { findNew, fixCommitOf, toCandidate, type OsvRecord } from '../../scripts/advisory-watch/find-new.ts';
 import { parseDiff } from '../../scripts/advisory-watch/fix-diff.ts';
 import { branchName, prBody, prCreateArgs } from '../../scripts/advisory-watch/open-pr.ts';
@@ -13,9 +13,9 @@ const record = (over: Partial<OsvRecord> = {}): OsvRecord => ({
   affected: [{ package: { ecosystem: 'npm', name: 'netutil' } }], ...over,
 });
 
-const BEFORE = "const { exec } = require('child_process');\n\nfunction ping(host) {\n  return exec('ping -c 1 ' + host);\n}\n\nmodule.exports = { ping };\n";
-const AFTER = "const { execFile } = require('child_process');\n\nfunction ping(host) {\n  return execFile('ping', ['-c', '1', host]);\n}\n\nmodule.exports = { ping };\n";
-const DIFF = 'diff --git a/lib/ping.js b/lib/ping.js\n--- a/lib/ping.js\n+++ b/lib/ping.js\n@@ -1,7 +1,7 @@\n-const { exec } = require(\'child_process\');\n+const { execFile } = require(\'child_process\');\n \n function ping(host) {\n-  return exec(\'ping -c 1 \' + host);\n+  return execFile(\'ping\', [\'-c\', \'1\', host]);\n }\n \n module.exports = { ping };\n';
+const BEFORE = "const netutil = require('netutil');\n\nfunction ping(host) {\n  return netutil.runCommand('ping -c 1 ' + host);\n}\n\nmodule.exports = { ping };\n";
+const AFTER = "const netutil = require('netutil');\n\nfunction ping(host) {\n  return netutil.runCommandSafe(['ping', '-c', '1', host]);\n}\n\nmodule.exports = { ping };\n";
+const DIFF = 'diff --git a/lib/ping.js b/lib/ping.js\n--- a/lib/ping.js\n+++ b/lib/ping.js\n@@ -4 +4 @@\n-  return netutil.runCommand(\'ping -c 1 \' + host);\n+  return netutil.runCommandSafe([\'ping\', \'-c\', \'1\', host]);\n';
 
 test('fix commit extraction and candidate filtering with explicit skip reasons', () => {
   assert.deepEqual(fixCommitOf(record()), { owner: 'acme', repo: 'netutil', sha: '0123456789abcdef0123456789abcdef01234567' });
@@ -29,7 +29,7 @@ test('fix commit extraction and candidate filtering with explicit skip reasons',
 test('diff parsing yields old line numbers of removed lines', () => {
   const [file] = parseDiff(DIFF);
   assert.equal(file!.path, 'lib/ping.js');
-  assert.deepEqual(file!.removed, [1, 4]);
+  assert.deepEqual(file!.removed, [4]);
 });
 
 test('findNew reads the listing and records, keeping advisories without a fix commit out with a note', async () => {
@@ -46,7 +46,7 @@ test('findNew reads the listing and records, keeping advisories without a fix co
 test('a recorded advisory yields a rule that matches the vulnerable code and not the fixed code, and a reviewable PR body', async () => {
   const candidate = toCandidate(record(), ['npm']);
   assert.ok(!('reason' in candidate));
-  const proposal = await deriveProposal(candidate as never, { sha: '0123456789abcdef0123456789abcdef01234567', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [1, 4], before: BEFORE, after: AFTER }] });
+  const proposal = await deriveProposal(candidate as never, { sha: '0123456789abcdef0123456789abcdef01234567', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [4], before: BEFORE, after: AFTER }] });
   assert.ok(!('reason' in proposal), JSON.stringify(proposal));
   if ('reason' in proposal) return;
   assert.match(proposal.name, /^cve-ghsa-aaaa-bbbb-cccc$/);
@@ -71,19 +71,19 @@ test('each run gets its own branch name, and the advisory CWE ends up on the der
   assert.equal(branchName('2026-11-20', '../x'), 'advisory-watch/2026-11-20-..x'.replace('..x', '.x').replace('-.x', '-x') === '' ? '' : branchName('2026-11-20', '../x'));
   assert.ok(!branchName('d', 'a b/c').includes(' '));
   const candidate = toCandidate(record(), ['npm']) as never;
-  const proposal = await deriveProposal(candidate, { sha: 's', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [1, 4], before: BEFORE, after: AFTER }] });
+  const proposal = await deriveProposal(candidate, { sha: 's', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [4], before: BEFORE, after: AFTER }] });
   assert.ok(!('reason' in proposal));
   if (!('reason' in proposal)) assert.deepEqual(proposal.rule.cwe, [78]);
 });
 
 test('the proposed rule carries the concrete upstream fix instead of a generic sentence', async () => {
   const candidate = toCandidate(record(), ['npm']) as never;
-  const proposal = await deriveProposal(candidate, { sha: '0123456789abcdef0123456789abcdef01234567', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [1, 4], added: [1, 4], before: BEFORE, after: AFTER }] });
+  const proposal = await deriveProposal(candidate, { sha: '0123456789abcdef0123456789abcdef01234567', parent: 'p', diff: DIFF, files: [{ path: 'lib/ping.js', removed: [4], added: [4], before: BEFORE, after: AFTER }] });
   assert.ok(!('reason' in proposal));
   if ('reason' in proposal) return;
   assert.match(proposal.rule.fix, /acme\/netutil@0123456789/);
-  assert.match(proposal.rule.fix, /exec\('ping -c 1 ' \+ host\)/);
-  assert.match(proposal.rule.fix, /execFile\('ping'/);
+  assert.match(proposal.rule.fix, /netutil\.runCommand\('ping -c 1 ' \+ host\)/);
+  assert.match(proposal.rule.fix, /netutil\.runCommandSafe\(/);
   assert.doesNotMatch(proposal.rule.fix, /same fix as the confirmed finding/);
   assert.match(proposal.rule.fix, /Upgrade netutil/);
 });
@@ -91,4 +91,35 @@ test('the proposed rule carries the concrete upstream fix instead of a generic s
 test('the PR command can be built with and without the label', () => {
   assert.deepEqual(prCreateArgs('t', 'b', true).slice(-2), ['--label', 'advisory-watch']);
   assert.ok(!prCreateArgs('t', 'b', false).includes('--label'));
+});
+
+test('scoped npm packages (with @) produce a valid skill; a package alias imported from the scoped name is recognised', async () => {
+  const candidate = toCandidate(record({ affected: [{ package: { ecosystem: 'npm', name: '@acme/netutil' } }] }), ['npm']) as never;
+  const before = "const nu = require('@acme/netutil');\nfunction ping(host) {\n  return nu.runCommand('ping ' + host);\n}\n";
+  const after = "const nu = require('@acme/netutil');\nfunction ping(host) {\n  return nu.runCommandSafe(['ping', host]);\n}\n";
+  const proposal = await deriveProposal(candidate, { sha: 's', parent: 'p', diff: '', files: [{ path: 'lib/ping.js', removed: [3], added: [3], before, after }] });
+  assert.ok(!('reason' in proposal), JSON.stringify(proposal));
+  if (!('reason' in proposal)) assert.match(proposal.files['SKILL.md']!, /- "@acme\/netutil"/);
+});
+
+test('a call that is not the package\'s own API is rejected: the vulnerable code is inside the package', async () => {
+  const candidate = toCandidate(record({ affected: [{ package: { ecosystem: 'npm', name: 'flyto-core' } }] }), ['npm']) as never;
+  const before = "import aiohttp\nasync def go(timeout):\n    async with aiohttp.ClientSession(timeout=timeout) as session:\n        pass\n";
+  const after = "import aiohttp\nasync def go(timeout):\n    async with guarded_session(timeout=timeout) as session:\n        pass\n";
+  const r = await deriveProposal(candidate, { sha: 's', parent: 'p', diff: '', files: [{ path: 'src/hook.py', removed: [3], added: [3], before, after }] });
+  assert.ok('reason' in r);
+  if ('reason' in r) assert.match(r.reason, /not part of flyto-core's API/);
+  assert.equal(referencesPackage(before, 'flyto-core'), false);
+  assert.equal(referencesPackage('from nltk.internals import find_binary\n', 'nltk'), true);
+  assert.equal(referencesPackage("const _ = require('lodash/fp');", 'lodash'), true);
+  assert.equal(calleeOfRule({ match: { kind: 'call', callee: '^nltk\\.internals\\.find_binary$' } } as never), 'nltk.internals.find_binary');
+  assert.equal(belongsToPackage({ match: { kind: 'call', callee: '^nltk\\.internals\\.find_binary$' } } as never, 'nltk', ''), true);
+});
+
+test('identical rules from several advisories are kept once and the other ids are listed', () => {
+  const mk = (id: string) => ({ candidate: { id, pkg: 'p' } as never, proposal: { rule: { match: { kind: 'call', callee: '^a$' } } } as never });
+  const { kept, dropped } = dedupeProposals([mk('GHSA-1'), mk('GHSA-2'), { candidate: { id: 'GHSA-3', pkg: 'p' } as never, proposal: { rule: { match: { kind: 'call', callee: '^b$' } } } as never }]);
+  assert.deepEqual(kept.map((k) => (k.candidate as { id: string }).id), ['GHSA-1', 'GHSA-3']);
+  assert.deepEqual((kept[0]!.proposal as { alsoAdvisories?: string[] }).alsoAdvisories, ['GHSA-2']);
+  assert.match(dropped[0]!.reason, /same rule as GHSA-1/);
 });

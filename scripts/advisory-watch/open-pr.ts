@@ -13,6 +13,8 @@ export function prBody(items: Array<{ candidate: Candidate; proposal: Proposal }
       `- Advisory: https://github.com/advisories/${c.id}${c.aliases.length ? ` (${c.aliases.join(', ')})` : ''}`,
       `- Summary: ${c.summary}`,
       `- Source fix: https://github.com/${c.fix.owner}/${c.fix.repo}/commit/${c.fix.sha}`,
+      ...(p.alsoAdvisories?.length ? [`- Same rule also covers: ${p.alsoAdvisories.join(', ')}`] : []),
+      `- Fix advice in the rule: ${p.rule.fix}`,
       `- Derived from \`${p.derivedFrom.file}:${p.derivedFrom.line}\`: \`${p.derivedFrom.code.slice(0, 120)}\``,
       '- How: the removed line of the fix was generalised into a call rule (same method as `athena variants`); the vulnerable file before the fix is the `vuln` fixture, the fixed file is the `safe` fixture; both pass `athena skills test`.',
       `- Skill folder: \`core/skills/${p.name}\``, '');
