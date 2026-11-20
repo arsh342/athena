@@ -1,187 +1,67 @@
-# Athena — Complete Tech Stack
+# Athena: Tech Stack
 
-> **Version:** 1.0  
-> **Date:** April 2026  
-> **Status:** Finalized  
+> Status: current as of release 0.3.0 of the CLI. Replaces the April 2026 version, which described the early prototype (TypeScript Compiler API, Semgrep).
 
----
-
-## 1. Core Language + Tooling
+## Language and tooling
 
 | Component | Technology |
-|-----------|-----------|
-| Language | TypeScript (strict mode) |
-| Runtime | Node.js (v18+) |
-| Package Manager | npm (workspaces) |
+|---|---|
+| Language | TypeScript (strict) |
+| Runtime | Node.js 18+ |
+| Package manager | npm workspaces: `core`, `agents`, `cli`, `backend`, `frontend` |
+| Tests | `node --test` with `tsx` in every workspace |
+| Bundling | `tsup` (CLI, one CommonJS file), `tsc` (core, agents, backend), Vite (frontend) |
 
----
+## Core engine (`core/`)
 
-## 2. Core Engine (`core/`)
+| Concern | Technology |
+|---|---|
+| Parsing | [tree-sitter](https://tree-sitter.github.io/) through bundled WASM grammars (`@vscode/tree-sitter-wasm`), nine language families, one parser pool |
+| Rules and taint | Athena's own engine: rule packs, intra- and cross-file taint, sanitizer and defense checks |
+| Secrets | Own detectors (60+ provider formats) with entropy scoring for generic credentials |
+| Dependencies | Manifest and lockfile readers for npm/Yarn/pnpm, pip/poetry/uv/Pipenv, Maven/Gradle, NuGet, Go, Cargo, Composer, vcpkg, Conan; OSV advisories, registry lookups, typosquat lists |
+| Advisory data | Local incrementally synced OSV copy, CISA KEV, FIRST EPSS; signed (Ed25519) rule and skill packs |
+| AI provenance | Recorded lines from git history plus `athena-detect-fast` (a small pure-TypeScript classifier, under 2 MB) with a labelled style heuristic as fallback |
+| Skills | Agent Skills format (`SKILL.md` + declarative `rules.json` / `taint.json`), 39 built in, activated by detected dependencies |
+| Optional lint | ESLint with `eslint-plugin-security` (JavaScript/TypeScript only) |
+| Output | Terminal, JSON, JSONL, SARIF, Markdown, CycloneDX 1.6 |
 
-### Parsing / Analysis
+Semgrep, NodeJSScan, Bearer and `npm audit` were retired; nothing external is required.
 
-* **TypeScript Compiler API**
-  * AST parsing (`ts.createSourceFile`)
-  * No Babel, no external parser
+## AI layer (`agents/`)
 
-### Static Analysis
+| Concern | Technology |
+|---|---|
+| Providers | Anthropic (`@anthropic-ai/sdk`), OpenAI (`openai`), Google (`@google/genai`), and any OpenAI-compatible endpoint (OpenRouter, DeepSeek, Mistral, Groq, xAI, Together, Ollama, LM Studio) |
+| Structured output | `zod` schemas; verdicts are accepted only from structured output |
+| Cost control | Worst-case reservation per call, per-run and per-day caps, a daily ledger in `~/.athena/usage.json` |
+| Cheaper paths | Prompt caching of the stable prefix, a per-candidate result cache, the Anthropic Message Batches API for non-interactive deep runs |
+| Tools for agents | Eight read-only, path-confined tools (read file, list, grep, symbol and caller search, taint paths, offline findings, dependency findings) |
 
-* **ESLint (programmatic API)**
-* **eslint-plugin-security**
+## CLI (`cli/`)
 
-### External Security Tool (optional)
+`commander` for commands, `@modelcontextprotocol/sdk` for `athena mcp`, tree-sitter WASM and the detector model bundled into `dist/`. Output follows the Claude Code look: `⏺` bullets, `⎿` detail lines, an orange spinner.
 
-* **Semgrep** (CLI subprocess)
+## Backend (`backend/`)
 
-### Custom Analysis (Native Implementations)
+| Concern | Technology |
+|---|---|
+| API | Express 4, JSON and multipart (multer) |
+| Live terminal | WebSocket (`ws`) with a command allowlist |
+| Database | PostgreSQL through Supabase (`pg`); tables: `users`, `auth_sessions`, `scans`, `scan_findings`, `scan_reports`, `scan_inventories`, `scan_alerts`, `scan_terminal_lines`, `job_locks` |
+| Auth | Supabase Auth (GitHub and Google OAuth) plus Bearer sessions |
+| Scans | `simple-git` shallow clone or ZIP/folder upload into a temporary workspace, then `@athena/core` |
+| Reports | Markdown and PDF (pdfkit) |
+| Bring-your-own-key AI | `X-AI-*` request headers validated per request; key held in memory for one scan, never stored or logged |
 
-* Secret detection (regex + Shannon entropy)
-* Heuristic scorer (11 weighted signals)
-* Stylometric analyzer (repo baseline)
-* Diff analyzer (change-focused scanning)
-* Hallucination detector (API call validation)
-* Suppression manager (human-in-the-loop)
-* Benchmark runner (precision/recall/F1)
+## Frontend (`frontend/`)
 
-### Utilities
+React 19, Vite, React Router, xterm.js for the live terminal, Tailwind 4 plus a hand-written editorial theme (warm paper, Geist and Geist Mono, an ASCII canvas hero), DOMPurify and marked for report rendering.
 
-* **glob** — file matching
-* **fs/promises** — native file system
-* **child_process** — Semgrep execution
+## Agent integrations
 
----
+MCP server (stdio), a Claude Code plugin (`plugins/athena`: skill, two agents, two commands, hooks), and the open Agent Skills package (`skills/athena-security`).
 
-## 3. CLI (`cli/`)
+## Build versus buy
 
-| Component | Technology |
-|-----------|-----------|
-| CLI Framework | **commander** |
-| Color Output | **chalk** |
-| Spinners | **ora** |
-| Git Integration | Native `git` via `child_process.execSync` |
-| Build | **tsup** (bundling + DTS) |
-
----
-
-## 4. Backend (`backend/`)
-
-| Component | Technology |
-|-----------|-----------|
-| Server | **express** |
-| HTTP Middleware | **cors**, **cookie-parser** |
-| Auth | **bcryptjs** + cookie session model (legacy), **@supabase/supabase-js** (phase-1 provider) |
-| Database Access | **pg** |
-| Dev Runtime | **tsx** |
-
----
-
-## 5. Database
-
-* **PostgreSQL** (local or hosted)
-* **Supabase Postgres** (phase-1 backend provider path)
-
----
-
-## 6. Frontend (`frontend/`)
-
-| Component | Technology |
-|-----------|-----------|
-| Framework | **react** |
-| Build Tool | **vite** |
-| Routing | **react-router-dom** |
-| Terminal Emulator | **@xterm/xterm**, **@xterm/addon-fit**, **@xterm/addon-web-links** |
-| State / API | Native React hooks + fetch (no Redux) |
-
----
-
-## 7. Testing
-
-* **Node.js native test runner** (`node --import tsx --test`) for backend/frontend
-
----
-
-## 8. Build + Packaging
-
-| Component | Technology |
-|-----------|-----------|
-| Monorepo | npm workspaces |
-| Core + CLI Bundling | **tsup** |
-| Frontend Build | **vite build** |
-
----
-
-## 9. Dev Tooling
-
-* **eslint** + **eslint-plugin-security**
-* **prettier**
-* **tsconfig (strict)**
-
----
-
-## 10. Deployment
-
-| Surface | Platform |
-|---------|----------|
-| CLI Distribution | **npm registry** (`@arsh342/athena`) |
-| Backend Hosting | **Railway** or **Render** |
-| Frontend Hosting | **Vercel** or **Netlify** |
-| Database Hosting | **Railway PostgreSQL** or **Supabase** |
-
----
-
-## 11. OS / System Dependencies
-
-* **git** — repo cloning, diff analysis
-* **node >= 18** — runtime
-* **semgrep** — optional binary (graceful degradation if missing)
-
----
-
-## 12. Data Storage (CLI Side)
-
-JSON files:
-* `.athena/history/` — scan history
-* `.athena/baseline.json` — repo fingerprint
-* `.athena/suppressions.json` — suppressed findings
-
----
-
-## 13. Communication Protocols
-
-* **HTTP (REST API)** — frontend ↔ backend
-* **WebSocket (ws)** — live terminal streaming
-
----
-
-## 14. Output Formats
-
-* Terminal (ANSI-colored)
-* JSON (structured)
-* HTML (standalone)
-* JSONL (research mode)
-
----
-
-## 15. Architecture Patterns
-
-* Monorepo (npm workspaces)
-* Modular core engine (framework-agnostic)
-* Client-server (web)
-* Streaming architecture (WebSocket)
-* CLI-first tooling with web wrapper
-
----
-
-## Viva One-Liner
-
-> TypeScript + Node.js, TypeScript Compiler API for AST parsing, ESLint + Semgrep for security analysis, Commander-based CLI, Express backend, React + Vite frontend, PostgreSQL (`pg`) with optional Supabase provider mode, deployed via Vercel and Railway.
-
----
-
-## Positioning
-
-**Do NOT say:** "We used many libraries"
-
-**Say:** "Core logic is custom; external tools are only used for standard static analysis"
-
-Core detection engine, heuristic scorer, secret detector, hallucination detector, diff analyzer, and benchmark system are all **custom implementations**. ESLint and Semgrep are integrated as standard analysis tools, not as the core intelligence of the system.
+Everything analytical is custom: the scorer, rules, taint engine, secret detector, investigation engine, dependency intelligence and the AI layer's budgeting. Third-party components are the parser (tree-sitter), data sources (OSV, CISA KEV, EPSS, package registries), the AI provider SDKs, and the web stack above.
