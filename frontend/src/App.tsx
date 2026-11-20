@@ -15,11 +15,22 @@ import { SettingsPage } from './pages/Settings';
 import { SitemapPage } from './pages/Sitemap';
 import { TermsPage } from './pages/Terms';
 
+/** New page: back to the top. A link with a #hash: smooth-scroll to that section once it has rendered. */
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, [pathname]);
+    if (!hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      return;
+    }
+    let tries = 0;
+    const find = () => {
+      const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+      if (el) el.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      else if (tries++ < 20) window.setTimeout(find, 50);
+    };
+    find();
+  }, [pathname, hash]);
   return null;
 }
 
