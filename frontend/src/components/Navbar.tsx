@@ -19,7 +19,7 @@ const publicLinks = [
 /** Set to true to hide the bar while moving UP the page and show it moving down (the reverse of the usual). */
 const HIDE_ON_SCROLL_UP = false;
 
-/** Transparent bar over a progressive blur. It slips away as you move down the page and returns as you move back up. */
+/** Transparent bar over a soft gradient. It slips away as you move down the page and returns as you move back up. */
 export function Navbar() {
   const navigate = useNavigate();
   const { isAuthenticated, signOut } = useAuth();
@@ -59,7 +59,7 @@ export function Navbar() {
 
   return (
     <header className={`nav${hidden ? ' nav-hidden' : ''}`} ref={bar} onFocusCapture={reveal}>
-      <div className="nav-blur" aria-hidden="true"><i /><i /><i /><i /></div>
+      <div className="nav-fade" aria-hidden="true" />
       <div className="nav-inner">
         <NavLink className="nav-brand" to="/" aria-label="athena home">athena</NavLink>
         <nav className="nav-links" aria-label="Primary">
