@@ -68,7 +68,7 @@ export function Landing() {
       <section className="section" id="install">
         <h2>Install it in a minute.</h2>
         <p style={{ maxWidth: '56ch' }}>Install athena globally, run a local scan, and gate commits. The quickstart goes from zero to a first report.</p>
-        <div className="install"><span>$</span><code>npm install -g @arsh342/athena</code></div>
+        <div className="install"><span>$</span><code>npm i -g @arsh342/athena@latest</code></div>
         <div className="hero-actions">
           <Link className="btn btn-solid" to="/quickstart">Quickstart</Link>
           <a className="btn" href="https://www.npmjs.com/package/@arsh342/athena" target="_blank" rel="noopener noreferrer">View on npm</a>

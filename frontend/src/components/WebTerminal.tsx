@@ -1,6 +1,7 @@
 import { scanVerdict } from '../utils/gate';
 import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
+import { OWL_ART, WORDMARK_ART } from '../utils/brand-art';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { decodeEvent, encodeCommand } from './web-terminal-protocol';
@@ -116,9 +117,9 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
       theme: {
         background: '#0a0a0f',
         foreground: '#e4e4e7',
-        cursor: '#E87A41',
+        cursor: '#ecebe7',
         cursorAccent: '#0a0a0f',
-        selectionBackground: '#E87A4133',
+        selectionBackground: '#ecebe733',
         selectionForeground: '#e4e4e7',
         black: '#18181b',
         red: '#f87171',
@@ -189,17 +190,26 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
     });
     resizeObserver.observe(container);
 
-    /** Write the large premium welcome banner to terminal. */
+    /** The welcome banner: the Athena owl in braille dots with the name beside it (just the name on a narrow terminal). */
     function printWelcomeBanner() {
+      const ink = '\x1b[38;2;236;235;231m';
+      const dim = '\x1b[2m';
+      const reset = '\x1b[0m';
+      const logoWidth = Math.max(...OWL_ART.map((l) => l.length));
+      const full = term.cols >= 2 + logoWidth + 4 + 24;
       term.writeln('');
-      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m    _  _____ _   _ _____ _   _    _   \x1b[0m');
-      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m   / \\|_   _| | | | ____| \\ | |  / \\  \x1b[0m');
-      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m  / _ \\ | | | |_| |  _| |  \\| | / _ \\ \x1b[0m');
-      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m / ___ \\| | |  _  | |___| |\\  |/ ___ \\\x1b[0m');
-      term.writeln('  \x1b[38;2;232;122;65m\x1b[1m/_/   \\_\\_| |_| |_|_____|_| \\_/_/   \\_\\\x1b[0m');
+      if (full) {
+        const top = Math.floor((OWL_ART.length - WORDMARK_ART.length) / 2);
+        OWL_ART.forEach((line, i) => {
+          const name = WORDMARK_ART[i - top];
+          term.writeln(`  ${ink}${line.padEnd(logoWidth, ' ')}${name ? `    ${name}` : ''}${reset}`);
+        });
+      } else {
+        WORDMARK_ART.forEach((line) => term.writeln(`  ${ink}${line}${reset}`));
+      }
       term.writeln('');
-      term.writeln('  \x1b[2mAI code provenance tracker\x1b[0m                 \x1b[38;2;232;122;65mactive sandbox\x1b[0m');
-      term.writeln('  \x1b[2mparse → score → analyze → report\x1b[0m');
+      term.writeln(`  ${dim}Security review for AI-assisted code${reset}   ${ink}active sandbox${reset}`);
+      term.writeln(`  ${dim}parse → score → analyze → report${reset}`);
       term.writeln('');
       term.writeln('  \x1b[90m─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\x1b[0m');
       term.writeln('');
@@ -336,7 +346,7 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
             term.writeln(`  \x1b[1mScan Report: ${scan.repoName || 'sandbox project'}\x1b[0m`);
             term.writeln(`  \x1b[2mFiles scanned:\x1b[0m ${scan.filesScanned ?? 0}   \x1b[2mCode units:\x1b[0m ${scan.totalUnits ?? 0}`);
             term.writeln(`  \x1b[2mFindings:\x1b[0m \x1b[31mCRITICAL: ${critical}\x1b[0m | \x1b[38;2;255;122;69mHIGH: ${high}\x1b[0m | \x1b[33mMEDIUM: ${medium}\x1b[0m | \x1b[34mLOW: ${low}\x1b[0m`);
-            term.writeln(`  \x1b[2mAI (estimated):\x1b[0m \x1b[38;2;232;122;65m${formatProvenance(scan)}\x1b[0m`);
+            term.writeln(`  \x1b[2mAI (estimated):\x1b[0m \x1b[38;2;236;235;231m${formatProvenance(scan)}\x1b[0m`);
             term.writeln('');
             if (verdict === 'failed') {
               term.writeln(`  \x1b[31m✗\x1b[0m \x1b[1mgate: \x1b[31mscan failed\x1b[0m`);

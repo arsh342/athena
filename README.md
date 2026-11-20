@@ -11,7 +11,7 @@ Supports JavaScript/TypeScript, Python, Java, C#, C/C++, Go, Rust, PHP and Shell
 Requires Node.js 18 or newer.
 
 ```bash
-npm install -g @arsh342/athena
+npm i -g @arsh342/athena@latest
 ```
 
 Or run it without installing:

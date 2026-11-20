@@ -115,35 +115,43 @@ export function ReportPage() {
         </div>
       </section>
 
-      <section className="tiles" aria-label="Summary">
+      <section className="tiles tiles-3" aria-label="Summary">
         <article className="tile">
+          <span className="tile-label">Provenance</span>
           <ScoreGauge score={scan?.aiPercentage ?? 0} />
-          {scan ? (
-            <p className="meta" style={{ textAlign: 'center' }}>
-              AI provenance: {formatProvenance(scan)}
-              <br />
-              Recorded is what git history credits to AI tools (a floor). Estimated is a model, low confidence.
-            </p>
-          ) : null}
+          {scan ? <p className="meta" style={{ textAlign: 'center' }}>{formatProvenance(scan)}</p> : null}
         </article>
-        {scan?.ai ? (
-          <article className="tile">
-            <span className="tile-label">AI check</span>
-            <strong className="tile-value">{scan.ai.checked}</strong>
-            <p>findings checked with {scan.ai.model} ({scan.ai.mode}), ${scan.ai.costUsd.toFixed(3)} spent{scan.ai.notChecked ? `, ${scan.ai.notChecked} not checked` : ''}.</p>
-          </article>
-        ) : null}
-        {scan ? (
-          <article className="tile">
-            <span className="tile-label">Coverage</span>
-            <strong className="tile-value small">{coverageLabel(scan)}</strong>
-            {coverageGaps(scan).map((gap) => <p key={gap}>{gap}</p>)}
-          </article>
-        ) : null}
         <article className="tile">
           <span className="tile-label">Findings</span>
           <strong className="tile-value">{findings.length}</strong>
+          <div className="tile-chips">
+            {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((sev) => {
+              const n = findings.filter((f) => f.severity === sev).length;
+              return n ? <span key={sev} className={`badge badge-${sev.toLowerCase()}`}>{n} {sev.toLowerCase()}</span> : null;
+            })}
+          </div>
           <p>From Athena's rules, taint, secrets and dependency checks.</p>
+        </article>
+        <article className="tile">
+          <span className="tile-label">Coverage</span>
+          <strong className="tile-value small">{scan ? coverageLabel(scan) : 'Not recorded'}</strong>
+          {scan ? coverageGaps(scan).map((gap) => <p key={gap}>{gap}</p>) : null}
+          {scan?.coverage?.complete ? <p>Every file and check ran.</p> : null}
+          {scan && !scan.coverage ? <p>This scan predates coverage tracking.</p> : null}
+        </article>
+        <article className="tile">
+          <span className="tile-label">AI check</span>
+          {scan?.ai ? (
+            <>
+              <strong className="tile-value">{scan.ai.checked}</strong>
+              <p>findings checked with {scan.ai.model} ({scan.ai.mode}), ${scan.ai.costUsd.toFixed(3)} spent{scan.ai.notChecked ? `, ${scan.ai.notChecked} not checked` : ''}.</p>
+            </>
+          ) : (
+            <>
+              <strong className="tile-value small">Off</strong>
+              <p>This scan ran offline. Add your own key in Settings to have uncertain findings verified.</p>
+            </>
+          )}
         </article>
         <article className="tile">
           <span className="tile-label">Risk density</span>
@@ -161,7 +169,7 @@ export function ReportPage() {
 
       <section className="panel">
         <div className="panel-head">
-          <h2>Report</h2>
+          <h2>Written report</h2>
           <span className="meta">redacted snapshot</span>
         </div>
         {markdown ? (

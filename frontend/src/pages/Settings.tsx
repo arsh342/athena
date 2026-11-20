@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Check } from '../components/Advantages';
 import { fetchAiConsent, fetchAiOptions, type AiOptions } from '../services/api';
 import { DEFAULT_SETTINGS, aiReady, clearAiSettings, loadAiSettings, maskedKey, saveAiSettings, type AiProvider, type AiSettings } from '../utils/ai-settings';
 
@@ -65,7 +66,7 @@ export function SettingsPage() {
     <div className="page">
       <section className="page-head">
         <span className="kicker">AI settings</span>
-        <h1>Bring your own key</h1>
+        <h1>Bring your <span className="fx-muted">own key</span></h1>
         <p>
             Athena works fully offline. If you want an AI model to verify the findings it was unsure about, use your own
             provider key. It is held in this browser tab only, sent with the scan you start, and never stored or logged by Athena.
@@ -73,7 +74,8 @@ export function SettingsPage() {
         </p>
       </section>
 
-      <section className="panel" style={{ maxWidth: 720 }}>
+      <div className="settings-grid">
+      <section className="panel">
         <form className="stack" style={{ gap: 22 }} onSubmit={save}>
           <label className="check">
             <input type="checkbox" checked={settings.enabled} onChange={(e) => update({ enabled: e.target.checked })} />
@@ -147,6 +149,25 @@ export function SettingsPage() {
           </div>
         </form>
       </section>
+
+      <aside className="panel stack" aria-label="How your key is handled">
+        <h2 style={{ fontSize: 20 }}>How your key is handled</h2>
+        <ul className="adv-grid" style={{ gridTemplateColumns: '1fr', gap: 22 }}>
+          {[
+            ['Kept in this tab only', 'Closing the tab removes it. It is never written to local storage.'],
+            ['Used for one scan at a time', 'It travels only with a scan you start with AI on, and is held in memory for that scan.'],
+            ['Never stored or logged', 'Not in the database, in reports, or in our logs.'],
+            ['Capped before anything runs', 'Athena stops when the next call could exceed the spend cap you set.'],
+            ['You see what is sent', 'Settings shows the exact excerpts first and asks you to agree. Secrets are never sent.'],
+          ].map(([title, body]) => (
+            <li className="adv-item" key={title}>
+              <Check />
+              <div><p className="adv-title">{title}</p><p className="adv-body">{body}</p></div>
+            </li>
+          ))}
+        </ul>
+      </aside>
+      </div>
     </div>
   );
 }

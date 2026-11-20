@@ -172,7 +172,7 @@ export function ScanPage() {
     <div className="page">
       <section className="page-head">
         <span className="kicker">New scan</span>
-        <h1>Submit a repository</h1>
+        <h1>Submit a <span className="fx-muted">repository</span></h1>
         <p>Scan a public GitHub repository, or upload a local folder or zip archive into a temporary sandbox.</p>
       </section>
 

@@ -7,10 +7,12 @@ Find out what AI wrote in your repository, and whether it is safe to ship. Athen
 Requires Node.js 18 or newer. The optional ESLint scanner needs Node 20.19 or newer; on older Node it is skipped and Athena's own engine does the work.
 
 ```bash
-npm install -g @arsh342/athena
+npm i -g @arsh342/athena@latest
 # or run without installing
 npx @arsh342/athena scan .
 ```
+
+Run the same command again to update. `athena --version` shows what you have.
 
 ## Quick start
 
@@ -23,7 +25,7 @@ athena init                    # install the pre-commit hook (athena uninstall r
 athena doctor                  # check Node, npm, git and ESLint
 ```
 
-Running `athena` with no arguments opens an interactive menu.
+Running `athena` with no arguments opens an interactive menu. On a tall terminal (52 rows or more) it opens with the Athena owl, drawn in braille dots; on a shorter one it shows the compact name instead.
 
 ## Commands
 
@@ -38,7 +40,7 @@ Running `athena` with no arguments opens an interactive menu.
 | `models reset [--repo]` | Forget what Athena learned from labels and marks (this repository with `--repo`, otherwise all). |
 | `variants <id> [--save]` | Turn a confirmed finding into a rule and find its look-alikes. |
 | `skills list\|show\|new\|test\|add\|remove` | Work with skills (see below). |
-| `keys set\|status\|remove <provider>` | Manage API keys for the optional AI layer. |
+| `keys set\|status\|remove <provider>` | Manage API keys for the optional AI layer. The provider is `anthropic`, `openai`, `google`, `openai-compatible`, or a hosted service such as `groq`, `openrouter`, `deepseek`, `mistral`, `xai` or `together`. |
 | `mcp` | Serve Athena's tools to MCP clients over stdio. |
 | `update` | Refresh advisory data and signed rule packs (`--rollback` restores the previous pack). |
 | `alerts` | New vulnerabilities since your last scan (exit 1 if any). |
@@ -93,9 +95,16 @@ Off unless you pass `--ai`. It only checks what the offline analyzers were unsur
 athena keys set anthropic
 athena scan . --ai verify
 athena scan . --ai deep --budget 1 --suggest-fixes
+
+# a free hosted model, for example Groq's gpt-oss
+athena keys set groq
+athena scan . --ai --provider openai-compatible --preset groq --model openai/gpt-oss-120b
+
+# AI-check only the lines a change touched; a real flaw the change did not introduce is listed as an existing issue
+athena review --ai
 ```
 
-Keys come from the environment, then `~/.athena/credentials.json` (mode 0600), and are never printed or logged. Athena reserves the worst-case cost before every call and stops when the next call could exceed a cap; the report lists what was not checked. The first time in a repository it shows exactly what is sent and asks. Secrets and dependency findings are never sent, and repository text is treated as data, never as instructions. Local models (Ollama, LM Studio) cost nothing and send nothing off your machine.
+Keys come from the environment, then `~/.athena/credentials.json` (mode 0600), and are never printed or logged. Athena reserves the worst-case cost before every call and stops when the next call could exceed a cap; the report lists what was not checked. The first time in a repository it shows exactly what is sent and asks. Secrets and dependency findings are never sent, and repository text is treated as data, never as instructions. Local models (Ollama, LM Studio) cost nothing and send nothing off your machine. On the repository's 14-snippet verification benchmark, Groq's `openai/gpt-oss-120b` and `openai/gpt-oss-20b` both scored 100% precision and recall and resisted the planted prompt injections ([results](https://github.com/arsh342/athena/blob/main/docs/athena-bench/AI-VERIFY.md)); that is a small sample, not a guarantee.
 
 The Anthropic and OpenAI SDKs are built in. Google's is large, so it is not installed by default: for `--provider google`, run `npm install -g @google/genai` once.
 
@@ -103,7 +112,7 @@ The Anthropic and OpenAI SDKs are built in. Google's is large, so it is not inst
 
 Athena can tune its AI-code estimate to a repository, locally, from trusted labels only: lines git credits to AI-assisted commits (AI), code whose every line was last changed before 2021-06-01 (human), and your own `athena provenance mark` entries. It activates at 30 labels with at least 10 of each class, shifts an estimate by at most 0.25, and is adopted only if it lowers log-loss on a held-out 20% of the labels and does not reduce AI recall or raise the human false-positive rate by more than one point on a bundled check set. State is in `~/.athena/learning/` (mode 0600) and holds hashes and style numbers, never code. A mark applies only while the code is unchanged. The report line reads `learning: tuned with N labels from this repo (changed X of Y units)` or `learning: global model`.
 
-The trained detector is enabled only for JavaScript so far; every other language uses the style heuristic, which rarely scores near the decision boundary, so tuning there seldom changes a result. The report shows how many units tuning changed.
+The trained detector is enabled only for JavaScript and TypeScript so far; every other language uses the style heuristic, which rarely scores near the decision boundary, so tuning there seldom changes a result. The report shows how many units tuning changed.
 
 ## What Athena checks
 
@@ -137,7 +146,7 @@ Skills are data only and contain no code. Regular expressions are checked before
 
 - **Hooks.** `athena init` installs a pre-commit hook (`athena check --staged`, about a second on a typical commit); `--hooks pre-commit,pre-push` adds a pre-push review of `@{u}..HEAD`. Husky, lefthook and the pre-commit framework are detected and a snippet is printed instead of changing files. `ATHENA_SKIP=1 git commit` skips the hooks.
 - **MCP server.** `claude mcp add athena -- npx -y @arsh342/athena mcp`. Other clients: [MCP client setup](https://github.com/arsh342/athena/blob/main/docs/agents/mcp-clients.md). No AI model is called and no key is needed.
-- **Claude Code plugin.** Clone the repository and run `claude plugin install ./plugins/athena` for `/athena-scan`, `/athena-review`, the `athena-security` skill, a researcher and a verifier agent, and hooks. Other agents: `npx skills add arsh342/athena`.
+- **Claude Code plugin.** `claude plugin marketplace add arsh342/athena` then `claude plugin install athena@athena` (or, from a clone, `claude plugin install ./plugins/athena`) for `/athena-scan`, `/athena-review`, the `athena-security` skill, a researcher and a verifier agent, and hooks. Other agents: `npx skills add arsh342/athena`.
 
 ## Staying current
 

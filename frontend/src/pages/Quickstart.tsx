@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const STEPS: Array<[string, string, string]> = [
-  ['1. Install', 'npm install -g @arsh342/athena', ''],
+  ['1. Install', 'npm i -g @arsh342/athena@latest', ''],
   ['2. Scan this repository', 'athena scan .', 'Scans every supported language, traces untrusted input, estimates AI provenance and prints the findings.'],
   ['3. Review a change', 'athena review', 'Reviews staged changes and reports only what they introduced.'],
   ['4. Enable the commit gate', 'athena init', 'Installs a pre-commit hook that blocks critical and high-risk commits.'],
@@ -13,7 +13,7 @@ export function QuickstartPage() {
     <div className="page">
       <section className="page-head">
         <span className="kicker">CLI</span>
-        <h1>Quickstart</h1>
+        <h1>Quick<span className="fx-muted">start</span></h1>
         <p>Install athena, run a first scan and turn on commit gating in a few minutes.</p>
       </section>
 

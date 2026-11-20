@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertsBanner } from '../components/AlertsBanner';
 import { ScoreGauge } from '../components/ScoreGauge';
+import { ScanTrend } from '../components/ScanTrend';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { fetchScans } from '../services/api';
 import { getDashboardEmptyState } from '../utils/dashboard';
@@ -41,7 +42,7 @@ export function Dashboard() {
       <section className="page-head-row">
         <div className="page-head">
           <span className="kicker">Dashboard</span>
-          <h1>Repository risk</h1>
+          <h1>Repository <span className="fx-muted">risk</span></h1>
         </div>
         <Link className="btn btn-solid" to="/scan">Run scan</Link>
       </section>
@@ -68,6 +69,14 @@ export function Dashboard() {
           <strong className="tile-value">{totals.flagged}</strong>
           <p>Functions, methods and classes above the threshold.</p>
         </article>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>AI share across your scans</h2>
+          <span className="meta">hover to read each scan</span>
+        </div>
+        <ScanTrend scans={scans} />
       </section>
 
       <section className="panel">
