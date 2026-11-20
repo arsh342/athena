@@ -13,11 +13,6 @@ describe('ScannerRegistry', () => {
       exclude: ['node_modules/', 'dist/'],
       secretDetection: true,
       hallucinationDetection: true,
-      semgrep: {
-        enabled: true,
-        timeoutMs: 30000,
-        config: 'auto',
-      },
       eslint: {
         enabled: true,
         timeoutMs: 30000,
@@ -26,16 +21,6 @@ describe('ScannerRegistry', () => {
         enabled: true,
         timeoutMs: 60000,
         severityThreshold: 'HIGH',
-      },
-      nodejsscan: {
-        enabled: true,
-        timeoutMs: 120000,
-        requireDocker: true,
-      },
-      bearer: {
-        enabled: true,
-        timeoutMs: 60000,
-        reportType: 'security',
       },
       maxFileSize: 1_048_576,
       weights: {},
@@ -51,11 +36,9 @@ describe('ScannerRegistry', () => {
       const scanners = scannerRegistry.getAllScanners();
       const scannerNames = scanners.map(s => s.name);
 
-      assert.equal(scannerNames.includes('semgrep'), true);
+      for (const retired of ['semgrep', 'nodejsscan', 'bearer']) assert.equal(scannerNames.includes(retired), false, `${retired} was retired`);
       assert.equal(scannerNames.includes('eslint'), true);
       assert.equal(scannerNames.includes('npmAudit'), false, 'npm audit was replaced by dependency intelligence');
-      assert.equal(scannerNames.includes('nodejsscan'), true);
-      assert.equal(scannerNames.includes('bearer'), true);
     });
 
     it('should allow registering custom scanners', () => {
@@ -99,11 +82,8 @@ describe('ScannerRegistry', () => {
     it('should check availability of all scanners', async () => {
       const availability = await scannerRegistry.checkAllScanners();
 
-      assert.ok('semgrep' in availability);
       assert.ok('eslint' in availability);
       assert.ok(!('npmAudit' in availability));
-      assert.ok('nodejsscan' in availability);
-      assert.ok('bearer' in availability);
 
       // All should be boolean values
       Object.values(availability).forEach(available => {
@@ -115,10 +95,7 @@ describe('ScannerRegistry', () => {
   describe('Scanner Execution', () => {
     it('should run only enabled scanners', async () => {
       // Disable all scanners
-      testConfig.semgrep.enabled = false;
       testConfig.eslint!.enabled = false;
-      testConfig.nodejsscan!.enabled = false;
-      testConfig.bearer!.enabled = false;
 
       const findings = await scannerRegistry.runEnabledScanners([], '/tmp', testConfig);
 
@@ -128,7 +105,7 @@ describe('ScannerRegistry', () => {
 
     it('should handle scanner errors gracefully', async () => {
       // Enable a scanner that might not be available
-      testConfig.nodejsscan!.enabled = true;
+      testConfig.eslint!.enabled = true;
 
       const findings = await scannerRegistry.runEnabledScanners([], '/tmp', testConfig);
 
@@ -139,10 +116,10 @@ describe('ScannerRegistry', () => {
 
   describe('Finding Normalization', () => {
     it('should normalize findings to ClassifiedFinding format', () => {
-      const semgrepScanner = scannerRegistry.getScanner('semgrep');
-      assert.ok(semgrepScanner);
+      const eslintScanner = scannerRegistry.getScanner('eslint');
+      assert.ok(eslintScanner);
 
-      if (semgrepScanner) {
+      if (eslintScanner) {
         const mockFinding = {
           id: 'test-id',
           ruleId: 'test-rule',
@@ -156,7 +133,7 @@ describe('ScannerRegistry', () => {
           severity: 'HIGH' as const,
         };
 
-        const normalized = semgrepScanner.normalize(mockFinding, testConfig);
+        const normalized = eslintScanner.normalize(mockFinding, testConfig);
 
         assert.ok('id' in normalized);
         assert.ok('severity' in normalized);

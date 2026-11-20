@@ -2,7 +2,6 @@ import { readFile, stat } from 'node:fs/promises';
 import { analyzeDependencies, checkApiExistence, type DepsOptions } from './deps/analyze.js';
 import { mergeConfig } from './config.js';
 import { analyzeSecurity } from './analyzers/security-analyzer.js';
-import { runSemgrep } from './analyzers/semgrep-adapter.js';
 import { detectLanguage, LANGUAGE_FAMILY, type LanguageId } from './lang/languages.js';
 import { parseFileDetailed, warmParsers } from './parser/ast-parser.js';
 import { generateReport } from './report/report-generator.js';

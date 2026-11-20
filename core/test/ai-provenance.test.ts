@@ -12,10 +12,8 @@ import type { FileReport, ScoredUnit, UnitProvenance } from '../src/types.ts';
 import { makeRepo } from './helpers/git-fixture.ts';
 
 const noExternal = {
-  semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' }, eslint: { enabled: false, timeoutMs: 1000 },
-  npmAudit: { enabled: false, timeoutMs: 1000 }, nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false },
-  bearer: { enabled: false, timeoutMs: 1000 },
-};
+  eslint: { enabled: false, timeoutMs: 1000 },
+  npmAudit: { enabled: false, timeoutMs: 1000 }, };
 const noRecorded: RecordedRepo = { available: false, reason: 'not a git repository', files: new Map() };
 
 function unit(path: string, startLine: number, code: string, provenance: UnitProvenance): ScoredUnit {

@@ -96,10 +96,8 @@ import { formatTerminalReport } from '../src/report/terminal-formatter.ts';
 import { ScannerRegistry } from '../src/scanner-registry.ts';
 
 const noExternal = {
-  semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' }, eslint: { enabled: false, timeoutMs: 1000 },
-  npmAudit: { enabled: false, timeoutMs: 1000 }, nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false },
-  bearer: { enabled: false, timeoutMs: 1000 },
-};
+  eslint: { enabled: false, timeoutMs: 1000 },
+  npmAudit: { enabled: false, timeoutMs: 1000 }, };
 
 test('scan uses the fast model where enabled, heuristic elsewhere, and says so', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'athena-fm-scan-'));

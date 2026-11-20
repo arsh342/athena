@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import { runCli } from './helpers-cli.ts';
 
-const OFF = ['--no-eslint', '--no-npm-audit', '--no-nodejsscan', '--no-bearer', '--no-semgrep'];
+const OFF = ['--no-eslint', '--no-npm-audit'];
 const home = () => mkdtempSync(join(tmpdir(), 'athena-skh-'));
 const tmp = (p: string) => mkdtempSync(join(tmpdir(), p));
 

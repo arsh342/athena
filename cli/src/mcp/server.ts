@@ -89,9 +89,6 @@ export function createAthenaMcpServer(options: McpOptions): McpServer {
     const blockOn = { critical: ['CRITICAL'], high: ['CRITICAL', 'HIGH'], medium: ['CRITICAL', 'HIGH', 'MEDIUM'], low: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'], none: [] }[failOn ?? 'high'] ?? ['CRITICAL', 'HIGH'];
     const config = mergeConfig({ blockOn: blockOn as never });
     config.eslint = { ...config.eslint!, enabled: false };
-    config.nodejsscan = { ...config.nodejsscan!, enabled: false };
-    config.bearer = { ...config.bearer!, enabled: false };
-    config.semgrep.enabled = false;
     return config;
   };
   const failOnSchema = z.enum(['critical', 'high', 'medium', 'low', 'none']).optional();

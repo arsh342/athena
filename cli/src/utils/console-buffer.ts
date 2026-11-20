@@ -53,9 +53,5 @@ function normalizeCoreMessage(text: string): string {
     .map((line) => line.trim())
     .filter(Boolean)[0] ?? text;
 
-  if (firstLine.includes('dockerDesktopLinuxEngine') || firstLine.includes('docker: error during connect')) {
-    return 'nodejsscan skipped because Docker is not running or not reachable';
-  }
-
   return firstLine;
 }

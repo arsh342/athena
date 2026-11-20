@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import { newHome, runCli } from './helpers-cli.ts';
 
-const OFF = ['--no-eslint', '--no-nodejsscan', '--no-bearer', '--no-semgrep', '--no-deps', '--quiet'];
+const OFF = ['--no-eslint', '--no-deps', '--quiet'];
 const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (dir: string, ...args: string[]) => execFileSync('git', ['-c', 'commit.gpgsign=false', ...args], { cwd: dir, env, encoding: 'utf8' });
 const write = (dir: string, rel: string, body: string | Buffer) => { mkdirSync(dirname(join(dir, rel)), { recursive: true }); writeFileSync(join(dir, rel), body); };

@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const entry = fileURLToPath(new URL('../src/index.ts', import.meta.url));
 const fixture = fileURLToPath(new URL('./fixtures/app', import.meta.url));
 const home = mkdtempSync(join(tmpdir(), 'athena-cli-home-'));
-const OFF = ['--no-eslint', '--no-npm-audit', '--no-nodejsscan', '--no-bearer', '--no-semgrep'];
+const OFF = ['--no-eslint', '--no-npm-audit'];
 
 function runCli(args: string[], cwd?: string): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {

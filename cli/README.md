@@ -47,11 +47,10 @@ athena init
 athena uninstall
 ```
 
-Setup scanner dependencies:
+See what (if anything) needs installing:
 
 ```bash
 athena setup all
-athena setup semgrep --auto
 ```
 
 ## Options (scan and check)
@@ -65,7 +64,8 @@ athena setup semgrep --auto
 | `-q, --quiet` / `-v, --verbose` | No progress / also print scanner notes. |
 | `--no-color` | Disable colour (also off for `NO_COLOR` and non-TTY output). |
 | `-m, --max-findings <n\|all>`, `--show-low` | Control how many findings are listed. |
-| `--no-eslint`, `--no-nodejsscan`, `--no-bearer`, `--no-semgrep` | Skip a scanner. |
+| `--no-eslint` | Skip the optional ESLint scanner. |
+| `--no-semgrep`, `--no-nodejsscan`, `--no-bearer` | Deprecated, do nothing (those scanners were retired). |
 | `--no-deps` | Skip dependency checks. |
 | `--format markdown` | PR-comment-ready output (used by `athena review`). |
 | `--format cyclonedx` | Print the dependency inventory as a CycloneDX 1.6 SBOM. |
@@ -106,7 +106,7 @@ Optional `athena.config.json` at the scanned root. Flags override it.
 | PHP | `.php .phtml` | own rules + taint, secrets, units, AI provenance |
 | Shell | `.sh .bash .zsh`, `#!…sh/bash/zsh` scripts | own rules + taint, secrets, units, AI provenance |
 
-Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional external scanners (Semgrep, ESLint, NodeJSScan, Bearer) still cover JavaScript/TypeScript only.
+Every file is parsed with [tree-sitter](https://tree-sitter.github.io/) (bundled, no install needed). Files with a syntax error are reported as `parse-failed` in coverage and their readable parts are still analyzed. Athena's own rules, taint analysis and secret scanning cover every language above. The optional ESLint scanner covers JavaScript/TypeScript only.
 
 The report header shows files per language, e.g. `12 files (js 3 · py 2 · go 1)`.
 
@@ -191,4 +191,4 @@ npm run build -w @arsh342/athena
 - Supports JavaScript/TypeScript (JSX, TSX), Python, Java, C#, C/C++, Go, Rust, PHP and Shell (see Supported languages).
 - Requires Node.js 18 or newer.
 - ESLint scanner support is included via optional package dependencies.
-- Semgrep, Docker (for nodejsscan), and Bearer CLI remain external optional tools.
+- Semgrep, NodeJSScan and Bearer were retired; nothing external is needed.

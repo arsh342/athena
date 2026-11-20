@@ -120,7 +120,7 @@ test('engine: dependency findings appear in the report, terminal output and cove
   const { formatTerminalReport } = await import('../src/report/terminal-formatter.ts');
   const s = await fixtureServer({}, { lodash: ['GHSA-xxxx'] });
   const root = project({ 'app.js': 'console.log(1)\n', 'package-lock.json': JSON.stringify({ lockfileVersion: 3, packages: { 'node_modules/lodash': { version: '4.17.15' } } }, null, 2) });
-  const off = { semgrep: { enabled: false, timeoutMs: 1, config: 'auto' }, eslint: { enabled: false, timeoutMs: 1 }, npmAudit: { enabled: false, timeoutMs: 1, severityThreshold: 'HIGH' as const }, nodejsscan: { enabled: false, timeoutMs: 1, requireDocker: false }, bearer: { enabled: false, timeoutMs: 1, reportType: 'security' as const } };
+  const off = { eslint: { enabled: false, timeoutMs: 1 }, npmAudit: { enabled: false, timeoutMs: 1, severityThreshold: 'HIGH' as const }, };
   const base = { root, skills: false as const, recordedProvenance: false };
   const without = await scanFiles([join(root, 'app.js')], off, {}, base);
   assert.ok(!without.summary.coverage?.checks.some((c) => c.name === 'dependencies'));

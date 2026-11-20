@@ -9,7 +9,7 @@ import { newHome, runCli } from './helpers-cli.ts';
 
 const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (dir: string, ...a: string[]) => execFileSync('git', ['-c', 'commit.gpgsign=false', ...a], { cwd: dir, env });
-const OFF = ['--no-eslint', '--no-nodejsscan', '--no-bearer', '--no-semgrep', '--no-deps', '--quiet', '--format', 'json'];
+const OFF = ['--no-eslint', '--no-deps', '--quiet', '--format', 'json'];
 
 test('#12 check from a subdirectory resolves staged paths against the repository top level', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'athena-checkpaths-'));

@@ -10,11 +10,8 @@ describe('Scanner Integration', () => {
   beforeEach(() => {
     testConfig = mergeConfig({
       // Disable all external scanners for faster tests
-      semgrep: { enabled: false, timeoutMs: 1000, config: 'auto' },
       eslint: { enabled: false, timeoutMs: 1000 },
       npmAudit: { enabled: false, timeoutMs: 1000 },
-      nodejsscan: { enabled: false, timeoutMs: 1000, requireDocker: false },
-      bearer: { enabled: false, timeoutMs: 1000 },
     });
   });
 
@@ -83,11 +80,9 @@ describe('Scanner Integration', () => {
     it('should preserve all default scanner configs', () => {
       const merged = mergeConfig({});
 
-      assert.ok(merged.semgrep);
       assert.ok(merged.eslint);
       assert.ok(merged.dependencies);
-      assert.ok(merged.nodejsscan);
-      assert.ok(merged.bearer);
+      assert.equal((merged as { semgrep?: unknown }).semgrep, undefined, 'retired scanners have no defaults');
     });
   });
 
@@ -105,7 +100,6 @@ describe('Scanner Integration', () => {
       // Enable scanners that might not be installed
       const configWithScanners = mergeConfig({
         eslint: { enabled: true, timeoutMs: 1000 },
-        nodejsscan: { enabled: true, timeoutMs: 1000, requireDocker: true },
       });
 
       const report = await scanFiles([], configWithScanners, {});

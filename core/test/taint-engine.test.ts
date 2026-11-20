@@ -74,3 +74,28 @@ test('pathological nesting finishes or is reported, never hangs', async () => {
   assert.ok(Date.now() - started < 6000, `took ${Date.now() - started} ms`);
   assert.ok(result.timedOut.length === 0 || result.timedOut[0] === '/p/a.js');
 });
+
+const FLASK_ERR = (body: string, sink: string) => `from flask import Flask, request, render_template_string, jsonify
+app = Flask(__name__)
+
+@app.route("/q")
+def q():
+    try:
+${body}
+    except Exception as e:
+        template = '<h3>%s</h3>' % str(e)
+        return ${sink}
+`;
+
+test('exception text from a try block that handles request data reaches a template sink', async () => {
+  const found = await taint([py('/p/a.py', FLASK_ERR("        cur.execute('select ' + request.args['x'])", 'render_template_string(template)'))]);
+  const hit = found.filter((f) => f.ruleId === 'taint.template-injection');
+  assert.equal(hit.length, 1);
+  assert.match(hit[0]!.trace![0]!.note, /exception/);
+});
+
+test('exception text is not tainted when the try block handles no request data, and only template/code sinks use it', async () => {
+  assert.deepEqual(await taint([py('/p/a.py', FLASK_ERR("        cur.execute('select 1')", 'render_template_string(template)'))]), []);
+  assert.deepEqual((await taint([py('/p/a.py', FLASK_ERR("        cur.execute('select ' + request.args['x'])", 'Response(template)'))])).filter((x) => x.ruleId === 'taint.xss'), [], 'exception text is not reported as XSS');
+  assert.deepEqual(await taint([py('/p/a.py', FLASK_ERR("        cur.execute('select ' + request.args['x'])", 'jsonify(template)'))]).then((f) => f.filter((x) => x.ruleId === 'taint.xss')), []);
+});

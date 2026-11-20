@@ -62,7 +62,7 @@ for (const app of manifest.apps) {
   lines.push(`| ${app.id} | ${app.language} | ${found}/${app.expected.length} | ${(found / app.expected.length * 100).toFixed(0)}% | ${results.at(-1)!.findings} | ${misses.length ? misses.map((m) => `\`${m}\``).join('<br>') : '—'} |`);
 }
 
-const comparison = semgrepAvailable() ? 'Semgrep is installed: run `semgrep --config auto <app>` yourself and compare per file.' : 'Semgrep/Opengrep is not installed on this machine, so no side-by-side comparison was run.';
+const comparison = semgrepAvailable() ? 'To compare with Semgrep, run `uvx semgrep scan --config p/default --metrics off --json <app>` and compare per file; the result is recorded in the ruling below.' : 'The one-off Semgrep comparison (and why the external scanners were retired) is recorded in the ruling below.';
 const doc = [
   '# SAST benchmark — Athena own analysis', '',
   `Run: ${new Date().toISOString().slice(0, 10)}. Apps are pinned to the commits in \`bench/sast/manifest.json\`. ${manifest.apps.length ? '' : ''}`,
@@ -73,5 +73,9 @@ const doc = [
 console.log(doc);
 if (only('--write')) {
   mkdirSync(join(here, '..', '..', 'docs', 'athena-bench'), { recursive: true });
-  writeFileSync(join(here, '..', '..', 'docs', 'athena-bench', 'SAST.md'), doc);
+  const target = join(here, '..', '..', 'docs', 'athena-bench', 'SAST.md');
+  // Everything from the ruling heading onward is hand-written: regenerate the table, keep the ruling.
+  const kept = existsSync(target) ? readFileSync(target, 'utf8') : '';
+  const at = kept.indexOf('## Scanner retirement ruling');
+  writeFileSync(target, at >= 0 ? `${doc}\n${kept.slice(at)}` : doc);
 }
