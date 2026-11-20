@@ -17,18 +17,18 @@ test('update --help documents ecosystems, rollback and packs', async () => {
   assert.match(r.stdout, /--no-packs/);
 });
 
-import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { repoKey } from '@athena/core';
 
 test('alerts: needs a saved scan; lists new vulnerabilities from local data; exit 1', async () => {
   const home = newHome();
   const project = mkdtempSync(join(tmpdir(), 'alproj-'));
   assert.equal((await runCli(['alerts', project], home)).code, 2);
 
-  const key = createHash('sha1').update(project).digest('hex');
+  const key = repoKey(project);
   mkdirSync(join(home, 'last-scan'), { recursive: true });
   writeFileSync(join(home, 'last-scan', `${key}.json`), JSON.stringify({ root: project, savedAt: 'x', report: { timestamp: '2026-11-01T00:00:00Z', files: [], summary: {}, inventory: [{ ecosystem: 'npm', name: 'lodash', version: '4.0.0', direct: true, manifest: 'package.json' }] } }));
   mkdirSync(join(home, 'vulndb', 'npm'), { recursive: true });

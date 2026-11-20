@@ -8,6 +8,8 @@ export interface ProjectConfig {
   /** Routes that are public on purpose (not flagged for missing authentication). */
   publicRoutes?: string[];
   strict?: boolean;
+  /** Local learning from trusted labels in this repository (default on). */
+  learning?: boolean;
 }
 
 export class ConfigError extends Error {}
@@ -53,6 +55,10 @@ export async function loadProjectConfig(root: string): Promise<ProjectConfig> {
       throw new ConfigError(`${file}: "publicRoutes" must be an array of strings`);
     }
     config.publicRoutes = data.publicRoutes as string[];
+  }
+  if (data.learning !== undefined) {
+    if (typeof data.learning !== 'boolean') throw new ConfigError(`${file}: "learning" must be true or false`);
+    config.learning = data.learning;
   }
   if (data.strict !== undefined) {
     if (typeof data.strict !== 'boolean') throw new ConfigError(`${file}: "strict" must be true or false`);

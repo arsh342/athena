@@ -42,6 +42,7 @@ export async function runScan(args: RunArgs): Promise<number> {
     blockOn: options.blockOn,
     exclude: options.exclude,
     publicRoutes: options.publicRoutes,
+    learning: options.learning,
     ...(options.threshold !== undefined ? { threshold: options.threshold } : {}),
   });
   config.eslint = { ...config.eslint!, enabled: options.scanners.eslint };

@@ -169,3 +169,13 @@ test('#14 "most AI-estimated" lists up to five files', () => {
   const line = out.split('\n').find((l) => l.includes('most AI-estimated'))!;
   assert.equal((line.match(/src\/f\d\.ts/g) ?? []).length, 5);
 });
+
+test('the provenance section says whether learning tuned the estimate, honestly', () => {
+  const withLearning = (learning: NonNullable<AiProvenance['learning']>) => formatTerminalReport(report([], { aiProvenance: { ...provenance, learning } }), opts);
+  assert.match(withLearning({ state: 'tuned', labels: 37, unitsChanged: 4, units: 120 }), /learning: tuned with 37 labels from this repo \(changed 4 of 120 units\)/);
+  assert.match(withLearning({ state: 'tuned', labels: 37, unitsChanged: 0, units: 120 }), /changed 0 of 120 units/);
+  assert.match(withLearning({ state: 'global', labels: 0, unitsChanged: 0, units: 120, reason: 'learning disabled' }), /learning: global model \(learning disabled\)/);
+  assert.match(withLearning({ state: 'global', labels: 12, unitsChanged: 0, units: 120 }), /global model \(12 labels so far, need 30 with 10 of each\)/);
+  assert.match(withLearning({ state: 'global', labels: 40, unitsChanged: 0, units: 120, reason: 'check-set recall dropped' }), /global model \(check-set recall dropped\)/);
+  assert.doesNotMatch(formatTerminalReport(report([]), opts), /learning:/, 'no line when the scan did not report learning');
+});

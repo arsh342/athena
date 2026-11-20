@@ -138,6 +138,8 @@ export interface AiProvenance {
     mixedLines: number;
     uncertainLines: number;
   }>;
+  /** Local learning: whether this repository's trusted labels tuned the estimate, and how much that changed. */
+  learning?: { state: 'tuned' | 'global'; labels: number; unitsChanged: number; units: number; reason?: string };
 }
 
 export interface ScoredUnit {
@@ -316,6 +318,8 @@ export interface ScanDelta {
 }
 
 export interface AthenaConfig {
+  /** Local learning from trusted labels in this repository (default on). `false` disables both training and applying it. */
+  learning?: boolean;
   /** Routes that are public on purpose; convention mining will not flag them for missing auth. */
   publicRoutes?: string[];
   threshold: number;

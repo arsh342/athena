@@ -3,7 +3,7 @@ import { Command, CommanderError } from 'commander';
 import { checkCommand } from './commands/check.js';
 import { doctorCommand } from './commands/doctor.js';
 import { explainCommand } from './commands/explain.js';
-import { provenanceCommand } from './commands/provenance.js';
+import { markCommand, provenanceCommand, resetCommand } from './commands/provenance.js';
 import { initCommand } from './commands/init.js';
 import { menuCommand } from './commands/menu.js';
 import { scanCommand } from './commands/scan.js';
@@ -41,6 +41,7 @@ function addRunFlags(command: Command): Command {
     .option('--show-low', 'list LOW findings instead of collapsing them')
     .option('-t, --threshold <number>', 'deprecated: only affects the heuristic fallback')
     .option('--no-eslint', 'disable ESLint scanner')
+    .option('--no-learning', 'do not learn from, or apply learning of, this repository\'s trusted labels')
     .option('--no-npm-audit', 'deprecated no-op: npm audit was replaced by dependency checks')
     .option('--ai [mode]', 'AI layer: verify (default) settles uncertain findings, hunt also explores risky components, deep adds a panel (needs --budget); spend is capped')
     .option('--provider <name>', 'AI provider: anthropic (default), openai, google, openai-compatible')
@@ -84,7 +85,7 @@ program
     process.exitCode = await explainCommand(id, opts);
   });
 
-program
+const provenanceCmd = program
   .command('provenance')
   .argument('[path]', 'directory to measure', '.')
   .option('--sort <key>', 'ai | recorded | lines', 'ai')
@@ -94,6 +95,26 @@ program
   .description('show how much of the code was written by AI, per file')
   .action(async (path: string, opts: { sort?: string; about?: boolean; format?: string; color?: boolean }) => {
     process.exitCode = await provenanceCommand(path, opts);
+  });
+
+provenanceCmd
+  .command('mark')
+  .argument('<target>', 'file, or file:line for the function containing that line')
+  .argument('<label>', 'human | ai | mixed')
+  .option('-p, --path <dir>', 'the directory you scan (where learning is kept)', '.')
+  .description('tell Athena who wrote a function (stored by code hash, never the code); Athena learns from marks')
+  .action(async (target: string, label: string, opts: { path?: string }) => {
+    process.exitCode = await markCommand(target, label, opts);
+  });
+
+const models = program.command('models').description('manage what Athena learned about this machine\'s repositories');
+models
+  .command('reset')
+  .option('--repo', 'forget only the repository in --path (default: every repository)')
+  .option('-p, --path <dir>', 'the repository directory', '.')
+  .description('forget learned adjustments and marks')
+  .action(async (opts: { repo?: boolean; path?: string }) => {
+    process.exitCode = await resetCommand(opts);
   });
 
 const skills = program.command('skills').description('list, inspect, add, write and test skills (packaged expertise for frameworks and bug classes)');

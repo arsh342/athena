@@ -9,13 +9,17 @@ import { isAiCommit, type CommitMeta } from './ai-markers.js';
 const execFileAsync = promisify(execFile);
 const MAX_BUFFER = 64 * 1024 * 1024;
 /** Bump when the AI markers change so cached blame results are recomputed. */
-const MARKERS_VERSION = 'm2';
+const MARKERS_VERSION = 'm3';
+/** Lines last changed before this instant are treated as human-written when learning from a repository (before AI coding assistants). */
+export const HUMAN_ERA_CUTOFF_SECONDS = Date.UTC(2021, 5, 1) / 1000;
 
 export interface RecordedFile {
   available: boolean;
   reason?: string;
   /** 1-based line numbers written by AI-assisted commits. */
   aiLines: Set<number>;
+  /** 1-based line numbers whose last change (git blame author time) predates 2021-06-01. */
+  oldLines: Set<number>;
 }
 
 export interface RecordedRepo {
@@ -59,14 +63,14 @@ export async function recordedAiLines(
     try {
       content = await readFile(filePath, 'utf8');
     } catch {
-      files.set(filePath, { available: false, reason: 'not tracked by git', aiLines: new Set() });
+      files.set(filePath, { available: false, reason: 'not tracked by git', aiLines: new Set(), oldLines: new Set() });
       return;
     }
     const key = `${createHash('sha1').update(rel).digest('hex')}-${createHash('sha1').update(content).digest('hex').slice(0, 12)}-${MARKERS_VERSION}.json`;
     const cachePath = join(cacheRoot, key);
     try {
-      const cached = JSON.parse(await readFile(cachePath, 'utf8')) as number[];
-      files.set(filePath, { available: true, aiLines: new Set(cached) });
+      const cached = JSON.parse(await readFile(cachePath, 'utf8')) as { ai: number[]; old: number[] };
+      files.set(filePath, { available: true, aiLines: new Set(cached.ai), oldLines: new Set(cached.old) });
       return;
     } catch {
       // cache miss
@@ -76,17 +80,24 @@ export async function recordedAiLines(
     try {
       porcelain = await git(root, ['-c', 'log.showSignature=false', 'blame', '--line-porcelain', '--', rel]);
     } catch {
-      files.set(filePath, { available: false, reason: 'not tracked by git', aiLines: new Set() });
+      files.set(filePath, { available: false, reason: 'not tracked by git', aiLines: new Set(), oldLines: new Set() });
       return;
     }
 
     const lineSha: Array<[number, string]> = [];
+    const oldLines = new Set<number>();
     let current: [number, string] | null = null;
+    let authorTime = Number.POSITIVE_INFINITY;
     for (const line of porcelain.split('\n')) {
       const header = line.match(/^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)/);
-      if (header && !current) current = [Number(header[2]), header[1]];
-      else if (line.startsWith('\t') && current) {
+      if (header && !current) {
+        current = [Number(header[2]), header[1]];
+        authorTime = Number.POSITIVE_INFINITY;
+      } else if (current && line.startsWith('author-time ')) {
+        authorTime = Number(line.slice('author-time '.length));
+      } else if (line.startsWith('\t') && current) {
         lineSha.push(current);
+        if (Number.isFinite(authorTime) && authorTime < HUMAN_ERA_CUTOFF_SECONDS && !/^0+$/.test(current[1])) oldLines.add(current[0]);
         current = null;
       }
     }
@@ -99,7 +110,7 @@ export async function recordedAiLines(
         out = await git(root, ['-c', 'log.showSignature=false', 'log', '--no-walk', '--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B%x1e', ...chunk]);
       } catch {
         // History unreadable (corrupt or partial object store): this file is unavailable, the scan carries on.
-        files.set(filePath, { available: false, reason: 'git history unreadable', aiLines: new Set() });
+        files.set(filePath, { available: false, reason: 'git history unreadable', aiLines: new Set(), oldLines: new Set() });
         return;
       }
       for (const record of out.split('\x1e')) {
@@ -117,10 +128,10 @@ export async function recordedAiLines(
     for (const [lineNo, sha] of lineSha) {
       if (aiBySha.get(sha)) aiLines.add(lineNo);
     }
-    files.set(filePath, { available: true, aiLines });
+    files.set(filePath, { available: true, aiLines, oldLines });
     try {
       await mkdir(cacheRoot, { recursive: true });
-      await writeFile(cachePath, JSON.stringify([...aiLines]));
+      await writeFile(cachePath, JSON.stringify({ ai: [...aiLines], old: [...oldLines] }));
     } catch {
       // cache is best effort
     }
