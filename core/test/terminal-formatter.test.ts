@@ -55,11 +55,14 @@ const blocked = () => report([finding('c1', 'CRITICAL', 12), finding('h1', 'HIGH
 
 test('blocked report shows gate, findings sorted, LOW collapsed, explain hint', () => {
   const out = formatTerminalReport(blocked(), opts);
-  assert.match(out, /^athena 0\.3\.0 · scan \.\/app · 3 files · 0\.5s$/m);
-  assert.match(out, /^ BLOCKED {2}1 critical · 1 high {3}\(fail-on: high\)$/m);
+  assert.match(out, /^⏺ athena 0\.3\.0 · scan \.\/app · 3 files · 0\.5s$/m);
+  assert.match(out, /^  ⎿  BLOCKED {2}1 critical · 1 high {3}\(fail-on: high\)$/m);
   assert.ok(out.indexOf('Type CRITICAL') < out.indexOf('Type HIGH'));
   assert.match(out, /\+ 2 low \(use --show-low\)/);
   assert.match(out, /src\/a\.ts:12/);
+  assert.match(out, /^⏺ Findings$/m);
+  assert.match(out, /^⏺ CRITICAL +Type CRITICAL/m);
+  assert.match(out, /^  ⎿  rule\.critical/m, 'detail hangs under its finding');
   assert.match(out, /^Next: athena explain [0-9a-f]{6} --path \.\/app$/m);
   assert.doesNotMatch(out, /\x1b\[/);
 });
@@ -76,8 +79,9 @@ test('incomplete clean scan is PASS (incomplete) with gaps listed', () => {
     checks: [{ name: 'semgrep', status: 'unavailable' }], complete: false, gaps: ['1 file(s) not parsed', 'semgrep unavailable'],
   };
   const out = formatTerminalReport(report([], { coverage }), opts);
-  assert.match(out, /^ PASS \(incomplete\) {2}1 file\(s\) not parsed · semgrep unavailable$/m);
+  assert.match(out, /^  ⎿  PASS \(incomplete\) {2}1 file\(s\) not parsed · semgrep unavailable$/m);
   assert.match(out, /! 1 file\(s\) not parsed/);
+  assert.match(out, /^⏺ Coverage$/m);
   assert.match(out, /bad\.js.*Unexpected token \(line 4\)/);
   assert.match(out, /! semgrep unavailable → athena doctor/);
   assert.match(out, /1\/2 files analyzed/);
@@ -85,7 +89,7 @@ test('incomplete clean scan is PASS (incomplete) with gaps listed', () => {
 
 test('clean complete scan is PASS', () => {
   const out = formatTerminalReport(report([]), opts);
-  assert.match(out, /^ PASS {2}no findings at or above high$/m);
+  assert.match(out, /^  ⎿  PASS {2}no findings at or above high$/m);
 });
 
 test('code frame is numbered, marked and redacted for secrets', () => {
@@ -101,7 +105,7 @@ test('code frame is numbered, marked and redacted for secrets', () => {
 
 test('AI provenance section: recorded floor, estimated range, uncertain, method', () => {
   const out = formatTerminalReport(blocked(), opts);
-  assert.match(out, /^AI provenance {2}\(by lines\)$/m);
+  assert.match(out, /^⏺ AI provenance {2}\(by lines\)$/m);
   assert.match(out, /recorded: 18% \(floor\)/);
   assert.match(out, /estimated: 35–44%/);
   assert.match(out, /uncertain: 7%/);
