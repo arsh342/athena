@@ -37,6 +37,9 @@ export const DEFAULT_URLS = {
 };
 
 /** HTTP + cache with a concurrency limit. Server errors and rate limits become `unavailable`, never "not found". */
+/** Registry responses above this size are skipped and reported as an unavailable lookup. */
+export const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
+
 export class DepsClient {
   readonly offline: boolean;
   readonly osvUrl: string;
@@ -100,7 +103,11 @@ export class DepsClient {
   }
 
   /** `advisory` selects the shorter TTL. A 404 is cached as "not found" for the same TTL. */
-  async json<T>(method: 'GET' | 'POST', url: string, options: { body?: unknown; advisory?: boolean; headers?: Record<string, string> } = {}): Promise<Fetched<T>> {
+  /**
+   * `slim` reduces a response to the fields the caller uses BEFORE it is cached or returned: registry documents list every release of a package
+   * (tens of MB for popular ones) and keeping them whole made a scan's memory grow by hundreds of MB. Responses larger than `maxBytes` are not read at all.
+   */
+  async json<T>(method: 'GET' | 'POST', url: string, options: { body?: unknown; advisory?: boolean; headers?: Record<string, string>; slim?: (data: any) => unknown; maxBytes?: number } = {}): Promise<Fetched<T>> {
     const body = options.body === undefined ? undefined : JSON.stringify(options.body);
     const file = this.keyFile(method, url, body);
     const ttl = options.advisory ? this.advisoryTtl : this.ttl;
@@ -144,7 +151,15 @@ export class DepsClient {
             this.stats.unavailable += 1;
             return { kind: 'unavailable', reason: `HTTP ${response.status}` } as const;
           }
-          const data = (await response.json()) as T;
+          const length = Number(response.headers.get('content-length') ?? 0);
+          const cap = options.maxBytes ?? MAX_RESPONSE_BYTES;
+          if (length > cap) {
+            await response.body?.cancel().catch(() => {});
+            this.stats.unavailable += 1;
+            return { kind: 'unavailable', reason: `response too large (${Math.round(length / 1048576)} MB)` } as const;
+          }
+          const raw = (await response.json()) as unknown;
+          const data = (options.slim ? options.slim(raw) : raw) as T;
           await this.writeCache(file, { at: this.now(), data });
           return { kind: 'ok', data } as const;
         } catch (error) {

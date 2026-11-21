@@ -40,3 +40,29 @@ test('the default is one scan at a time', async () => {
   release();
   await first;
 });
+
+test('the web scanner has a 500 MB budget (about 227 files), a smaller container lowers it, and settings override it', async () => {
+  const { maxScanFiles, estimateScanMb } = await import('../src/scanner.ts');
+  assert.equal(maxScanFiles(null, {}), 227, 'default: a 500 MB budget');
+  assert.equal(maxScanFiles(8192, {}), 227, 'a bigger server does not raise the web limit by itself');
+  assert.equal(maxScanFiles(400, {}), 136, 'a smaller container lowers it');
+  assert.equal(maxScanFiles(100, {}), 50, 'never below a useful minimum');
+  assert.equal(maxScanFiles(null, { SCAN_MEMORY_MB: '1500' }), 1136, 'the budget can be raised on a bigger instance');
+  assert.equal(maxScanFiles(512, { SCAN_MAX_FILES: '1000' }), 1000, 'an explicit file limit wins');
+  assert.equal(estimateScanMb(519), 821);
+});
+
+test('a repository over the limit fails with a message that says what to do, and the server keeps running', async () => {
+  process.env.SCAN_MAX_FILES = '1';
+  process.env.MAX_CONCURRENT_SCANS = '8';
+  try {
+    const { runUploadScan } = await import('../src/scanner.ts');
+    const file = (name: string) => ({ originalname: `big/${name}`, buffer: Buffer.from('export const a = 1;\n'), size: 20 });
+    const result = await runUploadScan({ mode: 'folder', rootName: 'big', files: [file('x.ts'), file('y.ts')] });
+    assert.equal(result.scan.status, 'FAILED');
+    assert.ok(result.terminalLines.some((l) => /limited to 500 MB.*Download the CLI.*athena scan/.test(l)), 'the message points to the CLI');
+  } finally {
+    delete process.env.SCAN_MAX_FILES;
+    delete process.env.MAX_CONCURRENT_SCANS;
+  }
+});

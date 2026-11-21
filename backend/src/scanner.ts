@@ -1,8 +1,12 @@
+import { readFileSync } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, normalize, relative, resolve } from 'node:path';
 import AdmZip from 'adm-zip';
-import { isConfigTextFile, isSourceCandidate, scanFiles } from '@athena/core';
+import { fork } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { isConfigTextFile, isSourceCandidate } from '@athena/core';
+import type { ScanWorkerInput, ScanWorkerOutput } from './scan-worker.ts';
 import type { ClassifiedFinding, ScanReport } from '@athena/core';
 import { simpleGit } from 'simple-git';
 import { addScan } from './data.ts';
@@ -283,6 +287,11 @@ async function scanFromPath(input: {
     const sourceFiles = await collectSourceFiles(rootPath, textFiles);
     log(`Found ${sourceFiles.length} source files`);
 
+    const limit = maxScanFiles();
+    if (sourceFiles.length > limit) {
+      throw new Error(`This repository has ${sourceFiles.length} source files and would need about ${estimateScanMb(sourceFiles.length)} MB to scan; the web scanner is limited to ${scanBudgetMb()} MB (about ${limit} files). Download the CLI and scan it on your own machine instead: npm i -g @arsh342/athena, then athena scan . (no size limit, and your code never leaves your computer).`);
+    }
+
     if (sourceFiles.length === 0) {
       log('No source files found. Scan complete with empty results.');
       emit?.status?.('Scan complete', 100);
@@ -363,16 +372,60 @@ async function runAiStep(report: ScanReport, rootPath: string, ai: AiScanRequest
   }
 }
 
-async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: string[], textFiles: string[] = []): Promise<ScanReport> {
-  const originalCwd = process.cwd.bind(process);
-  const processWithMutableCwd = process as NodeJS.Process & { cwd: () => string };
-  processWithMutableCwd.cwd = () => projectRoot;
+/** Rough peak memory a scan needs per source file (ESLint, parsing and dependency checks together), and the fixed part, in MB. Measured on a 697-file project. */
+const MB_PER_FILE = 1.1;
+const MB_FIXED = 250;
 
-  try {
-    return await scanFiles(sourceFiles, { dependencies: { enabled: true, offline: false, registryChecks: true } }, {}, { root: projectRoot, textFiles });
-  } finally {
-    processWithMutableCwd.cwd = originalCwd;
+/** The container's memory limit in MB when it is running under one (cgroup v2, then v1); null if unknown. */
+function containerLimitMb(): number | null {
+  for (const file of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+    try {
+      const n = Number(readFileSync(file, 'utf8').trim());
+      if (Number.isFinite(n) && n > 0 && n < 2 ** 50) return n / 1048576;
+    } catch { /* not in a container, or not readable */ }
   }
+  return null;
+}
+
+/** Memory the web scanner may use for one scan, in MB (SCAN_MEMORY_MB, default 500). A scan estimated to need more is sent to the CLI. */
+const scanBudgetMb = (env: NodeJS.ProcessEnv = process.env): number => Math.max(MB_FIXED + 50, Number(env.SCAN_MEMORY_MB) || 500);
+
+/** Estimated peak memory of a scan, in MB. */
+export const estimateScanMb = (files: number): number => Math.round(MB_FIXED + files * MB_PER_FILE);
+
+/**
+ * The most source files one web scan may have: SCAN_MAX_FILES if set, else what fits in the memory budget (500 MB by default, or the
+ * container's memory limit if that is smaller). Larger repositories are scanned with the CLI on the user's own machine.
+ */
+export function maxScanFiles(limitMb: number | null = containerLimitMb(), env: NodeJS.ProcessEnv = process.env): number {
+  const fromEnv = Number(env.SCAN_MAX_FILES);
+  if (Number.isFinite(fromEnv) && fromEnv > 0) return Math.floor(fromEnv);
+  const budget = Math.min(scanBudgetMb(env), limitMb ?? Number.POSITIVE_INFINITY);
+  return Math.max(50, Math.floor((budget - MB_FIXED) / MB_PER_FILE));
+}
+
+/** Heap limit for the scan process (MB). Most of a scan's memory is not JS heap, so this mainly stops a runaway scan from taking the server with it. */
+const scanHeapMb = (): number => Math.max(128, Number(process.env.SCAN_HEAP_MB ?? 512) || 512);
+
+async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: string[], textFiles: string[] = []): Promise<ScanReport> {
+  const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
+  const input: ScanWorkerInput = {
+    projectRoot,
+    sourceFiles,
+    textFiles,
+    dependencies: { enabled: true, offline: false, registryChecks: true, concurrency: Math.max(1, Number(process.env.DEPS_CONCURRENCY ?? 2) || 2) },
+  };
+  const execArgv = [...process.execArgv.filter((a) => !a.startsWith('--max-old-space-size')), `--max-old-space-size=${scanHeapMb()}`];
+
+  return new Promise<ScanReport>((resolvePromise, reject) => {
+    const child = fork(fileURLToPath(new URL(`./scan-worker${ext}`, import.meta.url)), [], { execArgv, serialization: 'json', stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+    let settled = false;
+    const finish = (fn: () => void) => { if (!settled) { settled = true; fn(); } };
+    child.once('message', (out: ScanWorkerOutput) => finish(() => (out.ok ? resolvePromise(out.report as ScanReport) : reject(new Error(out.error)))));
+    child.once('error', (error) => finish(() => reject(error)));
+    child.once('exit', (code, signal) => finish(() => reject(new Error(`The scan process stopped unexpectedly (${signal ?? `exit ${code}`}); the repository may be too large for this server's memory.`))));
+    child.send(input);
+  });
 }
 
 async function writeFolderUploadWorkspace(workspaceRoot: string, files: UploadFile[]): Promise<number> {
