@@ -6,6 +6,9 @@ import {
   runUploadScan,
   sanitizeZipEntryPath,
 } from '../src/scanner.ts';
+
+// These tests run real scans side by side in one process; the production default is one at a time.
+process.env.MAX_CONCURRENT_SCANS = '8';
 import { clearTerminalSession, registerTerminalSession } from '../src/terminal-session-store.ts';
 
 function getRouteHandler(app: any, path: string, method: 'get' | 'post') {

@@ -124,6 +124,16 @@ ul, ol { margin: 0; padding: 0; }
 .btn:disabled, .btn[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; }
 .btn-solid { background: var(--text); color: var(--inverse); border-color: var(--text); }
 .btn-solid:hover { background: color-mix(in oklab, var(--text) 86%, var(--bg)); color: var(--inverse); }
+.btn-danger { color: var(--error); border-color: color-mix(in oklab, var(--error) 55%, transparent); }
+.btn-danger:hover { background: color-mix(in oklab, var(--error) 12%, transparent); color: var(--error); }
+.btn-danger-solid { background: var(--error); border-color: var(--error); color: #fff; }
+.btn-danger-solid:hover { background: color-mix(in oklab, var(--error) 88%, #000); color: #fff; }
+.confirm { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.list-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-top: 1px solid var(--line); }
+.list-item .list-row { border-top: 0; }
+.data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; padding-top: 24px; border-top: 1px solid var(--line); }
+.data-row > div:first-child { max-width: 58ch; }
+.data-row-stack { display: grid; }
 .btn-sm { min-height: 36px; padding: 0 16px; font-size: 12.5px; }
 .btn-block { width: 100%; }
 .btn .glyph { font-family: var(--font-mono); width: 1.2em; text-align: center; }

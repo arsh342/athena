@@ -87,8 +87,9 @@ export function PrivacyPolicyPage() {
           <h2>8. Security, retention and your rights</h2>
           <ul>
             <li>Passwords are stored as one-way hashes, session tokens as hashes that can be revoked, cookies are httpOnly with secure and same-site settings in production, and repeated failed sign-ins lock the account for a while.</li>
-            <li>Account, session and scan data are kept until you ask us to delete them. Nothing expires on its own, and there is not yet a delete button in the app. Closing an account removes its scans, findings and reports.</li>
-            <li>Subject to your local law, you can ask for access to, correction of, export of or deletion of your data, and ask us to end your sessions. Send the request as described in section 11.</li>
+            <li>Account, session and scan data are kept until you delete them. Nothing expires on its own.</li>
+            <li><strong>You can delete it yourself, in the app.</strong> Delete a single scan from the dashboard or its report page. Delete all your scans, or your whole account, under Settings, in "Your data". Deleting is immediate and permanent: it removes the scan with its findings, report, terminal output, dependency list and alerts, and deleting your account also removes your sign-in and sessions (and, where we run the sign-in service, your login identity there). There is no undo, and no trash to restore from. Data is removed from the live database straight away; any backups that our database provider keeps expire on its own schedule. A scan that is running right now cannot be deleted until it finishes.</li>
+            <li>Subject to your local law, you can also ask for access to, correction of or export of your data. Send the request as described in section 11.</li>
             <li>If our systems span regions, data may be processed outside your country.</li>
           </ul>
         </div>
@@ -100,6 +101,17 @@ export function PrivacyPolicyPage() {
             sent anywhere unless you pass <code>--ai</code>, in which case section 5 applies, with your key kept in <code>~/.athena</code> (mode 0600). It keeps its own state
             in <code>~/.athena</code> (scan history, learned labels as hashes and numbers, caches). It downloads public advisory data and rule packs, and looks up package
             names and versions for dependency checks (turn that off with <code>--no-deps</code> or <code>--offline</code>). It does not send us usage data.
+          </p>
+          <p>
+            <strong>Optional sharing of anonymous labels (off by default).</strong> If you turn it on (<code>athena learning share on</code>, or by answering yes to a one-time
+            question after an explicit scan), the CLI can send us records that help improve AI-code detection. It is never on in CI, never asked from git hooks, and a repository
+            can switch it off for everyone who scans it. A record contains: whether a code unit is AI-written or human-written (and why we trust that: git history, code from
+            before 2021, or your own correction), its language, its size rounded to the nearest 10 lines, about 35 numbers describing its style (such as comment density and line
+            lengths), the detector's probability and version, whether local tuning was used, a random install id that is changed every 90 days, and the CLI version.
+            <strong> Never sent: your code, hashes of it, file or repository names, paths, authors, emails or commit ids.</strong> The server checks every record against a fixed
+            schema and refuses anything else. Your IP address is used only to rate-limit requests, held in memory, and not stored. Records are kept for 18 months. To see exactly what
+            would be sent, run <code>athena learning share status</code>. To stop and delete everything sent from your install, run <code>athena learning share off --delete</code>.
+            Shared records are used only when we build a new detector release, never live, and a release that uses them still has to pass the same published benchmark.
           </p>
         </div>
 

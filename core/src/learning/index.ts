@@ -55,6 +55,7 @@ export function learnFromRepository(
         bySha.set(label.sha, {
           sha: label.sha, y: label.label === 'ai' ? 1 : 0, pBase: round4(base.pBase),
           dense: Array.from(extractFeatures({ code: scored.unit.code }, base.language).dense, round4), source: label.source, path: label.path,
+          language: base.language, lines: Math.max(1, scored.unit.endLine - scored.unit.startLine + 1),
         });
       }
     }
@@ -68,7 +69,9 @@ export function learnFromRepository(
 
     let adjustment: Adjustment | null = state.baseTag === baseTag ? state.adjustment : null;
     let rejected = state.baseTag === baseTag ? state.rejected : undefined;
-    if (set !== state.labelSet || state.baseTag !== baseTag) {
+    // Samples stored before language and size were recorded are upgraded the next time their unit is seen.
+    const upgrade = state.samples.some((s) => !s.language) && samples.some((s) => s.language);
+    if (set !== state.labelSet || state.baseTag !== baseTag || upgrade) {
       const training: Sample[] = samples.map((s) => ({ pBase: s.pBase, dense: s.dense, y: s.y, key: s.sha }));
       const trained = trainAdjustment(training);
       if (trained) {

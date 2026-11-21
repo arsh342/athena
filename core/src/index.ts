@@ -42,7 +42,7 @@ export type { RecordedFile, RecordedRepo } from './provenance/git-recorded.js';
 export { isAiCommit, AI_BOT_LOGINS, AI_EMAIL_PATTERNS, AI_TOOL_NAME, AI_TRAILER_KEYS } from './provenance/ai-markers.js';
 export type { CommitMeta } from './provenance/ai-markers.js';
 export { buildAiProvenance, markRecordedUnits } from './provenance/aggregate.js';
-export { addMarks, loadLearning, resetLearning } from './learning/store.js';
+export { addMarks, loadLearning, resetLearning, saveLearning, type LearningState } from './learning/store.js';
 export { unitSha, type Mark } from './learning/labels.js';
 export { isSecretFinding, redactSecrets, redactKnownSecrets, redactFrameLine } from './report/redact.js';
 export { getRuleInfo } from './rules/catalog.js';
@@ -67,6 +67,9 @@ export { installPack, rollbackPack, fetchLatestPack, packState, PackRejected } f
 export { PACK_PUBLIC_KEY } from './updates/signature.js';
 export { FEEDS } from './updates/feeds.js';
 export { queryLocal, hasLocal } from './updates/vulndb.js';
+export { queryVulnerabilities, depKey, type Advisory } from './deps/osv.js';
+export { buildContributions, isValidContribution, CONTRIBUTION_KEYS, MAX_BATCH as MAX_CONTRIBUTION_BATCH, type Contribution, type ContributionInput, type ContributionMeta } from './learning/contribution.js';
+export { DepsClient } from './deps/net.js';
 export { loadKev } from './updates/kev.js';
 export { formatCycloneDx, purl } from './report/cyclonedx.js';
 export { newAlerts, alertsForInventory, ADVISORY_ID, type Alert } from './updates/alerts.js';

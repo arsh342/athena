@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runUploadScan } from '../src/scanner.ts';
 
+// Tests here start scans side by side in one process; the production default is one at a time.
+process.env.MAX_CONCURRENT_SCANS = '8';
+
 test('runUploadScan emits line events when emitter provided', async () => {
   const lines: string[] = [];
 

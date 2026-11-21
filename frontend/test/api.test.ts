@@ -128,3 +128,46 @@ test('a stored access token is sent as a Bearer header', async () => {
     localStorage.removeItem('athena_token');
   }
 });
+
+function withFetch(handler: (input: FetchInput, init?: FetchInit) => MockResponse, run: (calls: Array<{ input: FetchInput; init?: FetchInit }>) => Promise<void>): Promise<void> {
+  const calls: Array<{ input: FetchInput; init?: FetchInit }> = [];
+  const original = globalThis.fetch;
+  (globalThis as { fetch: typeof fetch }).fetch = (async (input: FetchInput, init?: FetchInit) => { calls.push({ input, init }); return handler(input, init); }) as unknown as typeof fetch;
+  return run(calls).finally(() => { (globalThis as { fetch: typeof fetch }).fetch = original; });
+}
+
+test('deleteScan sends DELETE for that scan, with the id encoded', async () => {
+  const { deleteScan } = await import('../src/services/api.ts');
+  await withFetch(() => ({ ok: true, status: 200, json: async () => ({ ok: true }) }), async (calls) => {
+    await deleteScan('a/b c');
+    assert.equal(String(calls[0]?.input), '/api/scans/a%2Fb%20c');
+    assert.equal(calls[0]?.init?.method, 'DELETE');
+  });
+});
+
+test('deleteAllScans sends an explicit confirm and returns how many were removed', async () => {
+  const { deleteAllScans } = await import('../src/services/api.ts');
+  await withFetch(() => ({ ok: true, status: 200, json: async () => ({ ok: true, deleted: 5 }) }), async (calls) => {
+    assert.equal(await deleteAllScans(), 5);
+    assert.equal(calls[0]?.init?.method, 'DELETE');
+    assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), { confirm: true });
+  });
+});
+
+test('deleteAccount sends the confirmation, forgets the tokens, and an error leaves them alone', async () => {
+  const { deleteAccount } = await import('../src/services/api.ts');
+  localStorage.setItem('athena_token', 't');
+  localStorage.setItem('athena_refresh_token', 'r');
+  await withFetch(() => ({ ok: false, status: 403, json: async () => ({ error: 'The password is missing or wrong.' }) }), async () => {
+    await assert.rejects(() => deleteAccount('a@b.co', 'bad'), /password is missing or wrong/);
+    assert.equal(localStorage.getItem('athena_token'), 't', 'a failed delete keeps the session');
+  });
+  await withFetch(() => ({ ok: true, status: 200, json: async () => ({ ok: true, identityRemoved: true }) }), async (calls) => {
+    const r = await deleteAccount('a@b.co', 'pw');
+    assert.deepEqual(r, { identityRemoved: true });
+    assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), { confirmEmail: 'a@b.co', password: 'pw' });
+    assert.equal(String(calls[0]?.input), '/api/account');
+    assert.equal(localStorage.getItem('athena_token'), null);
+    assert.equal(localStorage.getItem('athena_refresh_token'), null);
+  });
+});

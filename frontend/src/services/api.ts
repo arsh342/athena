@@ -219,3 +219,27 @@ export async function refreshAuth(): Promise<AuthUser> {
   }
   return data.user;
 }
+
+const jsonBody = (body: unknown): RequestInit => ({ body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+
+/** Delete one of your scans, with its findings and report. */
+export async function deleteScan(scanId: string): Promise<void> {
+  await fetchJson<{ ok: true }>(`/api/scans/${encodeURIComponent(scanId)}`, { method: 'DELETE' });
+}
+
+/** Delete every scan of yours (a scan that is running right now is kept). Returns how many were removed. */
+export async function deleteAllScans(): Promise<number> {
+  const data = await fetchJson<{ ok: true; deleted: number }>('/api/scans', { method: 'DELETE', ...jsonBody({ confirm: true }) });
+  return data.deleted;
+}
+
+/** Delete your account and everything saved under it. Retype your email; a password account also needs its password. */
+export async function deleteAccount(confirmEmail: string, password?: string): Promise<{ identityRemoved: boolean }> {
+  const data = await fetchJson<{ ok: true; identityRemoved: boolean }>('/api/account', {
+    method: 'DELETE',
+    ...jsonBody({ confirmEmail, ...(password ? { password } : {}) }),
+  });
+  localStorage.removeItem('athena_token');
+  localStorage.removeItem('athena_refresh_token');
+  return { identityRemoved: data.identityRemoved };
+}

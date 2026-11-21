@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, normalize, relative, resolve } from 'node:path';
 import AdmZip from 'adm-zip';
@@ -21,8 +21,35 @@ export type UploadMode = 'folder' | 'zip';
 
 export interface UploadFile {
   originalname: string;
-  buffer: Buffer;
+  /** The file's bytes, when it is held in memory (tests). Real uploads are written to disk and arrive as `path`. */
+  buffer?: Buffer;
+  /** Where the upload was stored on disk. Preferred: it keeps a large upload out of memory. */
+  path?: string;
   size: number;
+}
+
+/**
+ * Scans are heavy (clone, parse, analyse), and this runs on a small instance: one (by default) at a time. The rest are turned away
+ * with a clear message instead of piling up memory until the process is killed.
+ */
+export class ScanBusyError extends Error {
+  constructor() {
+    super('The server is busy with other scans right now. Try again in a minute.');
+  }
+}
+// One at a time by default. A scan temporarily replaces process.cwd() for the whole process, so overlapping scans can interfere
+// with each other: raise MAX_CONCURRENT_SCANS only on a large instance, and only after that is made per-scan.
+const scanLimit = (): number => Math.max(1, Math.floor(Number(process.env.MAX_CONCURRENT_SCANS ?? 1)) || 1);
+let activeScans = 0;
+export function activeScanCount(): number { return activeScans; }
+export async function withScanSlot<T>(work: () => Promise<T>): Promise<T> {
+  if (activeScans >= scanLimit()) throw new ScanBusyError();
+  activeScans += 1;
+  try {
+    return await work();
+  } finally {
+    activeScans -= 1;
+  }
 }
 
 export interface ScanResult {
@@ -357,7 +384,8 @@ async function writeFolderUploadWorkspace(workspaceRoot: string, files: UploadFi
 
     const targetPath = join(workspaceRoot, relativePath);
     await mkdir(dirname(targetPath), { recursive: true });
-    await writeFile(targetPath, file.buffer);
+    if (file.path) await copyFile(file.path, targetPath);
+    else await writeFile(targetPath, file.buffer ?? Buffer.alloc(0));
     written += 1;
   }
 
@@ -365,7 +393,7 @@ async function writeFolderUploadWorkspace(workspaceRoot: string, files: UploadFi
 }
 
 async function extractZipUploadWorkspace(workspaceRoot: string, file: UploadFile): Promise<number> {
-  const zip = new AdmZip(file.buffer);
+  const zip = file.path ? new AdmZip(file.path) : new AdmZip(file.buffer ?? Buffer.alloc(0));
   let written = 0;
 
   for (const entry of zip.getEntries()) {
@@ -390,7 +418,11 @@ async function extractZipUploadWorkspace(workspaceRoot: string, file: UploadFile
   return written;
 }
 
-export async function runUploadedPathScan(input: UploadedPathScanInput): Promise<ScanResult> {
+export function runUploadedPathScan(input: UploadedPathScanInput): Promise<ScanResult> {
+  return withScanSlot(() => runUploadedPathScanUnlimited(input));
+}
+
+async function runUploadedPathScanUnlimited(input: UploadedPathScanInput): Promise<ScanResult> {
   const repoName = createLocalDisplayName(input.displayName);
   const scanId = createScanId(repoName);
   const lines = [
@@ -410,7 +442,11 @@ export async function runUploadedPathScan(input: UploadedPathScanInput): Promise
   });
 }
 
-export async function runUploadScan(input: {
+export function runUploadScan(input: Parameters<typeof runUploadScanUnlimited>[0]): Promise<ScanResult> {
+  return withScanSlot(() => runUploadScanUnlimited(input));
+}
+
+async function runUploadScanUnlimited(input: {
   mode: UploadMode;
   files: UploadFile[];
   rootName?: string;
@@ -461,7 +497,11 @@ export async function runUploadScan(input: {
 /**
  * Clone repository, run analysis, store results, and return scan summary plus terminal lines.
  */
-export async function runScan(repoUrl: string, userId?: number | string, emit?: ScanEmitter, ai?: AiScanRequest): Promise<ScanResult> {
+export function runScan(repoUrl: string, userId?: number | string, emit?: ScanEmitter, ai?: AiScanRequest): Promise<ScanResult> {
+  return withScanSlot(() => runScanUnlimited(repoUrl, userId, emit, ai));
+}
+
+async function runScanUnlimited(repoUrl: string, userId?: number | string, emit?: ScanEmitter, ai?: AiScanRequest): Promise<ScanResult> {
   const normalizedUrl = repoUrl.trim();
   const repoName = parseRepoName(normalizedUrl);
   const scanId = createScanId(repoName);

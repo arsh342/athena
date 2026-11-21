@@ -7,9 +7,12 @@ import express from 'express';
 import { attachPtyWebSocket } from './pty-handler.js';
 import type { Request, Response } from 'express';
 import multer from 'multer';
+import { tmpdir } from 'node:os';
+import { rm } from 'node:fs/promises';
 import { getTerminalSession } from './terminal-session-store.ts';
 import {
   completeOAuthCallback,
+  deleteAccount,
   getAuthenticatedUser,
   loginUser,
   logoutUser,
@@ -20,20 +23,24 @@ import {
 import {
   getFindings,
   getFindingsByScanId,
+  deleteAllScans,
+  deleteScan,
   getScanReport,
   getScan,
   getScans,
 } from './data.ts';
 import { validateRepoUrl } from './repo-url.js';
 import { AI_MODES, AI_PROVIDERS, MAX_RUN_BUDGET_USD, acquireAiSlot, hostedPresets, parseAiHeaders, scrub, type AiScanRequest } from './ai-scan.ts';
-import { MAX_UPLOAD_BYTES, isZipUploadFileName, runScan, runUploadScan } from './scanner.ts';
+import { MAX_UPLOAD_BYTES, ScanBusyError, isZipUploadFileName, runScan, runUploadScan } from './scanner.ts';
 import { ensureAuthSchema } from './db.js';
+import { RateLimiter, acceptContributions, deleteInstall, startRetentionJob } from './learning.ts';
 import { renderPdfFromMarkdown } from './report-pdf.ts';
 
 const port = Number(process.env.PORT ?? 8787);
 const corsOrigin = process.env.CORS_ORIGIN?.trim();
+// Uploads go to disk, not memory: a 200MB folder or zip must not be held in RAM on a small instance.
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({ destination: (_req: unknown, _file: unknown, done: (error: Error | null, destination: string) => void) => done(null, tmpdir()) }),
   preservePath: true,
   limits: {
     fileSize: MAX_UPLOAD_BYTES,
@@ -43,7 +50,8 @@ const upload = multer({
 
 interface UploadedRequestFile {
   originalname: string;
-  buffer: Buffer;
+  buffer?: Buffer;
+  path?: string;
   size: number;
 }
 
@@ -56,6 +64,7 @@ export interface ServerDeps {
     logoutUser: typeof logoutUser;
     startOAuth: typeof startOAuth;
     completeOAuthCallback: typeof completeOAuthCallback;
+    deleteAccount: typeof deleteAccount;
   };
   data: {
     getScans: typeof getScans;
@@ -64,6 +73,8 @@ export interface ServerDeps {
     getFindings: typeof getFindings;
     getFindingsByScanId: typeof getFindingsByScanId;
     getScanReport: typeof getScanReport;
+    deleteScan: typeof deleteScan;
+    deleteAllScans: typeof deleteAllScans;
   };
   report: {
     renderPdfFromMarkdown: typeof renderPdfFromMarkdown;
@@ -87,6 +98,7 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
       logoutUser,
       startOAuth,
       completeOAuthCallback,
+      deleteAccount,
       ...(overrides.auth ?? {}),
     },
     data: {
@@ -96,6 +108,8 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
       getFindings,
       getFindingsByScanId,
       getScanReport,
+      deleteScan,
+      deleteAllScans,
       ...(overrides.data ?? {}),
     },
     report: {
@@ -118,7 +132,10 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     origin: corsOrigin || true,
     credentials: true,
   }));
-  app.use(express.json());
+  // Most endpoints take small JSON. The learning endpoint takes a batch of up to 500 records (about 260KB), so it has its own limit.
+  const jsonSmall = express.json();
+  const jsonBatch = express.json({ limit: '1mb' });
+  app.use((req, res, next) => (req.path.startsWith('/api/learning/') ? jsonBatch(req, res, next) : jsonSmall(req, res, next)));
   app.use(cookieParser());
 
   async function requireAuth(req: Request, res: Response): Promise<{ id: number; email: string } | null> {
@@ -257,6 +274,67 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     res.send(pdf);
   });
 
+  app.delete('/api/scans/:scanId', async (req: Request, res: Response) => {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+    const scanId = Array.isArray(req.params.scanId) ? req.params.scanId[0] : req.params.scanId;
+    const result = await deps.data.deleteScan(scanId, user.id);
+    if (result === 'not-found') {
+      res.status(404).json({ error: 'Scan not found' });
+      return;
+    }
+    if (result === 'running') {
+      res.status(409).json({ error: 'That scan is still running. Delete it when it has finished.' });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  // Deleting everything asks for an explicit { "confirm": true }, so a stray request cannot do it.
+  app.delete('/api/scans', async (req: Request, res: Response) => {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+    if (req.body?.confirm !== true) {
+      res.status(400).json({ error: 'Send { "confirm": true } to delete all your scans.' });
+      return;
+    }
+    res.json({ ok: true, deleted: await deps.data.deleteAllScans(user.id) });
+  });
+
+  // Opt-in shared labels from the CLI. No login: a record carries only anonymous statistics and a random install id.
+  const perInstall = new RateLimiter(30, 10 * 60_000);
+  const perIp = new RateLimiter(120, 10 * 60_000);
+  const deleteLimit = new RateLimiter(20, 10 * 60_000);
+
+  app.post('/api/learning/contributions', async (req: Request, res: Response) => {
+    const ip = String(req.ip ?? req.socket?.remoteAddress ?? 'unknown');
+    const result = await acceptContributions(req.body, { perInstall, perIp, ip });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.status(202).json({ accepted: result.accepted });
+  });
+
+  app.delete('/api/learning/contributions/:installId', async (req: Request, res: Response) => {
+    const ip = String(req.ip ?? req.socket?.remoteAddress ?? 'unknown');
+    if (!deleteLimit.take(ip)) {
+      res.status(429).json({ error: 'Too many requests. Try again later.' });
+      return;
+    }
+    const installId = Array.isArray(req.params.installId) ? req.params.installId[0] : req.params.installId;
+    const result = await deleteInstall(installId);
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true, deleted: result.deleted });
+  });
+
+  app.delete('/api/account', async (req: Request, res: Response) => {
+    await deps.auth.deleteAccount(req, res);
+  });
+
   app.get('/api/findings', async (req: Request, res: Response) => {
     const user = await requireAuth(req, res);
     if (!user) return;
@@ -314,6 +392,10 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
         lines: result.terminalLines,
       });
     } catch (error) {
+      if (error instanceof ScanBusyError) {
+        res.status(429).json({ error: error.message });
+        return;
+      }
       const message = scrub(error instanceof Error ? error.message : String(error), ai?.key);
       console.error('[athena-backend] scan error:', message);
       res.status(500).json({ error: `Scan failed: ${message}` });
@@ -324,6 +406,7 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
 
   app.post('/api/scans/upload', (req: Request, res: Response) => {
     const handleUpload = () => {
+      const stored = (): UploadedRequestFile[] => (Array.isArray((req as Request & { files?: UploadedRequestFile[] }).files) ? (req as Request & { files?: UploadedRequestFile[] }).files ?? [] : []);
       void (async () => {
         const user = await requireAuth(req, res);
         if (!user) return;
@@ -335,7 +418,8 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
           : [];
         const files = requestFiles.map((file: UploadedRequestFile) => ({
           originalname: String(file.originalname ?? ''),
-          buffer: file.buffer,
+          ...(file.path ? { path: file.path } : {}),
+          ...(file.buffer ? { buffer: file.buffer } : {}),
           size: Number(file.size ?? 0),
         }));
 
@@ -389,6 +473,10 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
             lines: result.terminalLines,
           });
         } catch (scanError) {
+          if (scanError instanceof ScanBusyError) {
+            res.status(429).json({ error: scanError.message });
+            return;
+          }
           const message = scanError instanceof Error ? scanError.message : String(scanError);
           const statusCode = message.includes('Unsafe zip entry path') ? 400 : 500;
           res.status(statusCode).json({ error: `Upload scan failed: ${scrub(message, ai?.key)}` });
@@ -401,6 +489,9 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
         if (!res.headersSent) {
           res.status(500).json({ error: `Upload scan failed: ${message}` });
         }
+      }).finally(() => {
+        // Delete the temporary copies multer wrote, whatever happened.
+        for (const f of stored()) if (f.path) void rm(f.path, { force: true }).catch(() => undefined);
       });
     };
 
@@ -463,6 +554,7 @@ if (process.env.ATHENA_DISABLE_SERVER_BOOTSTRAP !== '1') {
     })
     .finally(() => {
       if (process.env.ATHENA_ALERTS !== '0') startAlertsScheduler();
+      startRetentionJob();
       httpServer.listen(port, () => {
         console.log(`[athena-backend] listening on http://localhost:${port}`);
         console.log(`[athena-backend] terminal WebSocket at ws://localhost:${port}/ws/terminal`);

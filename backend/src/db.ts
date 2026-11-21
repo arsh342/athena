@@ -209,6 +209,18 @@ export async function ensureAuthSchema(): Promise<void> {
     );
   `);
 
+  // Opt-in shared labels (anonymous style statistics, never code). There is deliberately no IP column.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS learning_contributions (
+      id BIGSERIAL PRIMARY KEY,
+      install_id TEXT NOT NULL,
+      record JSONB NOT NULL,
+      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_learning_contributions_install ON learning_contributions(install_id, received_at DESC);`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_learning_contributions_received ON learning_contributions(received_at);`);
+
   // Enable Row Level Security (RLS) on all tables for Supabase security compliance.
   // Then create a permissive policy for the 'postgres' role so our backend
   // (which connects as postgres) can still read/write data.
@@ -222,6 +234,7 @@ export async function ensureAuthSchema(): Promise<void> {
     'scan_reports',
     'scan_inventories',
     'scan_alerts',
+    'learning_contributions',
     'job_locks'
   ];
   for (const table of tables) {

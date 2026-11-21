@@ -156,6 +156,18 @@ Skills are data only and contain no code. Regular expressions are checked before
 - **MCP server.** `claude mcp add athena -- npx -y @arsh342/athena mcp`. Other clients: [MCP client setup](https://github.com/arsh342/athena/blob/main/docs/agents/mcp-clients.md). No AI model is called and no key is needed.
 - **Claude Code plugin.** `claude plugin marketplace add arsh342/athena` then `claude plugin install athena@athena` (or, from a clone, `claude plugin install ./plugins/athena`) for `/athena-scan`, `/athena-review`, the `athena-security` skill, a researcher and a verifier agent, and hooks. Other agents: `npx skills add arsh342/athena`.
 
+## Sharing anonymous labels (optional, off by default)
+
+Athena can send anonymous statistics to help improve AI-code detection. It never sends code. A record is: AI or human, how that was established (git history, pre-2021 code, or your own mark), the language, a size bucket, about 35 style numbers, the detector's probability and version, and a random install id that rotates every 90 days.
+
+```bash
+athena learning share status            # what is on or off, and the exact record that would be sent
+athena learning share on --server https://your-collection-server
+athena learning share off --delete      # stop, and ask the server to delete everything sent from this install
+```
+
+Never on in CI, never asked from git hooks (the one-time question appears only after an explicit `athena scan`), and a repository can force it off with `"learning": { "share": "off" }` in `athena.config.json` (a repository setting of "on" is ignored). A dead or slow server never delays a scan by more than 3 seconds. There is no built-in server address: sharing does nothing until `ATHENA_SHARE_URL` or `--server` is set.
+
 ## Staying current
 
 `athena update` keeps a local, incrementally updated copy of the OSV database for the ecosystems you use, plus CISA KEV and EPSS, and fetches the newest signed rule and skill pack (accepted only if its Ed25519 signature and SHA-256 verify and every rule passes its own fixtures). After a scan, data older than 24 hours is refreshed in the background; `--offline` disables that. Only public data is downloaded; nothing about your code is sent. `athena alerts` re-checks your last scan against current data.

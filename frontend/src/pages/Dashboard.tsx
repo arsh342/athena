@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertsBanner } from '../components/AlertsBanner';
+import { ConfirmButton } from '../components/ConfirmButton';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { ScanTrend } from '../components/ScanTrend';
 import { SeverityBadge } from '../components/SeverityBadge';
-import { fetchScans } from '../services/api';
+import { deleteScan, fetchScans } from '../services/api';
 import { getDashboardEmptyState } from '../utils/dashboard';
 import { formatProvenance } from '../utils/provenance';
 import type { ScanSummary } from '../types';
@@ -89,16 +90,26 @@ export function Dashboard() {
         ) : (
           <div className="list">
             {scans.map((scan) => (
-              <Link to={`/reports/${scan.scanId}`} className="list-row" key={scan.scanId}>
-                <span>
-                  <strong>{scan.repoName}</strong>
-                  <small>{scan.createdAt}</small>
-                </span>
-                <span>{scan.filesScanned} files</span>
-                <span>{formatProvenance(scan)}</span>
-                <span>{scan.flaggedUnits} flagged</span>
-                <span className={`badge ${scan.status === 'COMPLETED' ? 'badge-ok' : scan.status === 'FAILED' ? 'badge-bad' : 'badge-warn'}`}>{scan.status}</span>
-              </Link>
+              <div className="list-item" key={scan.scanId}>
+                <Link to={`/reports/${scan.scanId}`} className="list-row">
+                  <span>
+                    <strong>{scan.repoName}</strong>
+                    <small>{scan.createdAt}</small>
+                  </span>
+                  <span>{scan.filesScanned} files</span>
+                  <span>{formatProvenance(scan)}</span>
+                  <span>{scan.flaggedUnits} flagged</span>
+                  <span className={`badge ${scan.status === 'COMPLETED' ? 'badge-ok' : scan.status === 'FAILED' ? 'badge-bad' : 'badge-warn'}`}>{scan.status}</span>
+                </Link>
+                <ConfirmButton
+                  label="Delete"
+                  confirmLabel="Delete forever"
+                  onConfirm={async () => {
+                    await deleteScan(scan.scanId);
+                    setScans((current) => current.filter((x) => x.scanId !== scan.scanId));
+                  }}
+                />
+              </div>
             ))}
           </div>
         )}

@@ -9,6 +9,7 @@ import { menuCommand } from './commands/menu.js';
 import { scanCommand } from './commands/scan.js';
 import { skillsAdd, skillsList, skillsNew, skillsRemove, skillsShow, skillsTest } from './commands/skills.js';
 import { variantsCommand } from './commands/variants.js';
+import { shareCommand } from './commands/learning.js';
 import { reviewCommand, type ReviewFlags } from './commands/review.js';
 import { updateCommand } from './commands/update.js';
 import { keysRemove, keysSet, keysStatus } from './commands/keys.js';
@@ -115,6 +116,18 @@ models
   .description('forget learned adjustments and marks')
   .action(async (opts: { repo?: boolean; path?: string }) => {
     process.exitCode = await resetCommand(opts);
+  });
+
+const learning = program.command('learning').description('what Athena learns from your repositories, and the opt-in sharing of anonymous labels');
+learning
+  .command('share')
+  .argument('<action>', 'on, off or status')
+  .option('--delete', 'with off: also ask the server to delete everything sent from this install')
+  .option('--server <url>', 'with on: the collection server (https; there is no built-in default)')
+  .option('-p, --path <dir>', 'the repository directory', '.')
+  .description('turn sharing of anonymous labels and style numbers (never code) on or off, or show exactly what would be sent')
+  .action(async (action: string, opts: { delete?: boolean; server?: string; path?: string }) => {
+    process.exitCode = await shareCommand(action, opts);
   });
 
 const skills = program.command('skills').description('list, inspect, add, write and test skills (packaged expertise for frameworks and bug classes)');

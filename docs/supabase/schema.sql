@@ -107,3 +107,14 @@ create policy scan_terminal_lines_select_own on public.scan_terminal_lines
         and auth.uid()::text = u.supabase_user_id::text
     )
   );
+
+-- Opt-in shared labels: anonymous style statistics, never code. No IP column on purpose.
+CREATE TABLE IF NOT EXISTS learning_contributions (
+  id BIGSERIAL PRIMARY KEY,
+  install_id TEXT NOT NULL,
+  record JSONB NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_learning_contributions_install ON learning_contributions(install_id, received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_learning_contributions_received ON learning_contributions(received_at);
+ALTER TABLE learning_contributions ENABLE ROW LEVEL SECURITY;

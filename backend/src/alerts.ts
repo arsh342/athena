@@ -1,4 +1,4 @@
-import { ADVISORY_ID, alertsForInventory, ecosystemsFor, runUpdate } from '@athena/core';
+import { ADVISORY_ID, DepsClient, depKey, queryVulnerabilities } from '@athena/core';
 import { db } from './db.js';
 
 const JOB = 'new-cve-alerts';
@@ -34,19 +34,20 @@ async function holdUntilTomorrow(hours: number): Promise<void> {
 
 export interface JobResult { ran: boolean; scansChecked: number; alertsWritten: number }
 
+/** How many scans' inventories are checked together. Small on purpose: the job runs inside the web process, which may have little memory. */
+const CHUNK = 100;
+
 /**
- * Daily job: refresh advisory data, then compare each user's most recent inventory per repository with it and record
- * vulnerabilities the scan did not report. Scans whose owner no longer exists are skipped (join on users).
+ * Daily job: compare each user's most recent inventory per repository with current advisories and record vulnerabilities
+ * the scan did not report. Scans whose owner no longer exists are skipped (join on users).
+ *
+ * It asks OSV about the packages in the saved inventories, a batch at a time. It does NOT download and hold whole
+ * advisory databases (an earlier version did, which can exceed a small instance's memory). If a local database happens
+ * to exist it is used first. `options.update` is accepted for compatibility and ignored.
  */
 export async function runAlertsJob(options: { update?: boolean; intervalHours?: number } = {}): Promise<JobResult> {
   if (!(await claimJob())) return { ran: false, scansChecked: 0, alertsWritten: 0 };
   try {
-    if (options.update !== false) {
-      const inv = await db.query(`SELECT DISTINCT jsonb_array_elements(inventory)->>'ecosystem' AS eco FROM scan_inventories`);
-      const ecosystems = (inv.rows as Array<{ eco: string }>).map((r) => r.eco).filter(Boolean);
-      const known = new Set([...(await ecosystemsFor(null)), ...ecosystems]);
-      if (known.size > 0) await runUpdate({ ecosystems: [...known] });
-    }
     const latest = await db.query(
       `SELECT DISTINCT ON (s.user_id, s.repo_url) s.scan_id, s.user_id, i.inventory
          FROM scans s
@@ -55,28 +56,42 @@ export async function runAlertsJob(options: { update?: boolean; intervalHours?: 
         WHERE s.status = 'COMPLETED'
         ORDER BY s.user_id, s.repo_url, s.created_at DESC`,
     );
+    const rows = latest.rows as Array<{ scan_id: string; user_id: number; inventory: InventoryItem[] }>;
+    const client = new DepsClient();
     let alertsWritten = 0;
-    for (const row of latest.rows as Array<{ scan_id: string; user_id: number; inventory: InventoryItem[] }>) {
-      const reported = await db.query(`SELECT message FROM scan_findings WHERE scan_id = $1 AND rule_id LIKE 'deps.%'`, [row.scan_id]);
-      const known = new Set<string>();
-      for (const inv of row.inventory) {
-        for (const f of reported.rows as Array<{ message: string }>) {
-          if (!f.message.includes(`${inv.name}@${inv.version}`)) continue;
-          for (const m of f.message.matchAll(ADVISORY_ID)) known.add(`${inv.ecosystem}\0${inv.name}\0${inv.version}\0${m[0]}`);
+    for (let start = 0; start < rows.length; start += CHUNK) {
+      const chunk = rows.slice(start, start + CHUNK);
+      const unique = new Map<string, { ecosystem: InventoryItem['ecosystem']; name: string; version: string }>();
+      for (const row of chunk) for (const d of row.inventory) if (d.version) unique.set(depKey(d as never), d as never);
+      const { advisories } = await queryVulnerabilities(client, [...unique.values()] as never, { enabled: true });
+      for (const row of chunk) {
+        const reported = await db.query(`SELECT message FROM scan_findings WHERE scan_id = $1 AND rule_id LIKE 'deps.%'`, [row.scan_id]);
+        const known = new Set<string>();
+        for (const inv of row.inventory) {
+          for (const f of reported.rows as Array<{ message: string }>) {
+            if (!f.message.includes(`${inv.name}@${inv.version}`)) continue;
+            for (const m of f.message.matchAll(ADVISORY_ID)) known.add(`${inv.ecosystem}\0${inv.name}\0${inv.version}\0${m[0]}`);
+          }
         }
-      }
-      const { alerts } = alertsForInventory(row.inventory, known);
-      for (const a of alerts) {
-        await db.query(
-          `INSERT INTO scan_alerts (scan_id, user_id, advisory_id, ecosystem, package_name, package_version, severity, summary, fixed_in)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT DO NOTHING`,
-          [row.scan_id, row.user_id, a.advisory.id, a.ecosystem, a.name, a.version, a.advisory.severity, a.advisory.summary.slice(0, 300), a.advisory.fixed.sort().pop() ?? null],
-        );
-        alertsWritten += 1;
+        const done = new Set<string>();
+        for (const inv of row.inventory) {
+          const key = depKey(inv as never);
+          if (!inv.version || done.has(key)) continue;
+          done.add(key);
+          for (const adv of (advisories.get(key) ?? []) as Array<{ id: string; aliases: string[]; severity: string; summary: string; fixed: string[] }>) {
+            if ([adv.id, ...adv.aliases].some((id) => known.has(`${key}\0${id}`))) continue;
+            await db.query(
+              `INSERT INTO scan_alerts (scan_id, user_id, advisory_id, ecosystem, package_name, package_version, severity, summary, fixed_in)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT DO NOTHING`,
+              [row.scan_id, row.user_id, adv.id, inv.ecosystem, inv.name, inv.version, adv.severity, adv.summary.slice(0, 300), [...adv.fixed].sort().pop() ?? null],
+            );
+            alertsWritten += 1;
+          }
+        }
       }
     }
     await holdUntilTomorrow(options.intervalHours ?? 23);
-    return { ran: true, scansChecked: latest.rows.length, alertsWritten };
+    return { ran: true, scansChecked: rows.length, alertsWritten };
   } catch (error) {
     await db.query(`UPDATE job_locks SET locked_until = NOW() WHERE name = $1`, [JOB]).catch(() => undefined);
     throw error;
@@ -108,10 +123,15 @@ export async function getAlertsForUser(userId: number | string): Promise<RepoAle
 
 /** In-process daily scheduler; the DB lock makes several instances safe. */
 export function startAlertsScheduler(log: (m: string) => void = console.log, intervalMs = 6 * 3600 * 1000): () => void {
+  if (/^(off|0|false|no)$/i.test(process.env.ALERTS_JOB ?? '')) {
+    log('[athena-backend] alerts job is off (ALERTS_JOB)');
+    return () => undefined;
+  }
   const tick = () => {
     runAlertsJob().then((r) => { if (r.ran) log(`[athena-backend] alerts job: ${r.scansChecked} scans checked, ${r.alertsWritten} alerts`); }).catch((e: unknown) => log(`[athena-backend] alerts job failed: ${e instanceof Error ? e.message : String(e)}`));
   };
-  const first = setTimeout(tick, 60_000);
+  // Ten minutes after boot, not one: a restart must not land the job's work on top of the start-up spike.
+  const first = setTimeout(tick, 10 * 60_000);
   const timer = setInterval(tick, intervalMs);
   first.unref();
   timer.unref();

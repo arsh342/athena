@@ -480,3 +480,42 @@ export async function getTerminalLines(scanId: string, userId: number | string):
   );
   return result.rows.map(mapTerminalLineRow);
 }
+
+export type DeleteScanResult = 'deleted' | 'not-found' | 'running';
+
+/** A scan that started this recently is probably still running; one that has sat in RUNNING longer is a leftover and can be removed. */
+const RUNNING_GRACE_MINUTES = 15;
+
+/** Delete one of the user's own scans. Its findings, report, terminal output, dependency list and alerts go with it (cascade). */
+export async function deleteScan(scanId: string, userId: number | string): Promise<DeleteScanResult> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return 'not-found';
+  const found = await db.query<{ status: string; running_recently: boolean }>(
+    `
+      SELECT status, (status = 'RUNNING' AND created_at > NOW() - ($3 || ' minutes')::interval) AS running_recently
+      FROM scans
+      WHERE scan_id = $1 AND user_id = $2
+    `,
+    [scanId, parsedUserId, String(RUNNING_GRACE_MINUTES)],
+  );
+  const row = found.rows[0];
+  if (!row) return 'not-found';
+  if (row.running_recently) return 'running';
+  await db.query('DELETE FROM scans WHERE scan_id = $1 AND user_id = $2', [scanId, parsedUserId]);
+  return 'deleted';
+}
+
+/** Delete all of the user's scans except one that is running right now. Returns how many were removed. */
+export async function deleteAllScans(userId: number | string): Promise<number> {
+  const parsedUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+  if (typeof parsedUserId !== 'number' || isNaN(parsedUserId)) return 0;
+  const result = await db.query(
+    `
+      DELETE FROM scans
+      WHERE user_id = $1
+        AND NOT (status = 'RUNNING' AND created_at > NOW() - ($2 || ' minutes')::interval)
+    `,
+    [parsedUserId, String(RUNNING_GRACE_MINUTES)],
+  );
+  return result.rowCount ?? 0;
+}

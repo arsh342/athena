@@ -13,6 +13,9 @@ export interface StoredSample {
   dense: number[];
   source: string;
   path: string;
+  /** For opt-in sharing only: the unit's language and size, so a contribution can say them without the code. Absent on older samples. */
+  language?: string;
+  lines?: number;
 }
 
 export const MAX_SAMPLES = 2000;
@@ -29,6 +32,8 @@ export interface LearningState {
   labelSet: string;
   /** Why the last candidate adjustment was not adopted, if it was not. */
   rejected?: string;
+  /** Hashes of samples already sent to the sharing server (local bookkeeping so nothing is sent twice). Capped. */
+  sent?: string[];
 }
 
 const empty = (): LearningState => ({ version: 1, marks: [], samples: [], baseTag: '', adjustment: null, labelSet: '' });
@@ -39,7 +44,7 @@ export function loadLearning(root: string, home?: string): LearningState {
   try {
     const raw = JSON.parse(readFileSync(file(root, home), 'utf8')) as Partial<LearningState>;
     if (raw.version !== 1 || !Array.isArray(raw.marks)) return empty();
-    return { version: 1, marks: raw.marks, samples: Array.isArray(raw.samples) ? raw.samples : [], baseTag: raw.baseTag ?? '', adjustment: raw.adjustment ?? null, labelSet: raw.labelSet ?? '', ...(raw.rejected ? { rejected: raw.rejected } : {}) };
+    return { version: 1, marks: raw.marks, samples: Array.isArray(raw.samples) ? raw.samples : [], baseTag: raw.baseTag ?? '', adjustment: raw.adjustment ?? null, labelSet: raw.labelSet ?? '', ...(raw.rejected ? { rejected: raw.rejected } : {}), ...(Array.isArray(raw.sent) ? { sent: raw.sent.filter((x): x is string => typeof x === 'string') } : {}) };
   } catch {
     return empty();
   }

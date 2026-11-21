@@ -10,6 +10,8 @@ export interface ProjectConfig {
   strict?: boolean;
   /** Local learning from trusted labels in this repository (default on). */
   learning?: boolean;
+  /** `"learning": { "share": "off" }` stops anyone who scans this repository from sharing labels. "on" here is ignored: only a user can turn sharing on. */
+  learningShare?: 'off' | 'on';
 }
 
 export class ConfigError extends Error {}
@@ -57,8 +59,21 @@ export async function loadProjectConfig(root: string): Promise<ProjectConfig> {
     config.publicRoutes = data.publicRoutes as string[];
   }
   if (data.learning !== undefined) {
-    if (typeof data.learning !== 'boolean') throw new ConfigError(`${file}: "learning" must be true or false`);
-    config.learning = data.learning;
+    if (typeof data.learning === 'boolean') {
+      config.learning = data.learning;
+    } else if (typeof data.learning === 'object' && data.learning !== null && !Array.isArray(data.learning)) {
+      const l = data.learning as Record<string, unknown>;
+      if (l.enabled !== undefined) {
+        if (typeof l.enabled !== 'boolean') throw new ConfigError(`${file}: "learning.enabled" must be true or false`);
+        config.learning = l.enabled;
+      }
+      if (l.share !== undefined) {
+        if (l.share !== 'on' && l.share !== 'off') throw new ConfigError(`${file}: "learning.share" must be "on" or "off"`);
+        config.learningShare = l.share;
+      }
+    } else {
+      throw new ConfigError(`${file}: "learning" must be true, false or an object`);
+    }
   }
   if (data.strict !== undefined) {
     if (typeof data.strict !== 'boolean') throw new ConfigError(`${file}: "strict" must be true or false`);

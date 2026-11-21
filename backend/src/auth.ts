@@ -604,3 +604,75 @@ export async function completeOAuthCallback(req: Request, res: Response): Promis
 
   await supabaseHandlers.completeOAuthCallback(req, res);
 }
+
+/** What deleting an account needs from outside this file, so tests can stand in for it. */
+export interface DeleteAccountHooks {
+  /** Remove the person from Supabase auth. Resolves true when removed, false when this deployment has no admin access. */
+  removeSupabaseUser?: (supabaseUserId: string) => Promise<boolean>;
+  /** Who is asking; defaults to the normal session lookup. */
+  getUser?: (req: Request) => Promise<AuthUser | null>;
+}
+
+async function removeSupabaseUserDefault(supabaseUserId: string): Promise<boolean> {
+  let service;
+  try {
+    service = createSupabaseClients().service;
+  } catch {
+    return false; // no service-role key configured: the sign-in identity cannot be removed from here
+  }
+  const { error } = await service.auth.admin.deleteUser(supabaseUserId);
+  if (error && !/not.?found/i.test(error.message)) throw new Error(error.message);
+  return true;
+}
+
+/**
+ * Delete the signed-in user's account and everything saved under it (scans, findings, reports, sessions, alerts: all cascade from the user row).
+ * The caller must retype their email, and with a local password account also their password, so a stolen or left-open session cannot do it silently.
+ */
+export async function deleteAccount(req: Request, res: Response, hooks: DeleteAccountHooks = {}): Promise<void> {
+  const user = await (hooks.getUser ?? ((r) => getAuthenticatedUser(r)))(req);
+  if (!user) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const confirmEmail = String(req.body?.confirmEmail ?? '').trim().toLowerCase();
+  if (confirmEmail !== user.email.trim().toLowerCase()) {
+    res.status(400).json({ error: 'Type your account email exactly to confirm.' });
+    return;
+  }
+
+  const row = await db.query<{ password_hash: string | null; supabase_user_id: string | null }>(
+    'SELECT password_hash, supabase_user_id FROM users WHERE id = $1',
+    [user.id],
+  );
+  const record = row.rows[0];
+  if (!record) {
+    res.status(404).json({ error: 'Account not found.' });
+    return;
+  }
+
+  if (!shouldUseSupabaseAuth()) {
+    // A local account: re-check the password. (Supabase accounts may have no password at all, for instance Google or GitHub sign-in.)
+    const password = String(req.body?.password ?? '');
+    if (!record.password_hash || !password || !(await bcrypt.compare(password, record.password_hash))) {
+      res.status(403).json({ error: 'The password is missing or wrong.' });
+      return;
+    }
+  }
+
+  let identityRemoved = !record.supabase_user_id;
+  if (record.supabase_user_id) {
+    try {
+      identityRemoved = await (hooks.removeSupabaseUser ?? removeSupabaseUserDefault)(record.supabase_user_id);
+    } catch (error) {
+      // Stop here and keep the data: the person can try again, instead of ending up with a login but no account.
+      res.status(502).json({ error: `Could not remove your sign-in identity: ${error instanceof Error ? error.message : 'unknown error'}. Nothing was deleted.` });
+      return;
+    }
+  }
+
+  await db.query('DELETE FROM users WHERE id = $1', [user.id]);
+  clearAuthCookies(res);
+  res.json({ ok: true, identityRemoved });
+}

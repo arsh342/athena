@@ -110,8 +110,8 @@ export function TermsPage() {
         <div>
           <h2>13. Suspension and termination</h2>
           <p>
-            We may suspend or end access for breaches, signs of abuse, or security risk. You can stop using the service at any time, and you can ask for your account and
-            its saved scans to be deleted (see the Privacy Policy).
+            We may suspend or end access for breaches, signs of abuse, or security risk. You can stop using the service at any time, and you can delete your scans or your whole
+            account yourself in Settings (see the Privacy Policy).
           </p>
         </div>
 

@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import { ConfirmButton } from '../components/ConfirmButton';
 import { ReportView } from '../components/ReportView';
 import { ScoreGauge } from '../components/ScoreGauge';
-import { downloadReportPdf, fetchFindingsByScanId, fetchReportMarkdown, fetchScan, fetchScans } from '../services/api';
+import { deleteScan, downloadReportPdf, fetchFindingsByScanId, fetchReportMarkdown, fetchScan, fetchScans } from '../services/api';
 import { coverageGaps, coverageLabel, formatProvenance } from '../utils/provenance';
 import type { Finding, ScanSummary } from '../types';
 
 export function ReportPage() {
   const { scanId = '' } = useParams();
+  const navigate = useNavigate();
   const [scan, setScan] = useState<ScanSummary | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [markdown, setMarkdown] = useState('');
@@ -112,6 +114,16 @@ export function ReportPage() {
             {pdfLoading ? 'Generating…' : 'Download PDF'}
           </button>
           {pdfError ? <span className="field-error" role="alert">{pdfError}</span> : null}
+          {resolvedId ? (
+            <ConfirmButton
+              label="Delete this scan"
+              confirmLabel="Delete forever"
+              onConfirm={async () => {
+                await deleteScan(resolvedId);
+                navigate('/dashboard', { replace: true });
+              }}
+            />
+          ) : null}
         </div>
       </section>
 

@@ -1,6 +1,8 @@
 import { applyChangeFilter, formatCycloneDx, formatMarkdownReview, type ChangeSet } from '@athena/core';
 import { runAiStep } from './ai.js';
 import { startBackgroundUpdate } from './update.js';
+import { shareAfterScan } from '../utils/share-after-scan.js';
+import { loadProjectConfig } from '../utils/project-config.js';
 import { readFileSync } from 'node:fs';
 import { realpath, writeFile } from 'node:fs/promises';
 import { basename, relative, sep } from 'node:path';
@@ -86,6 +88,8 @@ export async function runScan(args: RunArgs): Promise<number> {
   } catch (error) {
     writeInfo(`warning: could not save scan for "athena explain": ${error instanceof Error ? error.message : String(error)}`);
   }
+  // Opt-in sharing of anonymous labels: off unless the person turned it on, never from CI, never slows a scan by more than a few seconds.
+  await shareAfterScan({ root, mode, learning: options.learning, repoShare: (await loadProjectConfig(root).catch(() => ({}) as { learningShare?: 'off' | 'on' })).learningShare, quiet: options.quiet, format: options.format });
   await appendScanHistory({
     timestamp: new Date().toISOString(),
     mode,
