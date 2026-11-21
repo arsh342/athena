@@ -63,9 +63,11 @@ interface WebTerminalProps {
   queuedCommand?: QueuedCommand | null;
   onSessionId?: (sessionId: string) => void;
   onScanningStateChange?: (isScanning: boolean) => void;
+  /** Every line the server prints (so the page can react to a specific message). */
+  onLine?: (text: string) => void;
 }
 
-export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange }: WebTerminalProps) {
+export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange, onLine }: WebTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -269,6 +271,7 @@ export function WebTerminal({ queuedCommand, onSessionId, onScanningStateChange 
 
         if (decoded.type === 'line') {
           term.writeln(decoded.text);
+          onLine?.(decoded.text);
           return;
         }
 

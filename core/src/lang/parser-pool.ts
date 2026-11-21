@@ -124,6 +124,25 @@ export async function getParser(lang: LanguageId): Promise<TreeSitterParser> {
   return parser;
 }
 
+/**
+ * The tree-sitter JavaScript/TSX grammar reports a syntax error for a bare `&` in JSX text (`<b>Terms & Conditions</b>`), which is valid JSX and
+ * common in real React code. When a JS/TSX file fails to parse, retry once with each bare `&` (not `&&`, `&=` or an entity) replaced by `+`: the same
+ * length, so every offset and line number stays the same, and valid in both JSX text and an expression. The retry is used only if it parses cleanly.
+ */
+export function parseTolerant<T extends { rootNode: { hasError: boolean }; delete(): void }>(parser: { parse(source: string): T | null }, text: string, lang: LanguageId): T | null {
+  const tree = parser.parse(text);
+  if (!tree || !tree.rootNode.hasError || (lang !== 'javascript' && lang !== 'tsx') || !text.includes('&')) return tree;
+  const patched = text.replace(/(?<!&)&(?![&=]|[A-Za-z][A-Za-z0-9]*;|#[0-9]+;|#[xX][0-9a-fA-F]+;)/g, '+');
+  if (patched === text) return tree;
+  const retry = parser.parse(patched);
+  if (retry && !retry.rootNode.hasError) {
+    tree.delete();
+    return retry;
+  }
+  retry?.delete();
+  return tree;
+}
+
 /** Synchronous access to an already-loaded parser (see warmParsers). */
 export function getLoadedParser(lang: LanguageId): TreeSitterParser | null {
   return parsers.get(lang) ?? null;

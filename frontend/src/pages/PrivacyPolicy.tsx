@@ -51,17 +51,13 @@ export function PrivacyPolicyPage() {
         </div>
 
         <div>
-          <h2>5. The optional AI check and your API key</h2>
+          <h2>5. AI features</h2>
           <p>
-            The AI check is off unless you turn it on in Settings with your own provider key. When it is on, short excerpts of code around the findings
-            athena could not settle itself are sent to the provider you chose (for example Anthropic, OpenAI, Google, Groq or OpenRouter), under that provider's own
-            terms and privacy policy. Secrets and dependency findings are never sent. Settings shows exactly what will be sent and asks you to agree first.
+            The web app does not use AI and never asks for an API key. Scans on this site run on our servers with the analysis tools built into athena, and your
+            code is not sent to any AI provider. The optional AI check exists only in the command-line tool, where you supply your own provider key on your own
+            machine; it is held there, not by us, and what it sends to that provider is governed by the provider's terms. Scans saved before this change may
+            still show the result of an earlier AI check.
           </p>
-          <ul>
-            <li>The key stays in your browser tab only (it is gone when you close the tab) and travels only with a scan you start with the AI check on.</li>
-            <li>On our servers it is held in memory for that one scan. It is not written to the database, to reports, or to logs.</li>
-            <li>You set a spend cap before each scan, and athena stops when the next call could exceed it. We do not see or control your provider account.</li>
-          </ul>
         </div>
 
         <div>

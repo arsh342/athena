@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { relative } from 'node:path';
 
 import { detectLanguage, LANGUAGE_FAMILY, type LanguageId } from '../lang/languages.js';
-import { getParser, type TSNode } from '../lang/parser-pool.js';
+import { getParser, parseTolerant, type TSNode } from '../lang/parser-pool.js';
 import { packFor } from '../rules/registry.js';
 import { extendPack, type CompiledSkills } from '../skills/compile.js';
 import type { FileContext, RawFinding } from '../rules/types.js';
@@ -100,7 +100,7 @@ async function parseContext(file: ProjectFile, scanRoot: string): Promise<{ ctx:
     return null; // grammar unavailable: reported by the parse stage
   }
   const text = file.source.charCodeAt(0) === 0xfeff ? file.source.slice(1) : file.source;
-  const tree = parser.parse(text);
+  const tree = parseTolerant(parser, text, file.lang);
   if (!tree) return null;
   const root: TSNode = tree.rootNode;
   return {

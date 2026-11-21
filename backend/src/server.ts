@@ -30,7 +30,6 @@ import {
   getScans,
 } from './data.ts';
 import { validateRepoUrl } from './repo-url.js';
-import { AI_MODES, AI_PROVIDERS, MAX_RUN_BUDGET_USD, acquireAiSlot, hostedPresets, parseAiHeaders, scrub, type AiScanRequest } from './ai-scan.ts';
 import { MAX_UPLOAD_BYTES, ScanBusyError, isZipUploadFileName, runScan, runUploadScan } from './scanner.ts';
 import { ensureAuthSchema } from './db.js';
 import { RateLimiter, acceptContributions, deleteInstall, startRetentionJob } from './learning.ts';
@@ -341,26 +340,6 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
     res.json({ findings: await deps.data.getFindings(user.id) });
   });
 
-  /** Returns the validated AI request, null when the scan has no AI, or undefined after having answered the client. */
-  function aiFor(req: Request, res: Response): AiScanRequest | null | undefined {
-    const parsed = parseAiHeaders(req.headers as Record<string, unknown>);
-    if (parsed.kind === 'none') return null;
-    if (parsed.kind === 'error') { res.status(parsed.status).json({ error: parsed.error }); return undefined; }
-    if (!parsed.consented) { res.status(428).json({ error: 'Read and accept what will be sent to the AI provider, then retry with X-AI-Consent: accepted.', consent: parsed.consent }); return undefined; }
-    return parsed.request;
-  }
-
-  app.get('/api/ai/options', (_req: Request, res: Response) => {
-    res.json({ providers: AI_PROVIDERS, modes: AI_MODES, presets: hostedPresets(), maxBudgetUsd: MAX_RUN_BUDGET_USD, defaults: { anthropic: 'claude-sonnet-5-5' }, note: 'Your key is sent with one scan, held in memory, and never stored or logged. Local models need the CLI.' });
-  });
-
-  app.post('/api/ai/consent', (req: Request, res: Response) => {
-    const parsed = parseAiHeaders({ ...req.headers, 'x-ai-key': 'preview', 'x-ai-consent': 'accepted' } as Record<string, unknown>);
-    if (parsed.kind === 'ok') res.json({ consent: parsed.consent });
-    else if (parsed.kind === 'error') res.status(parsed.status).json({ error: parsed.error });
-    else res.status(400).json({ error: 'X-AI-Provider is required.' });
-  });
-
   /** POST /api/scans — Clone repo & run real @athena/core analysis. */
   app.post('/api/scans', async (req: Request, res: Response) => {
     const user = await requireAuth(req, res);
@@ -372,10 +351,6 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
       return;
     }
 
-    const ai = aiFor(req, res);
-    if (ai === undefined) return;
-    const release = ai ? acquireAiSlot(user.id) : () => undefined;
-    if (!release) { res.status(429).json({ error: 'You already have an AI scan running. Wait for it to finish.' }); return; }
     try {
       const sessionId = String(req.headers['x-terminal-session'] ?? '').trim();
       const session = sessionId ? getTerminalSession(sessionId) : null;
@@ -385,7 +360,7 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
             status: (label: string, progress: number) => session.send({ type: 'status', label, progress }),
           }
         : undefined;
-      const result = await deps.scan.runScan(validated.value, user.id, emit, ai ?? undefined);
+      const result = await deps.scan.runScan(validated.value, user.id, emit);
       res.json({
         scan: result.scan,
         findings: result.findings,
@@ -396,11 +371,9 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
         res.status(429).json({ error: error.message });
         return;
       }
-      const message = scrub(error instanceof Error ? error.message : String(error), ai?.key);
+      const message = error instanceof Error ? error.message : String(error);
       console.error('[athena-backend] scan error:', message);
       res.status(500).json({ error: `Scan failed: ${message}` });
-    } finally {
-      release();
     }
   });
 
@@ -444,10 +417,6 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
           return;
         }
 
-        const ai = aiFor(req, res);
-        if (ai === undefined) return;
-        const release = ai ? acquireAiSlot(user.id) : () => undefined;
-        if (!release) { res.status(429).json({ error: 'You already have an AI scan running. Wait for it to finish.' }); return; }
         try {
           const sessionId = String(req.headers['x-terminal-session'] ?? '').trim();
           const session = sessionId ? getTerminalSession(sessionId) : null;
@@ -464,7 +433,6 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
             rootName,
             userId: user.id,
             emit,
-            ...(ai ? { ai } : {}),
           });
 
           res.json({
@@ -479,9 +447,7 @@ export function createApp(overrides: Partial<ServerDeps> = {}) {
           }
           const message = scanError instanceof Error ? scanError.message : String(scanError);
           const statusCode = message.includes('Unsafe zip entry path') ? 400 : 500;
-          res.status(statusCode).json({ error: `Upload scan failed: ${scrub(message, ai?.key)}` });
-        } finally {
-          release();
+          res.status(statusCode).json({ error: `Upload scan failed: ${message}` });
         }
       })().catch((unhandledError: unknown) => {
         const message = unhandledError instanceof Error ? unhandledError.message : String(unhandledError);

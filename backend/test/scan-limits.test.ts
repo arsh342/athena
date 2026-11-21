@@ -66,3 +66,11 @@ test('a repository over the limit fails with a message that says what to do, and
     delete process.env.MAX_CONCURRENT_SCANS;
   }
 });
+
+test('coverage gaps: a missing tool is "not installed on this server", a failed lookup is not', async () => {
+  const { describeCoverageGap } = await import('../src/scanner.ts');
+  assert.equal(describeCoverageGap('semgrep unavailable'), 'semgrep not installed on this server');
+  assert.match(describeCoverageGap('7 registry lookup(s) unavailable'), /^7 registry lookup\(s\) could not be completed .*did not answer/);
+  assert.doesNotMatch(describeCoverageGap('7 registry lookup(s) unavailable'), /not installed/);
+  assert.equal(describeCoverageGap('3 file(s) not parsed'), '3 file(s) not parsed');
+});

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { CodeUnit, CodeUnitKind } from '../types.js';
 import { LANGUAGE_FAMILY, type LanguageId } from './languages.js';
 import { ComplexityBudgetError, computeMetadata, firstIdentifier, walk, type WorkBudget } from './metadata.js';
-import { getParser, type TSNode } from './parser-pool.js';
+import { getParser, parseTolerant, type TSNode } from './parser-pool.js';
 import { CLASS_BODIES, CLASS_OWNERS, NAME_HOLDERS, NAME_PASS_THROUGH, UNIT_NODES, type UnitRule } from './queries.js';
 
 export { computeMetadata } from './metadata.js';
@@ -27,7 +27,7 @@ export function extractWithParser(
   lang: LanguageId,
 ): ExtractResult {
   const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
-  const tree = parser.parse(text);
+  const tree = parseTolerant(parser, text, lang);
   if (!tree) return { units: [], error: 'parser returned no tree', language: lang };
   try {
     const lines = text.split(/\r?\n/);
@@ -64,7 +64,7 @@ export function extractWithParser(
         filePath,
         startLine,
         endLine,
-        code: node.text,
+        code: text.slice(node.startIndex, node.endIndex),
         metadata,
       });
     });

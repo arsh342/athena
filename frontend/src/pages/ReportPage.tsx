@@ -161,7 +161,7 @@ export function ReportPage() {
           ) : (
             <>
               <strong className="tile-value small">Off</strong>
-              <p>This scan ran offline. Add your own key in Settings to have uncertain findings verified.</p>
+              <p>This scan ran offline. For AI verification of uncertain findings, use the command-line tool with <code>--ai</code>.</p>
             </>
           )}
         </article>

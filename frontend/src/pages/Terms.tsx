@@ -44,17 +44,16 @@ export function TermsPage() {
             <li>Scanning code or repositories you are not authorized to assess.</li>
             <li>Trying to get around sign-in, rate limits, spend caps or other security controls.</li>
             <li>Uploading malicious files, or anything meant to disrupt the service or the hosts it runs on.</li>
-            <li>Using an API key you are not entitled to use, or using the AI check in breach of your provider's terms.</li>
             <li>Using results to harass or surveil people, or to attack systems you do not own.</li>
           </ul>
         </div>
 
         <div>
-          <h2>6. The AI check and your provider key</h2>
+          <h2>6. The command-line tool and AI providers</h2>
           <ul>
-            <li>The AI check is optional and uses your own key with your own provider. You agree to that provider's terms, and you are responsible for the charges your key incurs.</li>
-            <li>athena asks you to set a spend cap and stops when the next call could exceed it, but the cap is a safeguard, not a guarantee. Provider prices and billing are outside our control.</li>
-            <li>Code excerpts you choose to send go to that provider. Do not use it on code you are not allowed to share with them.</li>
+            <li>The web app does not use AI or API keys. The command-line tool has an optional AI check that uses your own key with your own provider; you agree to that provider's terms and are responsible for the charges your key incurs.</li>
+            <li>The tool lets you set a spend cap and stops when the next call could exceed it, but the cap is a safeguard, not a guarantee. Provider prices and billing are outside our control.</li>
+            <li>Code excerpts the tool sends go to that provider. Do not use it on code you are not allowed to share with them.</li>
           </ul>
         </div>
 

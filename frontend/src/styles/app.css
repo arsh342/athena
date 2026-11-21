@@ -131,6 +131,13 @@ ul, ol { margin: 0; padding: 0; }
 .confirm { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .list-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-top: 1px solid var(--line); }
 .list-item .list-row { border-top: 0; }
+/* Shown when a repository is too large for the web scanner: how to scan it locally instead. */
+.cli-banner { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; padding: 22px 26px; border: 1px solid var(--line); border-radius: var(--r-panel); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.cli-banner-lines { display: grid; gap: 10px; min-width: min(100%, 360px); }
+.cli-banner-line { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.cli-banner-label { font-size: 12px; opacity: 0.65; min-width: 44px; }
+.cli-banner-line code { flex: 1; font-family: var(--font-mono); font-size: 13px; overflow-x: auto; white-space: nowrap; }
+.btn-small { padding: 6px 14px; font-size: 12px; }
 .data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; padding-top: 24px; border-top: 1px solid var(--line); }
 .data-row > div:first-child { max-width: 58ch; }
 .data-row-stack { display: grid; }

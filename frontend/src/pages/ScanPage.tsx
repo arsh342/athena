@@ -1,8 +1,7 @@
-import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { startScan, startUploadScan } from '../services/api';
-import { aiReady, loadAiSettings } from '../utils/ai-settings';
+import { startUploadScan } from '../services/api';
+import { CliBanner, TOO_LARGE_MARKER } from '../components/CliBanner';
 import { MAX_UPLOAD_BYTES, shouldSkipUploadPath } from '../utils/upload';
 
 type ScanSource = 'repo' | 'upload';
@@ -50,6 +49,7 @@ export function ScanPage() {
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [tooLarge, setTooLarge] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const uploadBytes = useMemo(
@@ -98,25 +98,8 @@ export function ScanPage() {
 
   function handleRepoSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setTooLarge(false);
     if (!repoUrl.trim()) return;
-    if (aiReady(loadAiSettings())) {
-      // The terminal socket cannot carry the key, so an AI scan goes over HTTP and streams its lines into the terminal session.
-      setUploadError('');
-      setIsUploading(true);
-      void (async () => {
-        try {
-          await startScan(repoUrl.trim(), terminalSessionId);
-          const name = repoUrl.trim().replace(/\/+$/, '').split('/').pop()?.replace(/\.git$/i, '') || 'repository';
-          const queued = buildUploadQueuedCommand(name);
-          if (queued) setQueuedCommand({ id: Date.now(), command: queued });
-        } catch (error) {
-          setUploadError(error instanceof Error ? error.message : 'Scan failed.');
-        } finally {
-          setIsUploading(false);
-        }
-      })();
-      return;
-    }
     setQueuedCommand({ id: Date.now(), command: `scan ${repoUrl.trim()}` });
   }
 
@@ -132,6 +115,7 @@ export function ScanPage() {
 
   function handleUploadSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setTooLarge(false);
     const validationError = validateUploadSelection();
     if (validationError) {
       setUploadError(validationError);
@@ -165,7 +149,6 @@ export function ScanPage() {
     })();
   }
 
-  const aiOn = aiReady(loadAiSettings());
   const busy = isScanning || isUploading;
 
   return (
@@ -185,9 +168,6 @@ export function ScanPage() {
 
           {source === 'repo' ? (
             <form className="stack" onSubmit={handleRepoSubmit}>
-              {aiOn
-                ? <p className="status-line">AI verification is on for this tab. <Link to="/settings">Change</Link></p>
-                : <p className="field-hint">Offline scan. <Link to="/settings">Add your own AI key</Link> to have findings verified.</p>}
               <div className="field">
                 <div className="field-row">
                   <label className="field-label" htmlFor="repoUrl">Repository URL</label>
@@ -255,8 +235,10 @@ export function ScanPage() {
           )}
         </div>
 
+        {tooLarge ? <CliBanner /> : null}
+
         <Suspense fallback={null}>
-          <WebTerminal queuedCommand={queuedCommand} onSessionId={setTerminalSessionId} onScanningStateChange={setIsScanning} />
+          <WebTerminal queuedCommand={queuedCommand} onSessionId={setTerminalSessionId} onScanningStateChange={setIsScanning} onLine={(text) => { if (TOO_LARGE_MARKER.test(text)) setTooLarge(true); }} />
         </Suspense>
       </section>
     </div>

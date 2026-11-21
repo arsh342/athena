@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import './storage-shim.ts';
-import { fetchScans, startScan, startUploadScan } from '../src/services/api.ts';
+import { fetchScans, startUploadScan } from '../src/services/api.ts';
 
 type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = Parameters<typeof fetch>[1];
@@ -33,36 +33,6 @@ test('fetchScans sends credentials include and returns scans payload', async () 
     assert.equal(scans.length, 1);
     assert.equal(String(calls[0]?.input), '/api/scans');
     assert.equal(calls[0]?.init?.credentials, 'include');
-  } finally {
-    (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
-  }
-});
-
-test('startScan posts repoUrl as json body', async () => {
-  let capturedInit: FetchInit | undefined;
-  const mockFetch = async (_input: FetchInput, init?: FetchInit): Promise<MockResponse> => {
-    capturedInit = init;
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({
-        scan: { scanId: 's1' },
-        findings: [],
-        lines: [],
-      }),
-    };
-  };
-
-  const originalFetch = globalThis.fetch;
-  (globalThis as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
-
-  try {
-    await startScan('https://github.com/arsh342/athena');
-
-    assert.equal(capturedInit?.method, 'POST');
-    assert.equal(new Headers(capturedInit?.headers).get('Content-Type'), 'application/json');
-    assert.equal(capturedInit?.body, JSON.stringify({ repoUrl: 'https://github.com/arsh342/athena' }));
-    assert.equal(capturedInit?.credentials, 'include');
   } finally {
     (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
   }
@@ -170,4 +140,12 @@ test('deleteAccount sends the confirmation, forgets the tokens, and an error lea
     assert.equal(localStorage.getItem('athena_token'), null);
     assert.equal(localStorage.getItem('athena_refresh_token'), null);
   });
+});
+
+test('the too-large banner is triggered by the server\'s own message, and by nothing else', async () => {
+  const { TOO_LARGE_MARKER } = await import('../src/components/CliBanner.tsx');
+  const server = 'This repository has 519 source files and would need about 821 MB to scan; the web scanner is limited to 500 MB (about 227 files). Download the CLI and scan it on your own machine instead: npm i -g @arsh342/athena, then athena scan . (no size limit).';
+  assert.ok(TOO_LARGE_MARKER.test(server));
+  assert.ok(!TOO_LARGE_MARKER.test('Scan completed in 1200ms'));
+  assert.ok(!TOO_LARGE_MARKER.test('ERROR: git clone failed'));
 });

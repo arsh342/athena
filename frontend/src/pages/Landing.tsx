@@ -9,7 +9,7 @@ const PRINCIPLES = [
   { title: 'Provenance, measured', body: 'Git history and a trained detector estimate how much of each file was machine-written, shown as a range with its uncertainty, never one confident number.' },
   { title: 'Reachability, not noise', body: 'Findings come with the path from an entry point to the sink, what defends it, and the impact. Look-alikes that cannot be reached are marked for review instead of blocking you.' },
   { title: 'Gates where you work', body: 'A pre-commit and pre-push gate, athena review for a diff, an MCP server for coding agents, and a Claude Code plugin. About a second on a typical commit.' },
-  { title: 'Your key, your cap', body: 'Optional AI verification uses your own provider key. You set the spend cap before anything runs, and the key is held in memory for one scan, never stored or logged.' },
+  { title: 'The CLI for bigger jobs', body: 'The web scanner handles smaller projects. For larger repositories, AI verification with your own key, or fully offline use, install the command-line tool: your code never leaves your machine.' },
   { title: 'Honest about limits', body: 'Reports list what was not checked and why: skipped files, scanners that were missing, findings the AI did not reach because the cap was hit.' },
 ] as const;
 
