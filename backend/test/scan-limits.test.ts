@@ -74,3 +74,22 @@ test('coverage gaps: a missing tool is "not installed on this server", a failed 
   assert.doesNotMatch(describeCoverageGap('7 registry lookup(s) unavailable'), /not installed/);
   assert.equal(describeCoverageGap('3 file(s) not parsed'), '3 file(s) not parsed');
 });
+
+test('web scans leave test directories out like the CLI does, list them as excluded, and report no secrets from them', async () => {
+  process.env.MAX_CONCURRENT_SCANS = '8';
+  try {
+    const { runUploadScan } = await import('../src/scanner.ts');
+    const body = 'const req = mockReq({ email: "a@b.com", password: "Tr0ub4dor&3xK9" });\n';
+    const file = (name: string, text: string) => ({ originalname: `app/${name}`, buffer: Buffer.from(text), size: Buffer.byteLength(text) });
+    const result = await runUploadScan({
+      mode: 'folder',
+      rootName: 'app',
+      files: [file('src/index.ts', 'export const ok = 1;\n'), file('server/tests/auth.test.js', body), file('src/login.test.js', body)],
+    });
+    assert.equal(result.scan.status, 'COMPLETED');
+    assert.equal(result.findings.filter((f) => /hardcoded/i.test(f.type) || /hardcoded/i.test(f.ruleId ?? '')).length, 0, 'no hardcoded-credential findings from test code');
+    assert.ok(!result.scan.coverage?.gaps.some((g) => /not parsed|excluded/.test(g)), 'excluded test files are not coverage gaps');
+  } finally {
+    delete process.env.MAX_CONCURRENT_SCANS;
+  }
+});

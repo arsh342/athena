@@ -15,6 +15,7 @@ import { analyzeProject, isVendoredOrGenerated, loadProjectFiles } from './analy
 import { ruleMeta } from './rules/registry.js';
 import type { RawFinding } from './rules/types.js';
 import { scanTextForSecrets } from './secrets/scan.js';
+import { isTestPath } from './investigate/types.js';
 import { relative } from 'node:path';
 import { activationReason, buildProfile, isSkillFixturePath } from './skills/activate.js';
 import { compileSkills, runFileRules, type CompiledSkills } from './skills/compile.js';
@@ -294,7 +295,7 @@ export async function scanFiles(
       } catch {
         continue;
       }
-      for (const raw of scanTextForSecrets(path, text)) addRaw(path, raw);
+      for (const raw of scanTextForSecrets(path, text, { testFile: isTestPath(relative(options.root ?? process.cwd(), path)) })) addRaw(path, raw);
     }
   }
 

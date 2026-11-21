@@ -109,8 +109,15 @@ function redactSpans(line: string, spans: Array<[number, number]>): string {
   return out + line.slice(pos);
 }
 
-/** Scan any text: source, `.env`, YAML, JSON, TOML, Dockerfiles, CI files. Never returns a secret in any field. */
-export function scanTextForSecrets(path: string, text: string): RawFinding[] {
+/** The generic "a variable named password/key/token/secret holds a string" rules: guesses from a name, as opposed to a recognisable provider key format. */
+const isGenericRule = (ruleId: string): boolean => ruleId.startsWith('secret.hardcoded-');
+
+/**
+ * Scan any text: source, `.env`, YAML, JSON, TOML, Dockerfiles, CI files. Never returns a secret in any field.
+ * `testFile`: the file is test or fixture code (decided by the caller from its path relative to the scan root). Test code is full of made-up
+ * credentials (`password: "hunter2"`), so the generic name-based rules do not apply there; a real provider key format (AWS, GitHub, Stripe live, private keys...) still does.
+ */
+export function scanTextForSecrets(path: string, text: string, options: { testFile?: boolean } = {}): RawFinding[] {
   if (text.length > 1_000_000 || isTemplatePath(path)) return [];
   const configFile = isConfigTextFile(path) || /\.(?:env|ini|properties|conf|cfg|toml|ya?ml|json)$/i.test(path);
   const lines = text.split(/\r?\n/);
@@ -128,6 +135,9 @@ export function scanTextForSecrets(path: string, text: string): RawFinding[] {
         hits.push(...hitsOnLine(chunk, chunk, configFile, start));
         if (start + WINDOW >= line.length) break;
       }
+    }
+    if (options.testFile) {
+      for (let i = hits.length - 1; i >= 0; i -= 1) if (isGenericRule(hits[i]!.ruleId)) hits.splice(i, 1);
     }
     if (hits.length === 0) return;
     const redacted = redactSpans(line, mergeSpans(hits)).trim();

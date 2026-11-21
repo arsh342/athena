@@ -5,7 +5,7 @@ import { basename, dirname, join, normalize, relative, resolve } from 'node:path
 import AdmZip from 'adm-zip';
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { isConfigTextFile, isSourceCandidate } from '@athena/core';
+import { isConfigTextFile, isSourceCandidate, mergeConfig } from '@athena/core';
 import type { ScanWorkerInput, ScanWorkerOutput } from './scan-worker.ts';
 import type { ClassifiedFinding, ScanReport } from '@athena/core';
 import { simpleGit } from 'simple-git';
@@ -102,10 +102,16 @@ function createEmitterLog(emitter?: ScanEmitter) {
 
 /** Supported extension, or an extensionless file whose first line is a known shebang (uploads lose the exec bit). */
 /** Walk directory tree and collect source file paths. */
-async function collectSourceFiles(dir: string, textOut?: string[]): Promise<string[]> {
+/**
+ * Directories left out of a scan by default, the same ones the CLI leaves out (athena's default `exclude`: test/, tests/, __tests__/ ...).
+ * Single-name patterns only, matched against directory names. Their source files are listed in coverage as excluded, never silently dropped.
+ */
+const DEFAULT_EXCLUDED_DIRS = new Set((mergeConfig({}).exclude ?? []).map((p) => p.replace(/\/+$/, '')).filter((p) => p && !p.includes('/')));
+
+async function collectSourceFiles(dir: string, textOut?: string[], excludedOut?: string[]): Promise<string[]> {
   const results: string[] = [];
 
-  async function walk(current: string): Promise<void> {
+  async function walk(current: string, excluded: boolean): Promise<void> {
     const entries = await readdir(current, { withFileTypes: true });
     for (const entry of entries) {
       if (IGNORE_DIRS.has(entry.name)) continue;
@@ -113,16 +119,16 @@ async function collectSourceFiles(dir: string, textOut?: string[]): Promise<stri
 
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
-        await walk(fullPath);
+        await walk(fullPath, excluded || DEFAULT_EXCLUDED_DIRS.has(entry.name));
       } else if (entry.isFile() && (await isSourceCandidate(fullPath))) {
-        results.push(fullPath);
-      } else if (entry.isFile() && textOut && isConfigTextFile(fullPath)) {
+        (excluded ? excludedOut ?? [] : results).push(fullPath);
+      } else if (entry.isFile() && textOut && !excluded && isConfigTextFile(fullPath)) {
         textOut.push(fullPath);
       }
     }
   }
 
-  await walk(dir);
+  await walk(dir, false);
   return results;
 }
 
@@ -284,7 +290,8 @@ async function scanFromPath(input: {
     emit?.status?.('Collecting source files', 30);
     log('Collecting source files');
     const textFiles: string[] = [];
-    const sourceFiles = await collectSourceFiles(rootPath, textFiles);
+    const excludedFiles: string[] = [];
+    const sourceFiles = await collectSourceFiles(rootPath, textFiles, excludedFiles);
     log(`Found ${sourceFiles.length} source files`);
 
     const limit = maxScanFiles();
@@ -305,7 +312,7 @@ async function scanFromPath(input: {
     log('Running 11-signal heuristic scorer');
     log('Running security analyzers (secret detection + hallucination check)');
 
-    const report: ScanReport = await runScanFilesInProjectRoot(rootPath, sourceFiles, textFiles);
+    const report: ScanReport = await runScanFilesInProjectRoot(rootPath, sourceFiles, textFiles, excludedFiles);
     const allFindings = report.files.flatMap((file) => file.findings).map(mapFinding);
     const scanSummary = mapScanSummary(report, scanId, repoName, repoUrl, rootPath);
 
@@ -383,12 +390,13 @@ export function maxScanFiles(limitMb: number | null = containerLimitMb(), env: N
 /** Heap limit for the scan process (MB). Most of a scan's memory is not JS heap, so this mainly stops a runaway scan from taking the server with it. */
 const scanHeapMb = (): number => Math.max(128, Number(process.env.SCAN_HEAP_MB ?? 512) || 512);
 
-async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: string[], textFiles: string[] = []): Promise<ScanReport> {
+async function runScanFilesInProjectRoot(projectRoot: string, sourceFiles: string[], textFiles: string[] = [], excludedFiles: string[] = []): Promise<ScanReport> {
   const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
   const input: ScanWorkerInput = {
     projectRoot,
     sourceFiles,
     textFiles,
+    excludedFiles,
     dependencies: { enabled: true, offline: false, registryChecks: true, concurrency: Math.max(1, Number(process.env.DEPS_CONCURRENCY ?? 2) || 2) },
   };
   const execArgv = [...process.execArgv.filter((a) => !a.startsWith('--max-old-space-size')), `--max-old-space-size=${scanHeapMb()}`];

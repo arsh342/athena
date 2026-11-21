@@ -9,6 +9,8 @@ export interface ScanWorkerInput {
   projectRoot: string;
   sourceFiles: string[];
   textFiles: string[];
+  /** Source files left out by the default excludes (test directories); listed in coverage as excluded. */
+  excludedFiles: string[];
   dependencies: { enabled: boolean; offline: boolean; registryChecks: boolean; concurrency: number };
 }
 export type ScanWorkerOutput = { ok: true; report: unknown } | { ok: false; error: string };
@@ -17,7 +19,7 @@ process.once('message', async (input: ScanWorkerInput) => {
   const send = (out: ScanWorkerOutput) => new Promise<void>((resolve) => (process.send ? process.send(out, () => resolve()) : resolve()));
   try {
     (process as NodeJS.Process & { cwd: () => string }).cwd = () => input.projectRoot;
-    const report = await scanFiles(input.sourceFiles, { dependencies: input.dependencies }, {}, { root: input.projectRoot, textFiles: input.textFiles });
+    const report = await scanFiles(input.sourceFiles, { dependencies: input.dependencies }, {}, { root: input.projectRoot, textFiles: input.textFiles, excludedFiles: input.excludedFiles });
     await send({ ok: true, report });
   } catch (error) {
     await send({ ok: false, error: error instanceof Error ? error.message : String(error) });
