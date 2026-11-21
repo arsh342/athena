@@ -7,7 +7,7 @@ const appLinks = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/scan', label: 'Scan' },
   { to: '/reports/latest', label: 'Report' },
-  { to: '/settings', label: 'AI key' },
+  { to: '/settings', label: 'Account' },
 ];
 
 const publicLinks = [
@@ -62,7 +62,7 @@ export function Navbar() {
     <header className={`nav${hidden ? ' nav-hidden' : ''}`} ref={bar} onFocusCapture={reveal}>
       <div className="nav-fade" aria-hidden="true" />
       <div className="nav-inner">
-        <NavLink className="nav-brand" to="/" aria-label="athena home"><BrandIcon size={32} />athena</NavLink>
+        <NavLink className="nav-brand" to="/" aria-label="athena home">athena</NavLink>
         <nav className="nav-links" aria-label="Primary">
           {links.map((item) => (
             item.to.includes('#')
