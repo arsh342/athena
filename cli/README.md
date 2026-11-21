@@ -162,11 +162,11 @@ Athena can send anonymous statistics to help improve AI-code detection. It never
 
 ```bash
 athena learning share status            # what is on or off, and the exact record that would be sent
-athena learning share on --server https://your-collection-server
+athena learning share on                # sends to https://athena-g3hp.onrender.com (override: ATHENA_SHARE_URL or --server)
 athena learning share off --delete      # stop, and ask the server to delete everything sent from this install
 ```
 
-Never on in CI, never asked from git hooks (the one-time question appears only after an explicit `athena scan`), and a repository can force it off with `"learning": { "share": "off" }` in `athena.config.json` (a repository setting of "on" is ignored). A dead or slow server never delays a scan by more than 3 seconds. There is no built-in server address: sharing does nothing until `ATHENA_SHARE_URL` or `--server` is set.
+Never on in CI, never asked from git hooks (the one-time question appears only after an explicit `athena scan`), and a repository can force it off with `"learning": { "share": "off" }` in `athena.config.json` (a repository setting of "on" is ignored). A dead or slow server never delays a scan by more than 3 seconds. Records go to Athena's own server unless you point `ATHENA_SHARE_URL` or `--server` elsewhere.
 
 ## Staying current
 

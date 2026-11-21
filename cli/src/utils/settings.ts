@@ -8,7 +8,7 @@ export interface Settings {
   share?: 'on' | 'off';
   /** The one-time consent question has been asked (the answer is in `share`). */
   shareAsked?: boolean;
-  /** The collection server. There is no built-in default: sharing does nothing until one is set. */
+  /** The collection server; the built-in default is used when unset. */
   shareUrl?: string;
   installId?: string;
   installIdCreatedAt?: string;
@@ -50,9 +50,12 @@ export function ensureInstallId(settings: Settings, now: Date = new Date()): Set
   return { ...settings, installId: randomBytes(16).toString('hex'), installIdCreatedAt: now.toISOString(), pastInstallIds: past };
 }
 
-/** Where to send: ATHENA_SHARE_URL, else the saved setting. Must be https (http only for localhost, for development). */
+/** Athena's collection server. Used only when a person has turned sharing on; override with ATHENA_SHARE_URL or `--server`. */
+export const DEFAULT_SHARE_URL = 'https://athena-g3hp.onrender.com';
+
+/** Where to send: ATHENA_SHARE_URL, else the saved setting, else the default. Must be https (http only for localhost, for development); an invalid value disables sharing rather than falling back. */
 export function shareUrl(settings: Settings, env: NodeJS.ProcessEnv = process.env): string | null {
-  const raw = (env.ATHENA_SHARE_URL ?? settings.shareUrl ?? '').trim().replace(/\/+$/, '');
+  const raw = (env.ATHENA_SHARE_URL ?? settings.shareUrl ?? DEFAULT_SHARE_URL).trim().replace(/\/+$/, '');
   if (!raw) return null;
   try {
     const u = new URL(raw);
@@ -72,6 +75,6 @@ export function sharingState(settings: Settings, repoShare: 'off' | 'on' | undef
   if (settings.share !== 'on') return { on: false, reason: 'sharing is off' };
   if (repoShare === 'off') return { on: false, reason: 'this repository turns sharing off (athena.config.json)' };
   if (ci) return { on: false, reason: 'not sent from CI' };
-  if (!shareUrl(settings, env)) return { on: false, reason: 'no collection server is configured (set ATHENA_SHARE_URL)' };
+  if (!shareUrl(settings, env)) return { on: false, reason: 'the collection server address is invalid (check ATHENA_SHARE_URL)' };
   return { on: true, reason: 'sharing is on' };
 }

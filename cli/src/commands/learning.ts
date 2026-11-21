@@ -28,7 +28,7 @@ export async function shareCommand(action: string, opts: { delete?: boolean; ser
   if (action === 'on') {
     if (opts.server) settings = { ...settings, shareUrl: opts.server };
     if (!shareUrl(settings, env)) {
-      writeInfo('error: no collection server is configured. Set ATHENA_SHARE_URL, or pass --server <https url>.');
+      writeInfo('error: the collection server address is not a valid https URL (check ATHENA_SHARE_URL or --server).');
       return 2;
     }
     settings = ensureInstallId({ ...settings, share: 'on', shareAsked: true });
@@ -44,7 +44,7 @@ export async function shareCommand(action: string, opts: { delete?: boolean; ser
       const ids = [...new Set([...(settings.pastInstallIds ?? []), ...(settings.installId ? [settings.installId] : [])])];
       if (!url && ids.length > 0) {
         saveSettings(settings, opts.home);
-        writeInfo('Sharing is off. Nothing could be deleted on the server because no collection server is configured (set ATHENA_SHARE_URL and run this again).');
+        writeInfo('Sharing is off. Nothing could be deleted on the server because the collection server address is invalid (check ATHENA_SHARE_URL and run this again).');
         return 2;
       }
       const result = ids.length > 0 && url ? await deleteContributions(url, ids) : { deleted: 0, failed: [] as string[] };
@@ -71,7 +71,7 @@ export async function shareCommand(action: string, opts: { delete?: boolean; ser
     const s = sample(root, opts.home);
     const lines = [
       `Sharing: ${settings.share === 'on' ? 'on' : 'off'}${settings.share === 'on' && !state.on ? ` (but nothing is sent: ${state.reason})` : ''}`,
-      `Server:  ${shareUrl(settings, env) ?? 'none configured'}`,
+      `Server:  ${shareUrl(settings, env) ?? 'none (invalid address)'}`,
       `Sent so far: ${settings.sentTotal ?? 0} record(s)${settings.installId ? `, install id ${settings.installId.slice(0, 8)}… (rotated every 90 days)` : ''}`,
       '',
       s ? `${s.example ? 'An example record (nothing from your code yet)' : 'The next record that would be sent'}:\n${JSON.stringify(s.record, null, 2)}` : 'No record to show yet.',

@@ -41,12 +41,13 @@ function fakeServer(status = 202): Promise<{ url: string; seen: Seen[]; close: (
 
 const base = { root, mode: 'scan' as const, learning: true, quiet: false, format: 'terminal', interactive: true, env: {} as NodeJS.ProcessEnv };
 
-test('sharing is off by default, and `on` needs a server because there is no built-in default', async () => {
+test('sharing is off by default, and `on` refuses an invalid server address', async () => {
   const h = home();
   assert.deepEqual(loadSettings(h), {});
   assert.equal(sharingState({}, undefined, {}, false).on, false);
-  assert.equal(await shareCommand('on', { home: h }, {}), 2, 'no server configured');
+  assert.equal(await shareCommand('on', { home: h }, { ATHENA_SHARE_URL: 'http://evil.example' }), 2, 'invalid address');
   assert.equal(loadSettings(h).share, undefined);
+  assert.equal(shareUrl({}, {}), 'https://athena-g3hp.onrender.com', 'the built-in default');
   assert.equal(await shareCommand('on', { home: h, server: 'https://example.org' }, {}), 0);
   const s = loadSettings(h);
   assert.equal(s.share, 'on');
